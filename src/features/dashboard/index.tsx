@@ -1,3 +1,12 @@
+import { Link } from '@tanstack/react-router'
+import {
+  Building2,
+  Coins,
+  Home,
+  MessageCircle,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -6,213 +15,179 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CreditsBadge } from '@/components/credits-badge'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { TopNav } from '@/components/layout/top-nav'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { Analytics } from './components/analytics'
+import { useCreditsStore } from '@/stores/credits-store'
+import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
+import { useLeadsStore } from '@/stores/leads-store'
+import { leads } from '@/features/leads/data/leads'
 import { Overview } from './components/overview'
-import { RecentSales } from './components/recent-sales'
+import { RecentLeads } from './components/recent-leads'
 
 export function Dashboard() {
+  const credits = useCreditsStore((s) => s.credits)
+  const unlockedCount = useLeadsStore((s) => s.unlockedIds.length)
+  const evaluationsTotal = useEvaluationsStore((s) => s.total)
+  const currentMonth = new Date().getMonth()
+  const monthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
+  const evaluationsThisMonth = monthlyCounts[MONTHS[currentMonth]] ?? 0
+
   return (
     <>
-      {/* ===== Top Heading ===== */}
       <Header>
-        <TopNav links={topNav} className='me-auto' />
-        <Search />
+        <Search className='me-auto' />
+        <CreditsBadge />
         <ThemeSwitch />
         <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 
-      {/* ===== Main ===== */}
       <Main>
-        <div className='mb-2 flex items-center justify-between space-y-2'>
-          <h1 className='text-2xl font-bold tracking-tight'>Dashboard</h1>
-          <div className='flex items-center space-x-2'>
-            <Button>Download</Button>
+        <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
+          <div>
+            <h1 className='text-2xl font-bold tracking-tight'>Dashboard</h1>
+            <p className='text-muted-foreground'>
+              Visão geral da sua operação na Avalia Imob
+            </p>
+          </div>
+          <div className='flex gap-2'>
+            <Button variant='outline' asChild>
+              <Link to='/leads'>
+                <Users className='size-4' />
+                Ver leads
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to='/avaliacao'>
+                <Sparkles className='size-4' />
+                Nova avaliação
+              </Link>
+            </Button>
           </div>
         </div>
-        <Tabs
-          orientation='vertical'
-          defaultValue='overview'
-          className='space-y-4'
-        >
-          <div className='w-full overflow-x-auto pb-2'>
-            <TabsList>
-              <TabsTrigger value='overview'>Overview</TabsTrigger>
-              <TabsTrigger value='analytics'>Analytics</TabsTrigger>
-              <TabsTrigger value='reports' disabled>
-                Reports
-              </TabsTrigger>
-              <TabsTrigger value='notifications' disabled>
-                Notifications
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent value='overview' className='space-y-4'>
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Total Revenue
-                  </CardTitle>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth='2'
-                    className='h-4 w-4 text-muted-foreground'
-                  >
-                    <path d='M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' />
-                  </svg>
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>$45,231.89</div>
-                  <p className='text-xs text-muted-foreground'>
-                    +20.1% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Subscriptions
-                  </CardTitle>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth='2'
-                    className='h-4 w-4 text-muted-foreground'
-                  >
-                    <path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
-                    <circle cx='9' cy='7' r='4' />
-                    <path d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' />
-                  </svg>
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>+2350</div>
-                  <p className='text-xs text-muted-foreground'>
-                    +180.1% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>Sales</CardTitle>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth='2'
-                    className='h-4 w-4 text-muted-foreground'
-                  >
-                    <rect width='20' height='14' x='2' y='5' rx='2' />
-                    <path d='M2 10h20' />
-                  </svg>
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>+12,234</div>
-                  <p className='text-xs text-muted-foreground'>
-                    +19% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Active Now
-                  </CardTitle>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth='2'
-                    className='h-4 w-4 text-muted-foreground'
-                  >
-                    <path d='M22 12h-4l-3 9L9 3l-3 9H2' />
-                  </svg>
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>+573</div>
-                  <p className='text-xs text-muted-foreground'>
-                    +201 since last hour
-                  </p>
-                </CardContent>
-              </Card>
+
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>
+                Créditos disponíveis
+              </CardTitle>
+              <Coins className='size-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{credits}</div>
+              <p className='text-xs text-muted-foreground'>
+                Para desbloquear leads
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>
+                Leads captados
+              </CardTitle>
+              <MessageCircle className='size-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{leads.length}</div>
+              <p className='text-xs text-muted-foreground'>
+                Via WhatsApp Avalia
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>
+                Leads desbloqueados
+              </CardTitle>
+              <Users className='size-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{unlockedCount}</div>
+              <p className='text-xs text-muted-foreground'>
+                Prontos para contato
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>
+                Avaliações realizadas
+              </CardTitle>
+              <Building2 className='size-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{evaluationsTotal}</div>
+              <p className='text-xs text-muted-foreground'>
+                {evaluationsThisMonth > 0
+                  ? `+${evaluationsThisMonth} este mês`
+                  : 'Nenhuma este mês'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className='mt-6 grid grid-cols-1 gap-4 lg:grid-cols-7'>
+          <Card className='col-span-1 lg:col-span-4'>
+            <CardHeader>
+              <CardTitle>Avaliações por mês</CardTitle>
+              <CardDescription>
+                Volume de avaliações de imóveis realizadas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='ps-2'>
+              <Overview />
+            </CardContent>
+          </Card>
+          <Card className='col-span-1 lg:col-span-3'>
+            <CardHeader>
+              <CardTitle>Leads recentes</CardTitle>
+              <CardDescription>
+                Últimos leads captados pelo WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecentLeads />
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className='mt-6'>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Home className='size-5' />
+              Ações rápidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-4 sm:grid-cols-3'>
+              <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                <Link to='/avaliacao'>
+                  <Sparkles className='size-6' />
+                  <span>Avaliar imóvel com IA</span>
+                </Link>
+              </Button>
+              <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                <Link to='/leads'>
+                  <Users className='size-6' />
+                  <span>Desbloquear leads</span>
+                </Link>
+              </Button>
+              <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                <Link to='/settings/credits'>
+                  <Coins className='size-6' />
+                  <span>Comprar créditos</span>
+                </Link>
+              </Button>
             </div>
-            <div className='grid grid-cols-1 gap-4 lg:grid-cols-7'>
-              <Card className='col-span-1 lg:col-span-4'>
-                <CardHeader>
-                  <CardTitle>Overview</CardTitle>
-                </CardHeader>
-                <CardContent className='ps-2'>
-                  <Overview />
-                </CardContent>
-              </Card>
-              <Card className='col-span-1 lg:col-span-3'>
-                <CardHeader>
-                  <CardTitle>Recent Sales</CardTitle>
-                  <CardDescription>
-                    You made 265 sales this month.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RecentSales />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value='analytics' className='space-y-4'>
-            <Analytics />
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </Main>
     </>
   )
 }
-
-const topNav = [
-  {
-    title: 'Overview',
-    href: 'dashboard/overview',
-    isActive: true,
-    disabled: false,
-  },
-  {
-    title: 'Customers',
-    href: 'dashboard/customers',
-    isActive: false,
-    disabled: true,
-  },
-  {
-    title: 'Products',
-    href: 'dashboard/products',
-    isActive: false,
-    disabled: true,
-  },
-  {
-    title: 'Settings',
-    href: 'dashboard/settings',
-    isActive: false,
-    disabled: true,
-  },
-]

@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useAuthStore } from '@/stores/auth-store'
 
 const profileFormSchema = z.object({
   username: z
@@ -35,7 +36,7 @@ const profileFormSchema = z.object({
         ? 'Please select an email to display.'
         : undefined,
   }),
-  bio: z.string().max(160).min(4),
+  bio: z.string().max(160),
   urls: z
     .array(
       z.object({
@@ -47,19 +48,17 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: 'I own a computer.',
-  urls: [
-    { value: 'https://shadcn.com' },
-    { value: 'http://twitter.com/shadcn' },
-  ],
-}
-
 export function ProfileForm() {
+  const authUser = useAuthStore((s) => s.auth.user)
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      username: authUser?.name ?? '',
+      email: authUser?.email ?? '',
+      bio: '',
+      urls: [],
+    },
     mode: 'onChange',
   })
 

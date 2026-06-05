@@ -1,0 +1,53 @@
+import { api } from './api'
+import type {
+  EvaluationFormValues,
+  EvaluationResult,
+} from '@/features/avaliacao/data/evaluation-engine'
+
+type PhotoPayload = {
+  mimeType: string
+  data: string
+}
+
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const base64 = result.split(',')[1]
+      if (!base64) {
+        reject(new Error('Falha ao converter imagem.'))
+        return
+      }
+      resolve(base64)
+    }
+    reader.onerror = () => reject(new Error('Falha ao ler imagem.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+export async function analyzeProperty(
+  values: EvaluationFormValues,
+  photos: { file: File }[]
+): Promise<EvaluationResult> {
+  const photoPayloads: PhotoPayload[] = await Promise.all(
+    photos.slice(0, 5).map(async (photo) => ({
+      mimeType: photo.file.type,
+      data: await fileToBase64(photo.file),
+    }))
+  )
+
+  const { data } = await api.post<{ evaluation: EvaluationResult }>(
+    '/evaluation/analyze',
+    {
+      ...values,
+      photos: photoPayloads.length > 0 ? photoPayloads : undefined,
+    }
+  )
+
+  return {
+    ...data.evaluation,
+    evaluatedAt: new Date(data.evaluation.evaluatedAt),
+    photoPreviews: photos.map((p) => URL.createObjectURL(p.file)),
+  }
+}

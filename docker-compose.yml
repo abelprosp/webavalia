@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: avalia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: avalia
+      POSTGRES_PASSWORD: avalia123
+      POSTGRES_DB: avalia_imob
+    ports:
+      - '5433:5432'
+    volumes:
+      - avalia_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U avalia -d avalia_imob']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  avalia_postgres_data:

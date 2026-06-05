@@ -1,14 +1,8 @@
 import { create } from 'zustand'
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
+import type { AuthUser } from '@/lib/auth-api'
 
-const ACCESS_TOKEN = 'thisisjustarandomstring'
-
-interface AuthUser {
-  accountNo: string
-  email: string
-  role: string[]
-  exp: number
-}
+const ACCESS_TOKEN = 'avalia_access_token'
 
 interface AuthState {
   auth: {
@@ -51,3 +45,7 @@ export const useAuthStore = create<AuthState>()((set) => {
     },
   }
 })
+
+export function getAccessToken() {
+  return useAuthStore.getState().auth.accessToken
+}

@@ -1,119 +1,119 @@
-# Shadcn Admin Dashboard
+# Avalia Imob
 
-Admin Dashboard UI crafted with Shadcn and Vite. Built with responsiveness and accessibility in mind.
+Plataforma de avaliação de imóveis com IA para corretores. Inclui gestão de leads via WhatsApp, avaliação manual com critérios e fotos, e sistema de créditos.
 
-![alt text](public/images/shadcn-admin.png)
+## Pré-requisitos
 
-[![Sponsored by Clerk](https://img.shields.io/badge/Sponsored%20by-Clerk-5b6ee1?logo=clerk)](https://go.clerk.com/GttUAaK)
+- [Node.js](https://nodejs.org/) 20+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para PostgreSQL)
 
-I've been creating dashboard UIs at work and for my personal projects. I always wanted to make a reusable collection of dashboard UI for future projects; and here it is now. While I've created a few custom components, some of the code is directly adapted from ShadcnUI examples.
+## Primeira execução
 
-> This is not a starter project (template) though. I'll probably make one in the future.
+```bash
+# 1. Instalar dependências
+npm install
+npm install --prefix server
 
-## Features
+# 2. Abrir o Docker Desktop e aguardar ficar "Running"
 
-- Light/dark mode
-- Responsive
-- Accessible
-- With built-in Sidebar component
-- Global search command
-- 10+ pages
-- Extra custom components
-- RTL support
+# 3. Subir banco e criar tabelas
+npm run setup
 
-<details>
-<summary>Customized Components (click to expand)</summary>
+# 4. Iniciar API + frontend
+npm run dev:apps
+```
 
-This project uses Shadcn UI components, but some have been slightly modified for better RTL (Right-to-Left) support and other improvements. These customized components differ from the original Shadcn UI versions.
+Ou tudo em um comando (com Docker Desktop já aberto):
 
-If you want to update components using the Shadcn CLI (e.g., `npx shadcn@latest add <component>`), it's generally safe for non-customized components. For the listed customized ones, you may need to manually merge changes to preserve the project's modifications and avoid overwriting RTL support or other updates.
+```bash
+npm run dev:all
+```
 
-> If you don't require RTL support, you can safely update the 'RTL Updated Components' via the Shadcn CLI, as these changes are primarily for RTL compatibility. The 'Modified Components' may have other customizations to consider.
+## URLs
 
-### Modified Components
+| Serviço    | URL                      |
+|------------|--------------------------|
+| Frontend   | http://localhost:5173    |
+| API        | http://localhost:3001    |
+| PostgreSQL | localhost:5433 (Docker)    |
 
-- scroll-area
-- sonner
-- separator
+## Primeiro acesso
 
-### RTL Updated Components
+Crie sua conta em http://localhost:5173/sign-up e faça login em `/sign-in`.
 
-- alert-dialog
-- calendar
-- command
-- dialog
-- dropdown-menu
-- select
-- table
-- sheet
-- sidebar
-- switch
+## Avaliação com IA (ChatGPT + Serper)
 
-**Notes:**
+Configure as chaves em `server/.env`:
 
-- **Modified Components**: These have general updates, potentially including RTL adjustments.
-- **RTL Updated Components**: These have specific changes for RTL language support (e.g., layout, positioning).
-- For implementation details, check the source files in `src/components/ui/`.
-- All other Shadcn UI components in the project are standard and can be safely updated via the CLI.
+```env
+OPENAI_API_KEY=sk-sua-chave-openai
+SERPER_API_KEY=sua-chave-serper
+OPENAI_MODEL=gpt-4o
+```
 
-</details>
+A avaliação de imóveis usa:
+- **Serper** — busca anúncios em imobiliárias locais (ZAP, Viva Real, etc.) e dados do **Plano Diretor**
+- **ChatGPT** — análise completa com valor estimado, comparáveis, zoneamento e insights
+
+Obtenha as chaves em:
+- OpenAI: https://platform.openai.com/api-keys
+- Serper: https://serper.dev/
+
+## Scripts disponíveis
+
+| Comando           | Descrição                                      |
+|-------------------|------------------------------------------------|
+| `npm run setup`   | Sobe PostgreSQL (Docker) e roda migrations     |
+| `npm run dev:apps`| Inicia API + frontend (sem Docker)             |
+| `npm run dev:all` | Setup + API + frontend                         |
+| `npm run dev`     | Apenas frontend                                |
+| `npm run dev:server` | Apenas API                                  |
+| `npm run docker:up`  | Sobe container PostgreSQL                    |
+| `npm run db:migrate` | Cria tabelas e usuário demo                  |
+
+## Erro: porta 5432 já em uso
+
+Se aparecer `Bind for 0.0.0.0:5432 failed: port is already allocated`, você já tem outro PostgreSQL na máquina. Este projeto usa a porta **5433** no host para evitar conflito.
+
+Se a migration falhar com `password authentication failed for user "avalia"`, o banco errado estava sendo usado. Rode:
+
+```bash
+npm run docker:reset
+npm run setup
+npm run dev:apps
+```
+
+## Erro: Docker não está rodando
+
+Se aparecer:
+
+```
+failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine
+```
+
+**Solução:**
+
+1. Abra o **Docker Desktop** no Windows
+2. Aguarde o ícone ficar verde / status "Running"
+3. Execute novamente:
+
+```bash
+npm run setup
+npm run dev:apps
+```
+
+## Estrutura
+
+```
+web/
+├── src/              # Frontend React (Vite + Shadcn)
+├── server/           # API Express + JWT + PostgreSQL
+├── docker-compose.yml
+└── scripts/
+```
 
 ## Tech Stack
 
-**UI:** [ShadcnUI](https://ui.shadcn.com) (TailwindCSS + RadixUI)
-
-**Build Tool:** [Vite](https://vitejs.dev/)
-
-**Routing:** [TanStack Router](https://tanstack.com/router/latest)
-
-**Type Checking:** [TypeScript](https://www.typescriptlang.org/)
-
-**Linting/Formatting:** [ESLint](https://eslint.org/) & [Prettier](https://prettier.io/)
-
-**Icons:** [Lucide Icons](https://lucide.dev/icons/), [Tabler Icons](https://tabler.io/icons) (Brand icons only)
-
-**Auth (partial):** [Clerk](https://go.clerk.com/GttUAaK)
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/satnaing/shadcn-admin.git
-```
-
-Go to the project directory
-
-```bash
-  cd shadcn-admin
-```
-
-Install dependencies
-
-```bash
-  pnpm install
-```
-
-Start the server
-
-```bash
-  pnpm run dev
-```
-
-## Sponsoring this project ❤️
-
-If you find this project helpful or use this in your own work, consider [sponsoring me](https://github.com/sponsors/satnaing) to support development and maintenance. You can [buy me a coffee](https://buymeacoffee.com/satnaing) as well. Don’t worry, every penny helps. Thank you! 🙏
-
-For questions or sponsorship inquiries, feel free to reach out at [satnaingdev@gmail.com](mailto:satnaingdev@gmail.com).
-
-### Current Sponsor
-
-- [Clerk](https://go.clerk.com/GttUAaK) - authentication and user management for the modern web
-
-## Author
-
-Crafted with 🤍 by [@satnaing](https://github.com/satnaing)
-
-## License
-
-Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)
+- **Frontend:** React, Vite, TanStack Router, Shadcn UI, Tailwind CSS
+- **Backend:** Express, PostgreSQL, JWT, bcrypt
+- **Banco:** PostgreSQL 16 (Docker)

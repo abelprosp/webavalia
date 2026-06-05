@@ -61,10 +61,10 @@ export function UserAuthForm({
 
         // Mock successful authentication with expiry computed at success time
         const mockUser = {
-          accountNo: 'ACC001',
+          id: 'mock-user',
+          name: data.email.split('@')[0],
           email: data.email,
-          role: ['user'],
-          exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+          role: 'corretor',
         }
 
         // Set user and access token
