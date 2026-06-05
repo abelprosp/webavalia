@@ -14,6 +14,8 @@
     "docker:reset": "docker compose down -v",
     "db:migrate": "npm run migrate --prefix server",
     "build": "tsc -b && vite build",
+    "build:prod": "npm run build && npm run build --prefix server",
+    "start:prod": "npm run migrate:prod --prefix server && npm run start --prefix server",
     "lint": "eslint .",
     "preview": "vite preview",
     "format:check": "prettier --check .",
