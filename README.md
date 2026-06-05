@@ -7,6 +7,12 @@ Plataforma de avaliação de imóveis com IA para corretores. Inclui gestão de 
 - [Node.js](https://nodejs.org/) 20+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para PostgreSQL)
 
+## Deploy na Railway
+
+Guia completo: [DEPLOY-RAILWAY.md](./DEPLOY-RAILWAY.md)
+
+Resumo: conecte o repo no Railway, adicione **PostgreSQL**, configure as variáveis (`NODE_ENV`, `JWT_SECRET`, `OPENAI_API_KEY`, `SERPER_API_KEY`, `DATABASE_URL`, `VITE_API_URL=/api`) e gere o domínio público.
+
 ## Primeira execução
 
 ```bash
@@ -117,3 +123,4 @@ web/
 - **Frontend:** React, Vite, TanStack Router, Shadcn UI, Tailwind CSS
 - **Backend:** Express, PostgreSQL, JWT, bcrypt
 - **Banco:** PostgreSQL 16 (Docker)
+"# webavalia" 
