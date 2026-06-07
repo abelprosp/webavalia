@@ -24,10 +24,14 @@ app.use(
           directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: [
+              "'self'",
+              "'unsafe-inline'",
+              'https://fonts.googleapis.com',
+            ],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
             connectSrc: ["'self'"],
-            fontSrc: ["'self'", 'data:'],
+            fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
             baseUri: ["'self'"],

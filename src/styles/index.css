@@ -2,6 +2,8 @@
 @import 'tw-animate-css';
 @import './theme.css';
 
+@source inline('font-inter font-manrope font-system');
+
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
@@ -11,7 +13,7 @@
     scrollbar-color: var(--border) transparent;
   }
   html {
-    @apply overflow-x-hidden;
+    @apply overflow-x-hidden font-inter;
   }
   body {
     @apply min-h-svh w-full bg-background text-foreground has-[div[data-variant='inset']]:bg-sidebar;
