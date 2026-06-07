@@ -1,0 +1,423 @@
+import { pool } from '../db/pool.js'
+import { getSetting } from './settings-service.js'
+import { addTrialEvaluations } from './credits-service.js'
+
+export type AchievementKey =
+  | 'first_evaluation'
+  | 'evaluations_5'
+  | 'evaluations_10'
+  | 'first_feedback'
+  | 'feedback_5'
+  | 'monthly_goal'
+  | 'streak_3'
+
+export type AchievementDefinition = {
+  key: AchievementKey
+  title: string
+  description: string
+}
+
+export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
+  {
+    key: 'first_evaluation',
+    title: 'Primeira avaliação',
+    description: 'Realizou sua primeira avaliação com IA',
+  },
+  {
+    key: 'evaluations_5',
+    title: 'Corretor em ação',
+    description: 'Completou 5 avaliações de imóveis',
+  },
+  {
+    key: 'evaluations_10',
+    title: 'Analista imobiliário',
+    description: 'Completou 10 avaliações de imóveis',
+  },
+  {
+    key: 'first_feedback',
+    title: 'Mentor da IA',
+    description: 'Enviou o primeiro feedback para calibrar a IA',
+  },
+  {
+    key: 'feedback_5',
+    title: 'Treinador expert',
+    description: 'Enviou 5 feedbacks úteis para a IA',
+  },
+  {
+    key: 'monthly_goal',
+    title: 'Meta do mês',
+    description: 'Atingiu a meta mensal de avaliações',
+  },
+  {
+    key: 'streak_3',
+    title: 'Sequência de 3 dias',
+    description: 'Avaliou imóveis 3 dias seguidos',
+  },
+]
+
+const LEVELS = [
+  { level: 1, name: 'Iniciante', minEvaluations: 0 },
+  { level: 2, name: 'Corretor ativo', minEvaluations: 6 },
+  { level: 3, name: 'Especialista', minEvaluations: 21 },
+  { level: 4, name: 'Expert', minEvaluations: 50 },
+] as const
+
+export type LevelInfo = {
+  level: number
+  name: string
+  evaluationsUsed: number
+  progress: number
+  nextLevelAt: number | null
+  evaluationsToNext: number | null
+}
+
+export type GamificationStats = {
+  evaluationsUsed: number
+  feedbackCount: number
+  level: LevelInfo
+  monthlyGoal: {
+    target: number
+    current: number
+    completed: boolean
+  }
+  streak: {
+    current: number
+    best: number
+  }
+  achievements: Array<
+    AchievementDefinition & {
+      unlocked: boolean
+      unlockedAt: string | null
+    }
+  >
+  monthlyBreakdown: Record<string, number>
+}
+
+function getLevelInfo(evaluationsUsed: number): LevelInfo {
+  let currentIndex = 0
+  for (let i = 0; i < LEVELS.length; i += 1) {
+    if (evaluationsUsed >= LEVELS[i].minEvaluations) {
+      currentIndex = i
+    }
+  }
+
+  const current = LEVELS[currentIndex]
+  const next = LEVELS[currentIndex + 1] ?? null
+
+  if (!next) {
+    return {
+      level: current.level,
+      name: current.name,
+      evaluationsUsed,
+      progress: 1,
+      nextLevelAt: null,
+      evaluationsToNext: null,
+    }
+  }
+
+  const span = next.minEvaluations - current.minEvaluations
+  const progressInLevel = evaluationsUsed - current.minEvaluations
+
+  return {
+    level: current.level,
+    name: current.name,
+    evaluationsUsed,
+    progress: Math.min(progressInLevel / span, 1),
+    nextLevelAt: next.minEvaluations,
+    evaluationsToNext: Math.max(next.minEvaluations - evaluationsUsed, 0),
+  }
+}
+
+function toDayKey(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function computeStreak(evaluationDays: Date[]): { current: number; best: number } {
+  if (evaluationDays.length === 0) {
+    return { current: 0, best: 0 }
+  }
+
+  const uniqueDays = [...new Set(evaluationDays.map(toDayKey))].sort(
+    (a, b) => b.localeCompare(a)
+  )
+
+  const todayKey = toDayKey(new Date())
+  const yesterday = new Date()
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+  const yesterdayKey = toDayKey(yesterday)
+
+  let current = 0
+  if (uniqueDays[0] === todayKey || uniqueDays[0] === yesterdayKey) {
+    let cursor = uniqueDays[0] === todayKey ? new Date() : yesterday
+    for (const dayKey of uniqueDays) {
+      if (dayKey !== toDayKey(cursor)) break
+      current += 1
+      cursor = new Date(cursor)
+      cursor.setUTCDate(cursor.getUTCDate() - 1)
+    }
+  }
+
+  let best = 0
+  let run = 1
+  for (let i = 1; i < uniqueDays.length; i += 1) {
+    const prev = new Date(`${uniqueDays[i - 1]}T12:00:00Z`)
+    const curr = new Date(`${uniqueDays[i]}T12:00:00Z`)
+    const diffDays = Math.round(
+      (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    if (diffDays === 1) {
+      run += 1
+    } else {
+      best = Math.max(best, run)
+      run = 1
+    }
+  }
+  best = Math.max(best, run, current)
+
+  return { current, best }
+}
+
+const MONTH_KEYS = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+] as const
+
+async function getUserMetrics(userId: string) {
+  const [userResult, feedbackResult, evaluationDaysResult, monthlyResult] =
+    await Promise.all([
+      pool.query<{ evaluations_used: number }>(
+        'SELECT evaluations_used FROM users WHERE id = $1',
+        [userId]
+      ),
+      pool.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM evaluation_feedback WHERE user_id = $1',
+        [userId]
+      ),
+      pool.query<{ created_at: Date }>(
+        `SELECT created_at FROM property_evaluations
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [userId]
+      ),
+      pool.query<{ month: number; count: string }>(
+        `SELECT EXTRACT(MONTH FROM created_at)::int AS month, COUNT(*)::text AS count
+         FROM property_evaluations
+         WHERE user_id = $1
+           AND created_at >= date_trunc('year', NOW())
+         GROUP BY EXTRACT(MONTH FROM created_at)`,
+        [userId]
+      ),
+    ])
+
+  const evaluationsUsed = userResult.rows[0]?.evaluations_used ?? 0
+  const feedbackCount = Number(feedbackResult.rows[0]?.count ?? 0)
+  const evaluationDays = evaluationDaysResult.rows.map((r) => r.created_at)
+
+  const monthlyBreakdown = Object.fromEntries(
+    MONTH_KEYS.map((key) => [key, 0])
+  ) as Record<string, number>
+
+  for (const row of monthlyResult.rows) {
+    const key = MONTH_KEYS[row.month - 1]
+    if (key) monthlyBreakdown[key] = Number(row.count)
+  }
+
+  const currentMonthKey = MONTH_KEYS[new Date().getMonth()]
+  const evaluationsThisMonth = monthlyBreakdown[currentMonthKey] ?? 0
+
+  return {
+    evaluationsUsed,
+    feedbackCount,
+    evaluationDays,
+    evaluationsThisMonth,
+    monthlyBreakdown,
+  }
+}
+
+async function getUnlockedAchievements(userId: string) {
+  const result = await pool.query<{ achievement_key: string; unlocked_at: Date }>(
+    `SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = $1`,
+    [userId]
+  )
+
+  return new Map(
+    result.rows.map((row) => [
+      row.achievement_key,
+      row.unlocked_at instanceof Date
+        ? row.unlocked_at.toISOString()
+        : String(row.unlocked_at),
+    ])
+  )
+}
+
+function resolveEligibleAchievements(metrics: {
+  evaluationsUsed: number
+  feedbackCount: number
+  evaluationsThisMonth: number
+  monthlyGoalTarget: number
+  streakCurrent: number
+}): AchievementKey[] {
+  const eligible: AchievementKey[] = []
+
+  if (metrics.evaluationsUsed >= 1) eligible.push('first_evaluation')
+  if (metrics.evaluationsUsed >= 5) eligible.push('evaluations_5')
+  if (metrics.evaluationsUsed >= 10) eligible.push('evaluations_10')
+  if (metrics.feedbackCount >= 1) eligible.push('first_feedback')
+  if (metrics.feedbackCount >= 5) eligible.push('feedback_5')
+  if (metrics.evaluationsThisMonth >= metrics.monthlyGoalTarget) {
+    eligible.push('monthly_goal')
+  }
+  if (metrics.streakCurrent >= 3) eligible.push('streak_3')
+
+  return eligible
+}
+
+async function unlockAchievements(
+  userId: string,
+  keys: AchievementKey[],
+  alreadyUnlocked: Map<string, string>
+) {
+  const newlyUnlocked: AchievementKey[] = []
+
+  for (const key of keys) {
+    if (alreadyUnlocked.has(key)) continue
+
+    const inserted = await pool.query<{ achievement_key: string }>(
+      `INSERT INTO user_achievements (user_id, achievement_key)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, achievement_key) DO NOTHING
+       RETURNING achievement_key`,
+      [userId, key]
+    )
+
+    if (!inserted.rowCount) continue
+
+    const unlockedAt = new Date().toISOString()
+    alreadyUnlocked.set(key, unlockedAt)
+    newlyUnlocked.push(key)
+  }
+
+  return newlyUnlocked.map((key) => {
+    const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)!
+    return {
+      ...def,
+      unlocked: true,
+      unlockedAt: alreadyUnlocked.get(key) ?? new Date().toISOString(),
+    }
+  })
+}
+
+export async function getGamificationStats(
+  userId: string
+): Promise<GamificationStats> {
+  const monthlyGoalTarget = await getSetting<number>(
+    'gamification_monthly_goal',
+    5
+  )
+
+  const metrics = await getUserMetrics(userId)
+  const streak = computeStreak(metrics.evaluationDays)
+  const unlockedMap = await getUnlockedAchievements(userId)
+
+  const achievements = ACHIEVEMENT_DEFINITIONS.map((def) => ({
+    ...def,
+    unlocked: unlockedMap.has(def.key),
+    unlockedAt: unlockedMap.get(def.key) ?? null,
+  }))
+
+  return {
+    evaluationsUsed: metrics.evaluationsUsed,
+    feedbackCount: metrics.feedbackCount,
+    level: getLevelInfo(metrics.evaluationsUsed),
+    monthlyGoal: {
+      target: monthlyGoalTarget,
+      current: metrics.evaluationsThisMonth,
+      completed: metrics.evaluationsThisMonth >= monthlyGoalTarget,
+    },
+    streak,
+    achievements,
+    monthlyBreakdown: metrics.monthlyBreakdown,
+  }
+}
+
+export async function processEvaluationGamification(userId: string) {
+  const monthlyGoalTarget = await getSetting<number>(
+    'gamification_monthly_goal',
+    5
+  )
+
+  const metrics = await getUserMetrics(userId)
+  const streak = computeStreak(metrics.evaluationDays)
+  const unlockedMap = await getUnlockedAchievements(userId)
+
+  const eligible = resolveEligibleAchievements({
+    evaluationsUsed: metrics.evaluationsUsed,
+    feedbackCount: metrics.feedbackCount,
+    evaluationsThisMonth: metrics.evaluationsThisMonth,
+    monthlyGoalTarget,
+    streakCurrent: streak.current,
+  })
+
+  const newAchievements = await unlockAchievements(
+    userId,
+    eligible,
+    unlockedMap
+  )
+
+  return {
+    newAchievements,
+    level: getLevelInfo(metrics.evaluationsUsed),
+    monthlyGoalCompleted: metrics.evaluationsThisMonth >= monthlyGoalTarget,
+  }
+}
+
+export async function processFeedbackGamification(userId: string) {
+  const rewardAmount = await getSetting<number>(
+    'gamification_feedback_reward',
+    1
+  )
+
+  const gamification = await processEvaluationGamification(userId)
+
+  let trialEvaluationsRemaining: number | null = null
+  if (rewardAmount > 0) {
+    trialEvaluationsRemaining = await addTrialEvaluations(
+      userId,
+      rewardAmount,
+      'Recompensa por feedback útil à IA'
+    )
+  }
+
+  return {
+    ...gamification,
+    reward: {
+      trialEvaluations: rewardAmount,
+      trialEvaluationsRemaining,
+    },
+  }
+}
+
+export function mapAchievementForResponse(
+  achievement: AchievementDefinition & {
+    unlocked?: boolean
+    unlockedAt?: string | null
+  }
+) {
+  return {
+    key: achievement.key,
+    title: achievement.title,
+    description: achievement.description,
+    unlocked: achievement.unlocked ?? true,
+    unlockedAt: achievement.unlockedAt ?? new Date().toISOString(),
+  }
+}

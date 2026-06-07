@@ -14,6 +14,11 @@ import {
   savePropertyEvaluation,
   submitEvaluationFeedback,
 } from '../services/evaluation-feedback-service.js'
+import {
+  mapAchievementForResponse,
+  processEvaluationGamification,
+  processFeedbackGamification,
+} from '../services/gamification-service.js'
 import { config } from '../config.js'
 
 const router = Router()
@@ -99,20 +104,24 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     const result = await runPropertyEvaluation(parsed.data)
     const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
 
-    let evaluationId: string | null = null
-    if (feedbackModeEnabled) {
-      evaluationId = await savePropertyEvaluation({
-        userId,
-        propertyInput: parsed.data,
-        evaluationResult: result,
-      })
-    }
+    const evaluationId = await savePropertyEvaluation({
+      userId,
+      propertyInput: parsed.data,
+      evaluationResult: result,
+    })
+
+    const gamification = await processEvaluationGamification(userId)
 
     return res.json({
       evaluation: result,
       evaluationId,
       feedbackModeEnabled,
       trialEvaluationsRemaining,
+      gamification: {
+        level: gamification.level,
+        monthlyGoalCompleted: gamification.monthlyGoalCompleted,
+        newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
+      },
     })
   } catch (error) {
     await refundTrialEvaluation(userId)
@@ -146,8 +155,19 @@ router.post('/feedback', requireAuth, async (req: AuthRequest, res) => {
       comment: parsed.data.comment,
     })
 
+    const gamification = await processFeedbackGamification(req.user!.id)
+
     return res.status(201).json({
-      message: 'Obrigado! Seu feedback ajuda a IA a melhorar nas próximas avaliações.',
+      message:
+        gamification.reward.trialEvaluations > 0
+          ? `Obrigado! Você ganhou +${gamification.reward.trialEvaluations} avaliação(ões) bônus.`
+          : 'Obrigado! Seu feedback ajuda a IA a melhorar nas próximas avaliações.',
+      reward: gamification.reward,
+      gamification: {
+        level: gamification.level,
+        monthlyGoalCompleted: gamification.monthlyGoalCompleted,
+        newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
+      },
     })
   } catch (error) {
     const message =

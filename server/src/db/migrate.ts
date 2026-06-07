@@ -152,6 +152,16 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS evaluation_feedback_rating_idx
       ON evaluation_feedback (rating, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS user_achievements (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      achievement_key VARCHAR(50) NOT NULL,
+      unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, achievement_key)
+    );
+
+    CREATE INDEX IF NOT EXISTS user_achievements_user_idx
+      ON user_achievements (user_id, unlocked_at DESC);
   `)
 
   await pool.query(`
@@ -174,7 +184,9 @@ async function migrate() {
       ('trial_evaluations_total', '{"value": 3}'),
       ('default_lead_credits', '{"value": 0}'),
       ('registration_enabled', '{"value": true}'),
-      ('evaluation_feedback_mode', '{"value": true}')
+      ('evaluation_feedback_mode', '{"value": true}'),
+      ('gamification_monthly_goal', '{"value": 5}'),
+      ('gamification_feedback_reward', '{"value": 1}')
      ON CONFLICT (key) DO NOTHING`
   )
 

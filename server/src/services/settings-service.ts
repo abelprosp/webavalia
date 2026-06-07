@@ -5,12 +5,16 @@ type SettingKey =
   | 'default_lead_credits'
   | 'registration_enabled'
   | 'evaluation_feedback_mode'
+  | 'gamification_monthly_goal'
+  | 'gamification_feedback_reward'
 
 const DEFAULTS: Record<SettingKey, unknown> = {
   trial_evaluations_total: 3,
   default_lead_credits: 0,
   registration_enabled: true,
   evaluation_feedback_mode: true,
+  gamification_monthly_goal: 5,
+  gamification_feedback_reward: 1,
 }
 
 export async function getSetting<T>(key: SettingKey, fallback?: T): Promise<T> {

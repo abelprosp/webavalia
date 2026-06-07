@@ -28,13 +28,20 @@ import { useLeadsStore } from '@/stores/leads-store'
 import { leads } from '@/features/leads/data/leads'
 import { Overview } from './components/overview'
 import { RecentLeads } from './components/recent-leads'
+import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
+import { useGamificationStats } from '@/features/gamification/hooks/use-gamification-stats'
 
 export function Dashboard() {
   const credits = useCreditsStore((s) => s.credits)
   const unlockedCount = useLeadsStore((s) => s.unlockedIds.length)
-  const evaluationsTotal = useEvaluationsStore((s) => s.total)
+  const localEvaluationsTotal = useEvaluationsStore((s) => s.total)
+  const localMonthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
+  const { stats: gamificationStats, loading: gamificationLoading } =
+    useGamificationStats()
+  const evaluationsTotal =
+    gamificationStats?.evaluationsUsed ?? localEvaluationsTotal
   const currentMonth = new Date().getMonth()
-  const monthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
+  const monthlyCounts = gamificationStats?.monthlyBreakdown ?? localMonthlyCounts
   const evaluationsThisMonth = monthlyCounts[MONTHS[currentMonth]] ?? 0
 
   return (
@@ -69,6 +76,10 @@ export function Dashboard() {
               </Link>
             </Button>
           </div>
+        </div>
+
+        <div className='mb-6'>
+          <GamificationPanel stats={gamificationStats} loading={gamificationLoading} />
         </div>
 
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
@@ -141,7 +152,7 @@ export function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className='ps-2'>
-              <Overview />
+              <Overview monthlyCounts={monthlyCounts} total={evaluationsTotal} />
             </CardContent>
           </Card>
           <Card className='col-span-1 lg:col-span-3'>

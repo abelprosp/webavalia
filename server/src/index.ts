@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js'
 import adminRoutes from './routes/admin.js'
 import plansRoutes from './routes/plans.js'
 import evaluationRoutes from './routes/evaluation.js'
+import gamificationRoutes from './routes/gamification.js'
 import paymentRoutes from './routes/payments.js'
 import { abacatePayWebhookHandler } from './routes/payment-webhook.js'
 import { webhookRateLimiter } from './middleware/rate-limit.js'
@@ -80,6 +81,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/plans', plansRoutes)
 app.use('/api/evaluation', evaluationRoutes)
+app.use('/api/gamification', gamificationRoutes)
 app.use('/api/payments', paymentRoutes)
 
 if (config.isProduction) {

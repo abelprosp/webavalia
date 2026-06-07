@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { GamificationPayload } from './gamification-api'
 import type {
   EvaluationFormValues,
   EvaluationResult,
@@ -14,6 +15,16 @@ export type AnalyzePropertyResponse = {
   evaluationId: string | null
   feedbackModeEnabled: boolean
   trialEvaluationsRemaining: number
+  gamification?: GamificationPayload
+}
+
+export type SubmitFeedbackResponse = {
+  message: string
+  reward?: {
+    trialEvaluations: number
+    trialEvaluationsRemaining: number | null
+  }
+  gamification?: GamificationPayload
 }
 
 export async function submitEvaluationFeedback(input: {
@@ -21,7 +32,10 @@ export async function submitEvaluationFeedback(input: {
   rating: 'good' | 'bad'
   comment: string
 }) {
-  const { data } = await api.post<{ message: string }>('/evaluation/feedback', input)
+  const { data } = await api.post<SubmitFeedbackResponse>(
+    '/evaluation/feedback',
+    input
+  )
   return data
 }
 
@@ -58,6 +72,7 @@ export async function analyzeProperty(
     evaluationId: string | null
     feedbackModeEnabled: boolean
     trialEvaluationsRemaining: number
+    gamification?: GamificationPayload
   }>('/evaluation/analyze', {
     ...values,
     photos: photoPayloads.length > 0 ? photoPayloads : undefined,
@@ -72,5 +87,6 @@ export async function analyzeProperty(
     evaluationId: data.evaluationId,
     feedbackModeEnabled: data.feedbackModeEnabled,
     trialEvaluationsRemaining: data.trialEvaluationsRemaining,
+    gamification: data.gamification,
   }
 }

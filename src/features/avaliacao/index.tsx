@@ -5,6 +5,7 @@ import { Sparkles, Home, Loader2, Camera, Gem } from 'lucide-react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { analyzeProperty } from '@/lib/evaluation-api'
+import { showGamificationUpdates } from '@/features/gamification/lib/show-gamification-toasts'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -137,6 +138,7 @@ export function Avaliacao() {
         evaluationId: newEvaluationId,
         feedbackModeEnabled: modeEnabled,
         trialEvaluationsRemaining,
+        gamification,
       } = await analyzeProperty(values, photos)
       setResult(evaluation)
       setEvaluatedProperty(values)
@@ -144,6 +146,7 @@ export function Avaliacao() {
       setFeedbackModeEnabled(modeEnabled)
       updateTrialRemaining(trialEvaluationsRemaining)
       recordEvaluation()
+      showGamificationUpdates(gamification)
       toast.success('Avaliação concluída com sucesso!')
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {

@@ -1,13 +1,12 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import {
-  MONTHS,
-  useEvaluationsStore,
-} from '@/stores/evaluations-store'
+import { MONTHS } from '@/stores/evaluations-store'
 
-export function Overview() {
-  const monthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
-  const total = useEvaluationsStore((s) => s.total)
+type OverviewProps = {
+  monthlyCounts: Record<string, number>
+  total: number
+}
 
+export function Overview({ monthlyCounts, total }: OverviewProps) {
   const data = MONTHS.map((name) => ({
     name,
     total: monthlyCounts[name] ?? 0,

@@ -12,6 +12,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { submitEvaluationFeedback } from '@/lib/evaluation-api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { showGamificationUpdates } from '@/features/gamification/lib/show-gamification-toasts'
+import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 
 type EvaluationFeedbackPanelProps = {
@@ -27,6 +29,10 @@ export function EvaluationFeedbackPanel({
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null)
+  const updateTrialRemaining = useAuthStore(
+    (s) => s.auth.updateTrialEvaluationsRemaining
+  )
 
   async function handleSubmit() {
     if (!rating) {
@@ -46,6 +52,13 @@ export function EvaluationFeedbackPanel({
         rating,
         comment: comment.trim(),
       })
+
+      if (result.reward?.trialEvaluationsRemaining != null) {
+        updateTrialRemaining(result.reward.trialEvaluationsRemaining)
+      }
+
+      showGamificationUpdates(result.gamification)
+      setRewardMessage(result.message)
       setSubmitted(true)
       toast.success(result.message)
       onSubmitted?.()
@@ -62,8 +75,8 @@ export function EvaluationFeedbackPanel({
         <CardContent className='flex items-center gap-3 py-6'>
           <Sparkles className='size-5 shrink-0 text-primary' />
           <p className='text-sm text-muted-foreground'>
-            Feedback registrado. A IA usará sua avaliação para calibrar os
-            próximos resultados.
+            {rewardMessage ??
+              'Feedback registrado. A IA usará sua avaliação para calibrar os próximos resultados.'}
           </p>
         </CardContent>
       </Card>
@@ -79,7 +92,8 @@ export function EvaluationFeedbackPanel({
         </CardTitle>
         <CardDescription>
           Esta avaliação ficou boa ou ruim? Explique o porquê para que a IA
-          corrija erros e repita acertos nas próximas análises.
+          corrija erros e repita acertos nas próximas análises. Você ganha +1
+          avaliação bônus ao enviar feedback.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
