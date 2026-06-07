@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Sparkles, Home, Loader2, Camera } from 'lucide-react'
+import { Sparkles, Home, Loader2, Camera, Gem } from 'lucide-react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { analyzeProperty } from '@/lib/evaluation-api'
@@ -22,12 +22,15 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -38,14 +41,23 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { conservationStates, evaluationCriteria, propertyTypes } from './data/criteria'
+import {
+  condominiumLevels,
+  conservationStates,
+  finishLevels,
+  furnishingOptions,
+  propertyAmenities,
+  propertyTypeGroups,
+  standardLevels,
+  viewTypes,
+} from './data/criteria'
 import {
   evaluationFormSchema,
   type EvaluationFormValues,
   type EvaluationResult,
 } from './data/evaluation-engine'
 import { useEvaluationsStore } from '@/stores/evaluations-store'
-import { CriteriaSlider } from './components/criteria-slider'
+import { useAuthStore } from '@/stores/auth-store'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import {
   PhotoUpload,
@@ -61,13 +73,13 @@ const defaultValues: EvaluationFormValues = {
   parking: 1,
   yearBuilt: 2015,
   conservation: 'bom',
+  standardLevel: 'padrao',
+  furnishing: 'sem',
+  finishLevel: 'padrao',
+  condominiumLevel: 'nao-aplica',
+  viewType: undefined,
+  amenities: [],
   askingPrice: undefined,
-  location: 3,
-  infrastructure: 3,
-  condition: 3,
-  layout: 3,
-  market: 3,
-  documentation: 3,
   notes: '',
 }
 
@@ -79,6 +91,12 @@ export function Avaliacao() {
   const [evaluatingStep, setEvaluatingStep] = useState('')
   const [photos, setPhotos] = useState<EvaluationPhoto[]>([])
   const recordEvaluation = useEvaluationsStore((s) => s.recordEvaluation)
+  const trialRemaining = useAuthStore(
+    (s) => s.auth.user?.trialEvaluationsRemaining
+  )
+  const updateTrialRemaining = useAuthStore(
+    (s) => s.auth.updateTrialEvaluationsRemaining
+  )
   const photosRef = useRef(photos)
   photosRef.current = photos
 
@@ -94,6 +112,13 @@ export function Avaliacao() {
   })
 
   async function onSubmit(values: EvaluationFormValues) {
+    if (trialRemaining != null && trialRemaining <= 0) {
+      toast.error(
+        'Suas 3 avaliações grátis de teste foram utilizadas. Entre em contato para continuar.'
+      )
+      return
+    }
+
     setIsEvaluating(true)
     setResult(null)
     setEvaluatedProperty(null)
@@ -101,12 +126,19 @@ export function Avaliacao() {
 
     try {
       setEvaluatingStep('Gerando análise completa...')
-      const evaluation = await analyzeProperty(values, photos)
+      const { evaluation, trialEvaluationsRemaining } = await analyzeProperty(
+        values,
+        photos
+      )
       setResult(evaluation)
       setEvaluatedProperty(values)
+      updateTrialRemaining(trialEvaluationsRemaining)
       recordEvaluation()
       toast.success('Avaliação concluída com sucesso!')
     } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 403) {
+        updateTrialRemaining(0)
+      }
       const message =
         error instanceof AxiosError
           ? (error.response?.data as { message?: string })?.message
@@ -138,7 +170,24 @@ export function Avaliacao() {
           <p className='text-muted-foreground'>
             Obtenha uma estimativa de valor com análise completa do imóvel e do
             mercado local.
+            {trialRemaining != null && (
+              <>
+                {' '}
+                Você tem{' '}
+                <strong>
+                  {trialRemaining} avaliação{trialRemaining === 1 ? '' : 'ões'}{' '}
+                  grátis
+                </strong>{' '}
+                restante{trialRemaining === 1 ? '' : 's'}.
+              </>
+            )}
           </p>
+          {trialRemaining === 0 && (
+            <p className='mt-2 text-sm text-destructive'>
+              Suas avaliações grátis de teste acabaram. Entre em contato para
+              continuar usando a plataforma.
+            </p>
+          )}
         </div>
 
         <div className='grid gap-6 lg:grid-cols-2'>
@@ -188,11 +237,19 @@ export function Avaliacao() {
                                 <SelectValue placeholder='Selecione' />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
-                              {propertyTypes.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
+                            <SelectContent className='max-h-72'>
+                              {propertyTypeGroups.map((group) => (
+                                <SelectGroup key={group.label}>
+                                  <SelectLabel>{group.label}</SelectLabel>
+                                  {group.types.map((type) => (
+                                    <SelectItem
+                                      key={type.value}
+                                      value={type.value}
+                                    >
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
                               ))}
                             </SelectContent>
                           </Select>
@@ -358,48 +415,6 @@ export function Avaliacao() {
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2'>
-                    <Camera className='size-5' />
-                    Fotos do imóvel
-                  </CardTitle>
-                  <CardDescription>
-                    Envie fotos para a IA analisar acabamentos, conservação e
-                    apresentação visual
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PhotoUpload photos={photos} onChange={setPhotos} />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Critérios de avaliação</CardTitle>
-                  <CardDescription>
-                    Avalie cada critério de 1 (baixo) a 5 (excelente)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className='space-y-6'>
-                  {evaluationCriteria.map((criterion) => (
-                    <FormField
-                      key={criterion.id}
-                      control={form.control}
-                      name={criterion.id}
-                      render={({ field }) => (
-                        <CriteriaSlider
-                          label={criterion.label}
-                          description={criterion.description}
-                          value={field.value as number}
-                          onChange={field.onChange}
-                        />
-                      )}
-                    />
-                  ))}
 
                   <FormField
                     control={form.control}
@@ -421,7 +436,233 @@ export function Avaliacao() {
                 </CardContent>
               </Card>
 
-              <Button type='submit' size='lg' className='w-full' disabled={isEvaluating}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Gem className='size-5' />
+                    Características e diferenciais
+                  </CardTitle>
+                  <CardDescription>
+                    Informações de padrão, acabamento e amenidades para uma
+                    avaliação mais precisa
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='standardLevel'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Padrão do imóvel</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Selecione' />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {standardLevels.map((level) => (
+                                <SelectItem
+                                  key={level.value}
+                                  value={level.value}
+                                >
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='furnishing'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mobília</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Selecione' />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {furnishingOptions.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='finishLevel'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Acabamento</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Selecione' />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {finishLevels.map((level) => (
+                                <SelectItem
+                                  key={level.value}
+                                  value={level.value}
+                                >
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='condominiumLevel'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Condomínio</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Selecione' />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {condominiumLevels.map((level) => (
+                                <SelectItem
+                                  key={level.value}
+                                  value={level.value}
+                                >
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name='viewType'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vista</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder='Selecione (opcional)' />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {viewTypes.map((view) => (
+                              <SelectItem key={view.value} value={view.value}>
+                                {view.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div>
+                    <FormLabel className='mb-3 block'>
+                      Diferenciais e amenidades
+                    </FormLabel>
+                    <div className='grid gap-3 sm:grid-cols-2'>
+                      {propertyAmenities.map((amenity) => (
+                        <FormField
+                          key={amenity.value}
+                          control={form.control}
+                          name='amenities'
+                          render={({ field }) => (
+                            <FormItem className='flex items-center gap-2 space-y-0'>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(amenity.value)}
+                                  onCheckedChange={(checked) => {
+                                    const current = field.value ?? []
+                                    field.onChange(
+                                      checked
+                                        ? [...current, amenity.value]
+                                        : current.filter(
+                                            (value) => value !== amenity.value
+                                          )
+                                    )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className='cursor-pointer font-normal'>
+                                {amenity.label}
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Camera className='size-5' />
+                    Fotos do imóvel
+                  </CardTitle>
+                  <CardDescription>
+                    Envie fotos para a IA analisar acabamentos, conservação e
+                    apresentação visual
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PhotoUpload photos={photos} onChange={setPhotos} />
+                </CardContent>
+              </Card>
+
+              <Button
+                type='submit'
+                size='lg'
+                className='w-full'
+                disabled={isEvaluating || trialRemaining === 0}
+              >
                 {isEvaluating ? (
                   <>
                     <Loader2 className='size-4 animate-spin' />
@@ -454,7 +695,7 @@ export function Avaliacao() {
                       Resultado da avaliação
                     </h3>
                     <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-                      Preencha os dados e critérios do imóvel e clique em
+                      Preencha os dados do imóvel e clique em
                       &quot;Avaliar com IA&quot; para obter a estimativa de
                       valor.
                     </p>

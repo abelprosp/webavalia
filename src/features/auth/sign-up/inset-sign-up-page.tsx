@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { registerRequest } from '@/lib/auth-api'
+import { validatePassword, TRIAL_EVALUATIONS_TOTAL } from '@/lib/password-policy'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 
@@ -52,7 +53,8 @@ function SignUpPanel() {
             Criar conta
           </h1>
           <p className='text-sm text-muted-foreground'>
-            Cadastre-se para acessar a plataforma Avalia Imob.
+            Cadastre-se e ganhe {TRIAL_EVALUATIONS_TOTAL} avaliações grátis com
+            IA para testar a plataforma.
           </p>
         </div>
 
@@ -85,8 +87,10 @@ function SignUpForm() {
       toast.error('As senhas não coincidem.')
       return
     }
-    if (password.length < 6) {
-      toast.error('A senha deve ter ao menos 6 caracteres.')
+
+    const passwordError = validatePassword(password)
+    if (passwordError) {
+      toast.error(passwordError)
       return
     }
 
@@ -99,7 +103,9 @@ function SignUpForm() {
       )
       auth.setUser(user)
       auth.setAccessToken(token)
-      toast.success('Conta criada com sucesso!')
+      toast.success(
+        `Conta criada! Você tem ${user.trialEvaluationsRemaining} avaliações grátis.`
+      )
       navigate({ to: '/', replace: true })
     } catch (error) {
       const message =
@@ -167,6 +173,9 @@ function SignUpForm() {
             {reveal ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
           </button>
         </div>
+        <p className='text-xs text-muted-foreground'>
+          Mínimo 8 caracteres, com letra maiúscula, minúscula e número.
+        </p>
       </div>
 
       <div className='space-y-2'>

@@ -8,6 +8,7 @@ interface AuthState {
   auth: {
     user: AuthUser | null
     setUser: (user: AuthUser | null) => void
+    updateTrialEvaluationsRemaining: (remaining: number) => void
     accessToken: string
     setAccessToken: (accessToken: string) => void
     resetAccessToken: () => void
@@ -23,6 +24,16 @@ export const useAuthStore = create<AuthState>()((set) => {
       user: null,
       setUser: (user) =>
         set((state) => ({ ...state, auth: { ...state.auth, user } })),
+      updateTrialEvaluationsRemaining: (remaining) =>
+        set((state) => ({
+          ...state,
+          auth: {
+            ...state.auth,
+            user: state.auth.user
+              ? { ...state.auth.user, trialEvaluationsRemaining: remaining }
+              : null,
+          },
+        })),
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {

@@ -7,13 +7,13 @@ export type EvaluationCriteriaInput = {
   parking: number
   yearBuilt: number
   conservation: string
+  standardLevel: 'padrao' | 'alto-padrao' | 'luxo'
+  furnishing: 'sem' | 'semi' | 'completo'
+  finishLevel: 'basico' | 'padrao' | 'alto-padrao' | 'luxo'
+  condominiumLevel: 'nao-aplica' | 'padrao' | 'alto-padrao' | 'clube'
+  viewType?: 'nenhuma' | 'cidade' | 'mar' | 'montanha' | 'parque' | 'lago'
+  amenities?: string[]
   askingPrice?: number
-  location: number
-  infrastructure: number
-  condition: number
-  layout: number
-  market: number
-  documentation: number
   notes?: string
 }
 

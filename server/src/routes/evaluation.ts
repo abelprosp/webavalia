@@ -1,7 +1,12 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { runPropertyEvaluation } from '../services/evaluation-service.js'
+import {
+  refundTrialEvaluation,
+  reserveTrialEvaluation,
+  TrialExhaustedError,
+} from '../services/trial-service.js'
 import { config } from '../config.js'
 
 const router = Router()
@@ -20,18 +25,24 @@ const evaluationSchema = z.object({
   parking: z.number().min(0),
   yearBuilt: z.number().min(1950).max(new Date().getFullYear()),
   conservation: z.string().min(1),
+  standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']).default('padrao'),
+  furnishing: z.enum(['sem', 'semi', 'completo']).default('sem'),
+  finishLevel: z
+    .enum(['basico', 'padrao', 'alto-padrao', 'luxo'])
+    .default('padrao'),
+  condominiumLevel: z
+    .enum(['nao-aplica', 'padrao', 'alto-padrao', 'clube'])
+    .default('nao-aplica'),
+  viewType: z
+    .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
+    .optional(),
+  amenities: z.array(z.string()).default([]),
   askingPrice: z.number().optional(),
-  location: z.number().min(1).max(5),
-  infrastructure: z.number().min(1).max(5),
-  condition: z.number().min(1).max(5),
-  layout: z.number().min(1).max(5),
-  market: z.number().min(1).max(5),
-  documentation: z.number().min(1).max(5),
   notes: z.string().optional(),
   photos: z.array(photoSchema).max(5).optional(),
 })
 
-router.post('/analyze', requireAuth, async (req, res) => {
+router.post('/analyze', requireAuth, async (req: AuthRequest, res) => {
   if (!config.openaiApiKey) {
     return res.status(503).json({
       message:
@@ -46,10 +57,29 @@ router.post('/analyze', requireAuth, async (req, res) => {
     })
   }
 
+  const userId = req.user!.id
+  let trialEvaluationsRemaining: number
+
+  try {
+    trialEvaluationsRemaining = await reserveTrialEvaluation(userId)
+  } catch (error) {
+    if (error instanceof TrialExhaustedError) {
+      return res.status(403).json({
+        message: error.message,
+        trialEvaluationsRemaining: 0,
+      })
+    }
+    throw error
+  }
+
   try {
     const result = await runPropertyEvaluation(parsed.data)
-    return res.json({ evaluation: result })
+    return res.json({
+      evaluation: result,
+      trialEvaluationsRemaining,
+    })
   } catch (error) {
+    await refundTrialEvaluation(userId)
     console.error('Erro na avaliação:', error)
     const message =
       error instanceof Error ? error.message : 'Erro ao processar avaliação.'

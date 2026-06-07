@@ -12,13 +12,15 @@ export const evaluationFormSchema = z.object({
     .min(1950, 'Ano inválido')
     .max(new Date().getFullYear(), 'Ano não pode ser futuro'),
   conservation: z.string().min(1, 'Selecione o estado de conservação'),
+  standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']),
+  furnishing: z.enum(['sem', 'semi', 'completo']),
+  finishLevel: z.enum(['basico', 'padrao', 'alto-padrao', 'luxo']),
+  condominiumLevel: z.enum(['nao-aplica', 'padrao', 'alto-padrao', 'clube']),
+  viewType: z
+    .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
+    .optional(),
+  amenities: z.array(z.string()),
   askingPrice: z.number().optional(),
-  location: z.number().min(1).max(5),
-  infrastructure: z.number().min(1).max(5),
-  condition: z.number().min(1).max(5),
-  layout: z.number().min(1).max(5),
-  market: z.number().min(1).max(5),
-  documentation: z.number().min(1).max(5),
   notes: z.string().optional(),
 })
 

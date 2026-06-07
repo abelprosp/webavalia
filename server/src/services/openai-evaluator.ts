@@ -33,9 +33,15 @@ const aiResponseSchema = z.object({
       z.object({
         title: z.string(),
         price: z.string(),
-        area: z.string().optional(),
+        area: z
+          .string()
+          .nullish()
+          .transform((value) => value ?? undefined),
         source: z.string(),
-        link: z.string().optional(),
+        link: z
+          .string()
+          .nullish()
+          .transform((value) => value ?? undefined),
       })
     ),
     summary: z.string(),
@@ -62,6 +68,67 @@ function formatSerperResults(results: SerperResult[]) {
     .join('\n\n')
 }
 
+const STANDARD_LEVEL_LABELS: Record<string, string> = {
+  padrao: 'Padrão',
+  'alto-padrao': 'Alto padrão',
+  luxo: 'Luxo',
+}
+
+const FURNISHING_LABELS: Record<string, string> = {
+  sem: 'Sem mobília',
+  semi: 'Semi-mobiliado',
+  completo: 'Totalmente mobiliado',
+}
+
+const FINISH_LEVEL_LABELS: Record<string, string> = {
+  basico: 'Básico',
+  padrao: 'Padrão',
+  'alto-padrao': 'Alto padrão',
+  luxo: 'Luxo',
+}
+
+const CONDOMINIUM_LEVEL_LABELS: Record<string, string> = {
+  'nao-aplica': 'Não se aplica',
+  padrao: 'Padrão',
+  'alto-padrao': 'Alto padrão',
+  clube: 'Clube / resort',
+}
+
+const VIEW_TYPE_LABELS: Record<string, string> = {
+  nenhuma: 'Sem vista privilegiada',
+  cidade: 'Vista para a cidade',
+  mar: 'Vista para o mar',
+  montanha: 'Vista para montanhas',
+  parque: 'Vista para parque / área verde',
+  lago: 'Vista para lago / represa',
+}
+
+const AMENITY_LABELS: Record<string, string> = {
+  'ar-condicionado': 'Ar condicionado',
+  piscina: 'Piscina',
+  'varanda-terraco': 'Varanda / Terraço',
+  'vista-privilegiada': 'Vista privilegiada',
+  'portaria-24h': 'Portaria 24h',
+  seguranca: 'Segurança reforçada',
+  academia: 'Academia / fitness',
+  'area-lazer': 'Área de lazer',
+  automacao: 'Automação / casa inteligente',
+  elevador: 'Elevador',
+  'suite-master': 'Suíte master',
+  closet: 'Closet',
+  'cozinha-planejada': 'Cozinha planejada',
+  churrasqueira: 'Churrasqueira',
+  jardim: 'Jardim privativo',
+  'garagem-coberta': 'Garagem coberta',
+  hidromassagem: 'Hidromassagem / spa',
+  'piso-importado': 'Piso de alto padrão',
+}
+
+function formatAmenities(amenities: string[] | undefined) {
+  if (!amenities?.length) return 'nenhum informado'
+  return amenities.map((amenity) => AMENITY_LABELS[amenity] ?? amenity).join(', ')
+}
+
 function buildImageContent(photos: PhotoInput[]) {
   return photos.slice(0, 5).map((photo) => ({
     type: 'image_url' as const,
@@ -83,16 +150,6 @@ export async function evaluateWithOpenAI(
     )
   }
 
-  const criteriaBlock = `
-Critérios avaliados pelo corretor (1 a 5):
-- Localização: ${input.location}
-- Infraestrutura do bairro: ${input.infrastructure}
-- Estado de conservação: ${input.condition}
-- Layout e funcionalidade: ${input.layout}
-- Potencial de mercado: ${input.market}
-- Documentação: ${input.documentation}
-`
-
   const propertyBlock = `
 Dados do imóvel:
 - Endereço: ${input.address}
@@ -103,12 +160,22 @@ Dados do imóvel:
 - Vagas: ${input.parking}
 - Ano de construção: ${input.yearBuilt}
 - Conservação: ${input.conservation}
+- Padrão do imóvel: ${STANDARD_LEVEL_LABELS[input.standardLevel] ?? input.standardLevel}
+- Mobília: ${FURNISHING_LABELS[input.furnishing] ?? input.furnishing}
+- Acabamento: ${FINISH_LEVEL_LABELS[input.finishLevel] ?? input.finishLevel}
+- Condomínio: ${CONDOMINIUM_LEVEL_LABELS[input.condominiumLevel] ?? input.condominiumLevel}
+- Vista: ${input.viewType ? (VIEW_TYPE_LABELS[input.viewType] ?? input.viewType) : 'não informada'}
+- Diferenciais: ${formatAmenities(input.amenities)}
 - Valor pedido: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
 - Observações: ${input.notes || 'nenhuma'}
 `
 
   const systemPrompt = `Você é um avaliador imobiliário especialista no mercado brasileiro.
 Analise o imóvel com base nos dados informados, nos resultados de pesquisa de mercado (imobiliárias locais) e no Plano Diretor/zoneamento urbano.
+Estime você mesmo as pontuações de cada critério (1 a 5) com base nas informações disponíveis.
+Considere com peso significativo: padrão do imóvel (alto padrão/luxo), nível de acabamento, mobília, condomínio, vista, diferenciais e amenidades — estes fatores devem impactar valor estimado, preço/m² e comparáveis selecionados.
+Para imóveis de alto padrão ou luxo, busque comparáveis equivalentes e aplique prêmio de valorização sobre a média de mercado quando justificado.
+Mobília completa ou semi-mobiliada deve ser considerada no valor final quando relevante para o segmento.
 Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutura:
 {
   "estimatedValue": number,
@@ -145,8 +212,6 @@ Se faltar informação oficial, indique incerteza no texto mas faça a melhor an
 Valores em reais (BRL). Textos em português do Brasil.`
 
   const userText = `${propertyBlock}
-
-${criteriaBlock}
 
 --- PESQUISA DE MERCADO (imobiliárias locais via Serper) ---
 ${formatSerperResults(marketResults)}

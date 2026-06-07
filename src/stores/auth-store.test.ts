@@ -11,6 +11,8 @@ const sampleUser = {
   name: 'User Test',
   email: 'user@example.com',
   role: 'corretor',
+  trialEvaluationsRemaining: 3,
+  trialEvaluationsTotal: 3,
 }
 
 describe('useAuthStore', () => {

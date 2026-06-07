@@ -29,6 +29,11 @@ import {
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
+  getFinishLevelLabel,
+  getFurnishingLabel,
+  getStandardLevelLabel,
+} from '../data/criteria'
+import {
   formatCurrency,
   type EvaluationFormValues,
   type EvaluationResult,
@@ -40,6 +45,25 @@ type EvaluationResultPanelProps = {
   property: EvaluationFormValues
 }
 
+function getPropertyHighlights(property: EvaluationFormValues) {
+  const highlights: string[] = []
+
+  if (property.standardLevel && property.standardLevel !== 'padrao') {
+    highlights.push(getStandardLevelLabel(property.standardLevel))
+  }
+  if (property.furnishing && property.furnishing !== 'sem') {
+    highlights.push(getFurnishingLabel(property.furnishing))
+  }
+  if (property.finishLevel && !['basico', 'padrao'].includes(property.finishLevel)) {
+    highlights.push(`Acabamento ${getFinishLevelLabel(property.finishLevel).toLowerCase()}`)
+  }
+  if (property.amenities?.length) {
+    highlights.push(`${property.amenities.length} diferenciais`)
+  }
+
+  return highlights
+}
+
 export function EvaluationResultPanel({
   result,
   property,
@@ -48,6 +72,7 @@ export function EvaluationResultPanel({
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const saveEvaluation = useCrmStore((s) => s.saveEvaluation)
   const { marketAnalysis, masterPlanAnalysis } = result
+  const propertyHighlights = getPropertyHighlights(property)
 
   async function handleExportPdf() {
     setIsExporting(true)
@@ -138,6 +163,15 @@ export function EvaluationResultPanel({
               Média de mercado:{' '}
               {formatCurrency(marketAnalysis.averagePricePerSqm)}/m²
             </p>
+          )}
+          {propertyHighlights.length > 0 && (
+            <div className='mt-3 flex flex-wrap justify-center gap-2'>
+              {propertyHighlights.map((highlight) => (
+                <Badge key={highlight} variant='outline' className='text-xs'>
+                  {highlight}
+                </Badge>
+              ))}
+            </div>
           )}
         </div>
 

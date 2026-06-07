@@ -1,49 +1,63 @@
-export const evaluationCriteria = [
+export const propertyTypeGroups = [
   {
-    id: 'location',
-    label: 'Localização',
-    description: 'Proximidade de serviços, transporte e valorização da região',
-    weight: 0.25,
+    label: 'Residencial',
+    types: [
+      { label: 'Apartamento', value: 'apartamento' },
+      { label: 'Casa', value: 'casa' },
+      { label: 'Casa em condomínio', value: 'casa-condominio' },
+      { label: 'Cobertura', value: 'cobertura' },
+      { label: 'Studio', value: 'studio' },
+      { label: 'Kitnet', value: 'kitnet' },
+      { label: 'Loft', value: 'loft' },
+      { label: 'Flat', value: 'flat' },
+      { label: 'Duplex', value: 'duplex' },
+      { label: 'Triplex', value: 'triplex' },
+      { label: 'Sobrado', value: 'sobrado' },
+      { label: 'Terreno', value: 'terreno' },
+      { label: 'Lote', value: 'lote' },
+      { label: 'Chácara', value: 'chacara' },
+      { label: 'Sítio', value: 'sitio' },
+      { label: 'Fazenda', value: 'fazenda' },
+    ],
   },
   {
-    id: 'infrastructure',
-    label: 'Infraestrutura do bairro',
-    description: 'Segurança, comércio, escolas e áreas de lazer',
-    weight: 0.15,
+    label: 'Comercial',
+    types: [
+      { label: 'Sala comercial', value: 'comercial' },
+      { label: 'Loja', value: 'loja' },
+      { label: 'Ponto comercial', value: 'ponto-comercial' },
+      { label: 'Galpão', value: 'galpao' },
+      { label: 'Depósito / Armazém', value: 'deposito' },
+      { label: 'Prédio comercial', value: 'predio-comercial' },
+      { label: 'Consultório', value: 'consultorio' },
+      { label: 'Andar corporativo', value: 'andar-corporativo' },
+      { label: 'Hotel', value: 'hotel' },
+      { label: 'Pousada', value: 'pousada' },
+      { label: 'Restaurante / Bar', value: 'restaurante' },
+    ],
   },
   {
-    id: 'condition',
-    label: 'Estado de conservação',
-    description: 'Qualidade das instalações, acabamentos e manutenção',
-    weight: 0.2,
+    label: 'Industrial',
+    types: [
+      { label: 'Galpão industrial', value: 'galpao-industrial' },
+      { label: 'Terreno industrial', value: 'terreno-industrial' },
+      { label: 'Área industrial', value: 'area-industrial' },
+    ],
   },
   {
-    id: 'layout',
-    label: 'Layout e funcionalidade',
-    description: 'Distribuição dos cômodos, iluminação e ventilação',
-    weight: 0.15,
-  },
-  {
-    id: 'market',
-    label: 'Potencial de mercado',
-    description: 'Demanda na região e liquidez do imóvel',
-    weight: 0.15,
-  },
-  {
-    id: 'documentation',
-    label: 'Documentação',
-    description: 'Regularidade jurídica e facilidade de financiamento',
-    weight: 0.1,
+    label: 'Outros',
+    types: [
+      { label: 'Garagem / Vaga', value: 'garagem' },
+      { label: 'Edícula', value: 'edicula' },
+      { label: 'Barracão', value: 'barracao' },
+      { label: 'Imóvel misto', value: 'misto' },
+    ],
   },
 ] as const
 
-export const propertyTypes = [
-  { label: 'Apartamento', value: 'apartamento' },
-  { label: 'Casa', value: 'casa' },
-  { label: 'Cobertura', value: 'cobertura' },
-  { label: 'Terreno', value: 'terreno' },
-  { label: 'Sala Comercial', value: 'comercial' },
-] as const
+export const propertyTypes = propertyTypeGroups.flatMap((group) =>
+  group.types.map((type) => ({ ...type }))
+)
 
 export const conservationStates = [
   { label: 'Novo / Na planta', value: 'novo' },
@@ -53,4 +67,94 @@ export const conservationStates = [
   { label: 'Precisa reforma', value: 'reforma' },
 ] as const
 
-export type EvaluationCriteriaId = (typeof evaluationCriteria)[number]['id']
+export const standardLevels = [
+  { label: 'Padrão', value: 'padrao' },
+  { label: 'Alto padrão', value: 'alto-padrao' },
+  { label: 'Luxo', value: 'luxo' },
+] as const
+
+export const furnishingOptions = [
+  { label: 'Sem mobília', value: 'sem' },
+  { label: 'Semi-mobiliado', value: 'semi' },
+  { label: 'Totalmente mobiliado', value: 'completo' },
+] as const
+
+export const finishLevels = [
+  { label: 'Básico', value: 'basico' },
+  { label: 'Padrão', value: 'padrao' },
+  { label: 'Alto padrão', value: 'alto-padrao' },
+  { label: 'Luxo', value: 'luxo' },
+] as const
+
+export const condominiumLevels = [
+  { label: 'Não se aplica', value: 'nao-aplica' },
+  { label: 'Padrão', value: 'padrao' },
+  { label: 'Alto padrão', value: 'alto-padrao' },
+  { label: 'Clube / resort', value: 'clube' },
+] as const
+
+export const viewTypes = [
+  { label: 'Sem vista privilegiada', value: 'nenhuma' },
+  { label: 'Vista para a cidade', value: 'cidade' },
+  { label: 'Vista para o mar', value: 'mar' },
+  { label: 'Vista para montanhas', value: 'montanha' },
+  { label: 'Vista para parque / área verde', value: 'parque' },
+  { label: 'Vista para lago / represa', value: 'lago' },
+] as const
+
+export const propertyAmenities = [
+  { label: 'Ar condicionado', value: 'ar-condicionado' },
+  { label: 'Piscina', value: 'piscina' },
+  { label: 'Varanda / Terraço', value: 'varanda-terraco' },
+  { label: 'Vista privilegiada', value: 'vista-privilegiada' },
+  { label: 'Portaria 24h', value: 'portaria-24h' },
+  { label: 'Segurança reforçada', value: 'seguranca' },
+  { label: 'Academia / fitness', value: 'academia' },
+  { label: 'Área de lazer', value: 'area-lazer' },
+  { label: 'Automação / casa inteligente', value: 'automacao' },
+  { label: 'Elevador', value: 'elevador' },
+  { label: 'Suíte master', value: 'suite-master' },
+  { label: 'Closet', value: 'closet' },
+  { label: 'Cozinha planejada', value: 'cozinha-planejada' },
+  { label: 'Churrasqueira', value: 'churrasqueira' },
+  { label: 'Jardim privativo', value: 'jardim' },
+  { label: 'Garagem coberta', value: 'garagem-coberta' },
+  { label: 'Hidromassagem / spa', value: 'hidromassagem' },
+  { label: 'Piso de alto padrão', value: 'piso-importado' },
+] as const
+
+function findLabel<T extends readonly { label: string; value: string }[]>(
+  options: T,
+  value: string
+) {
+  return options.find((option) => option.value === value)?.label ?? value
+}
+
+export function getStandardLevelLabel(value: string) {
+  return findLabel(standardLevels, value)
+}
+
+export function getFurnishingLabel(value: string) {
+  return findLabel(furnishingOptions, value)
+}
+
+export function getFinishLevelLabel(value: string) {
+  return findLabel(finishLevels, value)
+}
+
+export function getCondominiumLevelLabel(value: string) {
+  return findLabel(condominiumLevels, value)
+}
+
+export function getViewTypeLabel(value: string) {
+  return findLabel(viewTypes, value)
+}
+
+export function getAmenityLabel(value: string) {
+  return findLabel(propertyAmenities, value)
+}
+
+export function formatAmenities(amenities: string[] | undefined) {
+  if (!amenities?.length) return 'Nenhum informado'
+  return amenities.map(getAmenityLabel).join(', ')
+}

@@ -23,3 +23,19 @@ export const config = {
   serperApiKey: process.env.SERPER_API_KEY ?? '',
   isProduction: process.env.NODE_ENV === 'production',
 }
+
+const weakSecrets = new Set([
+  'avalia-imob-dev-secret-change-me',
+  'avalia-imob-dev-secret-change-in-production',
+  'change-me',
+  'secret',
+])
+
+if (
+  config.isProduction &&
+  (!process.env.JWT_SECRET || weakSecrets.has(config.jwtSecret))
+) {
+  throw new Error(
+    'JWT_SECRET ausente ou inseguro. Defina uma chave forte nas variáveis de ambiente.'
+  )
+}

@@ -1,4 +1,4 @@
-import { Coins, CreditCard } from 'lucide-react'
+import { Coins, CreditCard, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { ContentSection } from '../components/content-section'
+import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 
 const creditPackages = [
@@ -21,6 +22,10 @@ const creditPackages = [
 export function CreditsSettings() {
   const credits = useCreditsStore((s) => s.credits)
   const addCredits = useCreditsStore((s) => s.addCredits)
+  const trialRemaining = useAuthStore(
+    (s) => s.auth.user?.trialEvaluationsRemaining
+  )
+  const trialTotal = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 3)
 
   function handlePurchase(amount: number) {
     addCredits(amount)
@@ -36,8 +41,29 @@ export function CreditsSettings() {
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
+            <Sparkles className='size-5' />
+            Avaliações com IA
+          </CardTitle>
+          <CardDescription>
+            Cada conta recebe {trialTotal} avaliações grátis de teste ao se
+            cadastrar
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className='text-4xl font-bold text-primary'>
+            {trialRemaining ?? '—'}
+          </div>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            avaliações grátis restantes de {trialTotal}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2'>
             <Coins className='size-5' />
-            Saldo atual
+            Saldo de créditos (leads)
           </CardTitle>
           <CardDescription>
             Cada lead captado pelo WhatsApp custa 1 crédito para desbloquear
@@ -98,8 +124,8 @@ export function CreditsSettings() {
             utiliza 1 crédito para desbloqueá-lo.
           </p>
           <p>
-            A avaliação manual de imóveis com IA é gratuita e ilimitada dentro
-            da plataforma.
+            As avaliações com IA consomem as avaliações grátis de teste da sua
+            conta. Após utilizá-las, entre em contato para ampliar seu plano.
           </p>
         </CardContent>
       </Card>

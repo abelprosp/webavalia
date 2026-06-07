@@ -15,6 +15,16 @@ async function migrate() {
     );
 
     CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS trial_evaluations_remaining INT NOT NULL DEFAULT 3;
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS evaluations_used INT NOT NULL DEFAULT 0;
+
+    UPDATE users
+    SET trial_evaluations_remaining = 3
+    WHERE trial_evaluations_remaining IS NULL OR evaluations_used IS NULL;
   `)
 
   console.log('Migrations concluídas.')

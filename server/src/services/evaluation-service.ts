@@ -4,7 +4,7 @@ import { searchMarketListings, searchMasterPlan } from './serper.js'
 
 export async function runPropertyEvaluation(input: EvaluationRequest) {
   const [marketResults, masterPlanResults] = await Promise.all([
-    searchMarketListings(input.address, input.propertyType, input.area),
+    searchMarketListings(input),
     searchMasterPlan(input.address),
   ])
 

@@ -5,6 +5,8 @@ export type AuthUser = {
   name: string
   email: string
   role: string
+  trialEvaluationsRemaining: number
+  trialEvaluationsTotal: number
 }
 
 type AuthResponse = {

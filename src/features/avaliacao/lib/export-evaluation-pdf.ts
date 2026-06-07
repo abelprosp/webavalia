@@ -1,6 +1,12 @@
 import { jsPDF } from 'jspdf'
 import {
   conservationStates,
+  formatAmenities,
+  getCondominiumLevelLabel,
+  getFinishLevelLabel,
+  getFurnishingLabel,
+  getStandardLevelLabel,
+  getViewTypeLabel,
   propertyTypes,
 } from '../data/criteria'
 import {
@@ -162,6 +168,12 @@ export async function exportEvaluationPdf({
     `Tipo: ${getPropertyTypeLabel(property.propertyType)}`,
     `Área: ${property.area} m² · Quartos: ${property.bedrooms} · Banheiros: ${property.bathrooms} · Vagas: ${property.parking}`,
     `Ano: ${property.yearBuilt} · Conservação: ${getConservationLabel(property.conservation)}`,
+    `Padrão: ${getStandardLevelLabel(property.standardLevel ?? 'padrao')} · Mobília: ${getFurnishingLabel(property.furnishing ?? 'sem')}`,
+    `Acabamento: ${getFinishLevelLabel(property.finishLevel ?? 'padrao')} · Condomínio: ${getCondominiumLevelLabel(property.condominiumLevel ?? 'nao-aplica')}`,
+    property.viewType
+      ? `Vista: ${getViewTypeLabel(property.viewType)}`
+      : 'Vista: não informada',
+    `Diferenciais: ${formatAmenities(property.amenities)}`,
     property.askingPrice
       ? `Valor pedido: ${formatCurrency(property.askingPrice)}`
       : 'Valor pedido: não informado',

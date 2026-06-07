@@ -1,16 +1,21 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { pool } from '../db/pool.js'
+import { authRateLimiter } from '../middleware/rate-limit.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { hashPassword, verifyPassword } from '../utils/password.js'
+import {
+  passwordSchema,
+  TRIAL_EVALUATIONS_TOTAL,
+} from '../utils/password-policy.js'
 import { signToken } from '../utils/jwt.js'
 
 const router = Router()
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres.'),
+  name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres.'),
   email: z.email('E-mail inválido.'),
-  password: z.string().min(6, 'Senha deve ter ao menos 6 caracteres.'),
+  password: passwordSchema,
 })
 
 const loginSchema = z.object({
@@ -23,14 +28,19 @@ function toUserResponse(row: {
   name: string
   email: string
   role: string
+  trial_evaluations_remaining: number
 }) {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     role: row.role,
+    trialEvaluationsRemaining: row.trial_evaluations_remaining,
+    trialEvaluationsTotal: TRIAL_EVALUATIONS_TOTAL,
   }
 }
+
+router.use(authRateLimiter)
 
 router.post('/register', async (req, res) => {
   const parsed = registerSchema.safeParse(req.body)
@@ -41,9 +51,10 @@ router.post('/register', async (req, res) => {
   }
 
   const { name, email, password } = parsed.data
+  const normalizedEmail = email.toLowerCase()
 
   const existing = await pool.query('SELECT id FROM users WHERE email = $1', [
-    email,
+    normalizedEmail,
   ])
   if (existing.rowCount && existing.rowCount > 0) {
     return res.status(409).json({ message: 'E-mail já cadastrado.' })
@@ -51,10 +62,10 @@ router.post('/register', async (req, res) => {
 
   const passwordHash = await hashPassword(password)
   const result = await pool.query(
-    `INSERT INTO users (name, email, password_hash)
-     VALUES ($1, $2, $3)
-     RETURNING id, name, email, role`,
-    [name, email.toLowerCase(), passwordHash]
+    `INSERT INTO users (name, email, password_hash, trial_evaluations_remaining)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, name, email, role, trial_evaluations_remaining`,
+    [name, normalizedEmail, passwordHash, TRIAL_EVALUATIONS_TOTAL]
   )
 
   const user = result.rows[0]
@@ -79,10 +90,12 @@ router.post('/login', async (req, res) => {
   }
 
   const { email, password } = parsed.data
+  const normalizedEmail = email.toLowerCase()
 
   const result = await pool.query(
-    'SELECT id, name, email, role, password_hash FROM users WHERE email = $1',
-    [email.toLowerCase()]
+    `SELECT id, name, email, role, password_hash, trial_evaluations_remaining
+     FROM users WHERE email = $1`,
+    [normalizedEmail]
   )
 
   if (!result.rowCount) {
@@ -109,7 +122,8 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
   const result = await pool.query(
-    'SELECT id, name, email, role FROM users WHERE id = $1',
+    `SELECT id, name, email, role, trial_evaluations_remaining
+     FROM users WHERE id = $1`,
     [req.user!.id]
   )
 

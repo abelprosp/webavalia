@@ -1,4 +1,5 @@
 import { config } from '../config.js'
+import type { EvaluationRequest } from '../types/evaluation.js'
 
 export type SerperResult = {
   title: string
@@ -54,23 +55,67 @@ export function extractLocationHint(address: string) {
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   apartamento: 'apartamento',
   casa: 'casa',
+  'casa-condominio': 'casa em condomínio',
   cobertura: 'cobertura',
+  studio: 'studio',
+  kitnet: 'kitnet',
+  loft: 'loft',
+  flat: 'flat',
+  duplex: 'duplex',
+  triplex: 'triplex',
+  sobrado: 'sobrado',
   terreno: 'terreno',
-  comercial: 'imóvel comercial',
+  lote: 'lote terreno',
+  chacara: 'chácara',
+  sitio: 'sítio',
+  fazenda: 'fazenda',
+  comercial: 'sala comercial',
+  loja: 'loja',
+  'ponto-comercial': 'ponto comercial',
+  galpao: 'galpão',
+  deposito: 'depósito armazém',
+  'predio-comercial': 'prédio comercial',
+  consultorio: 'consultório',
+  'andar-corporativo': 'andar corporativo',
+  hotel: 'hotel',
+  pousada: 'pousada',
+  restaurante: 'restaurante bar',
+  'galpao-industrial': 'galpão industrial',
+  'terreno-industrial': 'terreno industrial',
+  'area-industrial': 'área industrial',
+  garagem: 'vaga garagem',
+  edicula: 'edícula',
+  barracao: 'barracão',
+  misto: 'imóvel misto',
 }
 
-export async function searchMarketListings(
-  address: string,
-  propertyType: string,
-  area: number
-) {
-  const location = extractLocationHint(address)
-  const typeLabel = PROPERTY_TYPE_LABELS[propertyType] ?? propertyType
+function getPremiumSearchHint(input: EvaluationRequest) {
+  if (input.standardLevel === 'luxo' || input.finishLevel === 'luxo') {
+    return 'luxo alto padrão'
+  }
+  if (input.standardLevel === 'alto-padrao' || input.finishLevel === 'alto-padrao') {
+    return 'alto padrão'
+  }
+  return ''
+}
+
+export async function searchMarketListings(input: EvaluationRequest) {
+  const location = extractLocationHint(input.address)
+  const typeLabel =
+    PROPERTY_TYPE_LABELS[input.propertyType] ?? input.propertyType
+  const premiumHint = getPremiumSearchHint(input)
+  const premiumPrefix = premiumHint ? `${premiumHint} ` : ''
+  const furnishedHint =
+    input.furnishing === 'completo'
+      ? 'mobiliado '
+      : input.furnishing === 'semi'
+        ? 'semi mobiliado '
+        : ''
 
   const queries = [
-    `${typeLabel} venda ${location} site:zapimoveis.com.br OR site:vivareal.com.br`,
-    `${typeLabel} ${area}m² venda ${location} preço`,
-    `preço m² ${typeLabel} ${location}`,
+    `${premiumPrefix}${furnishedHint}${typeLabel} venda ${location} site:zapimoveis.com.br OR site:vivareal.com.br`,
+    `${premiumPrefix}${typeLabel} ${input.area}m² venda ${location} preço`,
+    `preço m² ${premiumPrefix}${typeLabel} ${location}`,
   ]
 
   const results = await Promise.all(queries.map((q) => serperSearch(q, 6)))

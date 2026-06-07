@@ -9,6 +9,11 @@ type PhotoPayload = {
   data: string
 }
 
+export type AnalyzePropertyResponse = {
+  evaluation: EvaluationResult
+  trialEvaluationsRemaining: number
+}
+
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -29,7 +34,7 @@ export async function fileToBase64(file: File): Promise<string> {
 export async function analyzeProperty(
   values: EvaluationFormValues,
   photos: { file: File }[]
-): Promise<EvaluationResult> {
+): Promise<AnalyzePropertyResponse> {
   const photoPayloads: PhotoPayload[] = await Promise.all(
     photos.slice(0, 5).map(async (photo) => ({
       mimeType: photo.file.type,
@@ -37,17 +42,20 @@ export async function analyzeProperty(
     }))
   )
 
-  const { data } = await api.post<{ evaluation: EvaluationResult }>(
-    '/evaluation/analyze',
-    {
-      ...values,
-      photos: photoPayloads.length > 0 ? photoPayloads : undefined,
-    }
-  )
+  const { data } = await api.post<{
+    evaluation: EvaluationResult
+    trialEvaluationsRemaining: number
+  }>('/evaluation/analyze', {
+    ...values,
+    photos: photoPayloads.length > 0 ? photoPayloads : undefined,
+  })
 
   return {
-    ...data.evaluation,
-    evaluatedAt: new Date(data.evaluation.evaluatedAt),
-    photoPreviews: photos.map((p) => URL.createObjectURL(p.file)),
+    evaluation: {
+      ...data.evaluation,
+      evaluatedAt: new Date(data.evaluation.evaluatedAt),
+      photoPreviews: photos.map((p) => URL.createObjectURL(p.file)),
+    },
+    trialEvaluationsRemaining: data.trialEvaluationsRemaining,
   }
 }
