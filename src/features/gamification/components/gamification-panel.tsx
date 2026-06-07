@@ -42,10 +42,12 @@ function ProgressBar({
 function AchievementBadge({
   title,
   description,
+  rewardEvaluations,
   unlocked,
 }: {
   title: string
   description: string
+  rewardEvaluations: number
   unlocked: boolean
 }) {
   return (
@@ -65,8 +67,15 @@ function AchievementBadge({
       >
         {unlocked ? <Trophy className='size-4' /> : <Medal className='size-4' />}
       </div>
-      <div className='min-w-0'>
-        <p className='text-sm font-medium'>{title}</p>
+      <div className='min-w-0 flex-1'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <p className='text-sm font-medium'>{title}</p>
+          {rewardEvaluations > 0 && (
+            <Badge variant='secondary' className='text-[10px]'>
+              +{rewardEvaluations} avaliação{rewardEvaluations === 1 ? '' : 'ões'}
+            </Badge>
+          )}
+        </div>
         <p className='text-xs text-muted-foreground'>{description}</p>
       </div>
     </div>
@@ -108,7 +117,8 @@ export function GamificationPanel({ stats, loading }: GamificationPanelProps) {
               Seu progresso
             </CardTitle>
             <CardDescription>
-              Nível, metas e conquistas da sua jornada na Avalia Imob
+              Nível, metas e conquistas — cada badge desbloqueada rende avaliações
+              bônus
             </CardDescription>
           </div>
           <div className='flex flex-wrap gap-2'>
@@ -179,6 +189,7 @@ export function GamificationPanel({ stats, loading }: GamificationPanelProps) {
                 key={achievement.key}
                 title={achievement.title}
                 description={achievement.description}
+                rewardEvaluations={achievement.rewardEvaluations}
                 unlocked={achievement.unlocked}
               />
             ))}

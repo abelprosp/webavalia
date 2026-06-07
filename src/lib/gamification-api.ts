@@ -4,6 +4,7 @@ export type Achievement = {
   key: string
   title: string
   description: string
+  rewardEvaluations: number
   unlocked: boolean
   unlockedAt: string | null
 }
@@ -37,6 +38,8 @@ export type GamificationStats = {
 export type GamificationPayload = {
   level: LevelInfo
   monthlyGoalCompleted: boolean
+  achievementTrialReward?: number
+  trialEvaluationsRemaining?: number | null
   newAchievements: Achievement[]
 }
 

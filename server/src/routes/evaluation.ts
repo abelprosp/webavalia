@@ -116,10 +116,13 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
       evaluation: result,
       evaluationId,
       feedbackModeEnabled,
-      trialEvaluationsRemaining,
+      trialEvaluationsRemaining:
+        gamification.trialEvaluationsRemaining ?? trialEvaluationsRemaining,
       gamification: {
         level: gamification.level,
         monthlyGoalCompleted: gamification.monthlyGoalCompleted,
+        achievementTrialReward: gamification.achievementTrialReward,
+        trialEvaluationsRemaining: gamification.trialEvaluationsRemaining,
         newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
       },
     })
@@ -157,15 +160,20 @@ router.post('/feedback', requireAuth, async (req: AuthRequest, res) => {
 
     const gamification = await processFeedbackGamification(req.user!.id)
 
+    const totalReward = gamification.reward.trialEvaluations
+    let message = 'Obrigado! Seu feedback ajuda a IA a melhorar nas próximas avaliações.'
+    if (totalReward > 0) {
+      message = `Obrigado! Você ganhou +${totalReward} avaliação(ões) bônus.`
+    }
+
     return res.status(201).json({
-      message:
-        gamification.reward.trialEvaluations > 0
-          ? `Obrigado! Você ganhou +${gamification.reward.trialEvaluations} avaliação(ões) bônus.`
-          : 'Obrigado! Seu feedback ajuda a IA a melhorar nas próximas avaliações.',
+      message,
       reward: gamification.reward,
       gamification: {
         level: gamification.level,
         monthlyGoalCompleted: gamification.monthlyGoalCompleted,
+        achievementTrialReward: gamification.achievementTrialReward,
+        trialEvaluationsRemaining: gamification.trialEvaluationsRemaining,
         newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
       },
     })

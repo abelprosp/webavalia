@@ -15,6 +15,7 @@ export type AchievementDefinition = {
   key: AchievementKey
   title: string
   description: string
+  rewardEvaluations: number
 }
 
 export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
@@ -22,36 +23,43 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     key: 'first_evaluation',
     title: 'Primeira avaliação',
     description: 'Realizou sua primeira avaliação com IA',
+    rewardEvaluations: 1,
   },
   {
     key: 'evaluations_5',
     title: 'Corretor em ação',
     description: 'Completou 5 avaliações de imóveis',
+    rewardEvaluations: 2,
   },
   {
     key: 'evaluations_10',
     title: 'Analista imobiliário',
     description: 'Completou 10 avaliações de imóveis',
+    rewardEvaluations: 3,
   },
   {
     key: 'first_feedback',
     title: 'Mentor da IA',
     description: 'Enviou o primeiro feedback para calibrar a IA',
+    rewardEvaluations: 1,
   },
   {
     key: 'feedback_5',
     title: 'Treinador expert',
     description: 'Enviou 5 feedbacks úteis para a IA',
+    rewardEvaluations: 2,
   },
   {
     key: 'monthly_goal',
     title: 'Meta do mês',
     description: 'Atingiu a meta mensal de avaliações',
+    rewardEvaluations: 3,
   },
   {
     key: 'streak_3',
     title: 'Sequência de 3 dias',
     description: 'Avaliou imóveis 3 dias seguidos',
+    rewardEvaluations: 2,
   },
 ]
 
@@ -282,6 +290,28 @@ function resolveEligibleAchievements(metrics: {
   return eligible
 }
 
+async function grantAchievementRewards(
+  userId: string,
+  keys: AchievementKey[]
+): Promise<{ totalReward: number; trialEvaluationsRemaining: number | null }> {
+  let totalReward = 0
+  let trialEvaluationsRemaining: number | null = null
+
+  for (const key of keys) {
+    const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)
+    if (!def || def.rewardEvaluations <= 0) continue
+
+    trialEvaluationsRemaining = await addTrialEvaluations(
+      userId,
+      def.rewardEvaluations,
+      `Conquista desbloqueada: ${def.title}`
+    )
+    totalReward += def.rewardEvaluations
+  }
+
+  return { totalReward, trialEvaluationsRemaining }
+}
+
 async function unlockAchievements(
   userId: string,
   keys: AchievementKey[],
@@ -307,7 +337,12 @@ async function unlockAchievements(
     newlyUnlocked.push(key)
   }
 
-  return newlyUnlocked.map((key) => {
+  const { totalReward, trialEvaluationsRemaining } = await grantAchievementRewards(
+    userId,
+    newlyUnlocked
+  )
+
+  const achievements = newlyUnlocked.map((key) => {
     const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)!
     return {
       ...def,
@@ -315,6 +350,8 @@ async function unlockAchievements(
       unlockedAt: alreadyUnlocked.get(key) ?? new Date().toISOString(),
     }
   })
+
+  return { achievements, totalReward, trialEvaluationsRemaining }
 }
 
 export async function getGamificationStats(
@@ -368,40 +405,48 @@ export async function processEvaluationGamification(userId: string) {
     streakCurrent: streak.current,
   })
 
-  const newAchievements = await unlockAchievements(
-    userId,
-    eligible,
-    unlockedMap
-  )
+  const { achievements: newAchievements, totalReward, trialEvaluationsRemaining } =
+    await unlockAchievements(userId, eligible, unlockedMap)
 
   return {
     newAchievements,
+    achievementTrialReward: totalReward,
+    trialEvaluationsRemaining,
     level: getLevelInfo(metrics.evaluationsUsed),
     monthlyGoalCompleted: metrics.evaluationsThisMonth >= monthlyGoalTarget,
   }
 }
 
 export async function processFeedbackGamification(userId: string) {
-  const rewardAmount = await getSetting<number>(
+  const feedbackRewardAmount = await getSetting<number>(
     'gamification_feedback_reward',
     1
   )
 
   const gamification = await processEvaluationGamification(userId)
 
-  let trialEvaluationsRemaining: number | null = null
-  if (rewardAmount > 0) {
+  let trialEvaluationsRemaining = gamification.trialEvaluationsRemaining
+  let feedbackTrialReward = 0
+
+  if (feedbackRewardAmount > 0) {
     trialEvaluationsRemaining = await addTrialEvaluations(
       userId,
-      rewardAmount,
+      feedbackRewardAmount,
       'Recompensa por feedback útil à IA'
     )
+    feedbackTrialReward = feedbackRewardAmount
   }
+
+  const totalTrialReward =
+    gamification.achievementTrialReward + feedbackTrialReward
 
   return {
     ...gamification,
+    trialEvaluationsRemaining,
     reward: {
-      trialEvaluations: rewardAmount,
+      trialEvaluations: totalTrialReward,
+      achievementTrialEvaluations: gamification.achievementTrialReward,
+      feedbackTrialEvaluations: feedbackTrialReward,
       trialEvaluationsRemaining,
     },
   }
@@ -417,6 +462,7 @@ export function mapAchievementForResponse(
     key: achievement.key,
     title: achievement.title,
     description: achievement.description,
+    rewardEvaluations: achievement.rewardEvaluations,
     unlocked: achievement.unlocked ?? true,
     unlockedAt: achievement.unlockedAt ?? new Date().toISOString(),
   }
