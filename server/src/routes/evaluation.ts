@@ -1,7 +1,9 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { evaluationRateLimiter } from '../middleware/rate-limit.js'
 import { runPropertyEvaluation } from '../services/evaluation-service.js'
+import { validatePhotos } from '../utils/photo-validation.js'
 import {
   refundTrialEvaluation,
   reserveTrialEvaluation,
@@ -42,7 +44,7 @@ const evaluationSchema = z.object({
   photos: z.array(photoSchema).max(5).optional(),
 })
 
-router.post('/analyze', requireAuth, async (req: AuthRequest, res) => {
+router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequest, res) => {
   if (!config.openaiApiKey) {
     return res.status(503).json({
       message:
@@ -55,6 +57,11 @@ router.post('/analyze', requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({
       message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
     })
+  }
+
+  const photoValidation = validatePhotos(parsed.data.photos)
+  if (!photoValidation.ok) {
+    return res.status(400).json({ message: photoValidation.message })
   }
 
   const userId = req.user!.id

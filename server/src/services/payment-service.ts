@@ -5,6 +5,7 @@ import {
   createCheckout,
   createProduct,
   createTransparentPix,
+  getCheckoutStatus,
   getTransparentStatus,
 } from './abacatepay-service.js'
 import { config } from '../config.js'
@@ -297,6 +298,21 @@ export async function findOrderById(orderId: string, userId?: string) {
   return result.rows[0] ?? null
 }
 
+async function verifyProviderPayment(order: PaymentOrderRow) {
+  if (!order.abacate_id) return false
+
+  if (order.type === 'lead_credits_pix') {
+    const transparent = await getTransparentStatus(order.abacate_id)
+    return (
+      transparent.status === 'PAID' &&
+      (transparent.amount == null || transparent.amount >= order.amount_cents)
+    )
+  }
+
+  const checkout = await getCheckoutStatus(order.abacate_id)
+  return checkout.status === 'PAID' && checkout.amount >= order.amount_cents
+}
+
 export async function syncLeadCreditsPixOrder(orderId: string, userId: string) {
   const order = await findOrderById(orderId, userId)
   if (!order || order.type !== 'lead_credits_pix') {
@@ -311,8 +327,8 @@ export async function syncLeadCreditsPixOrder(orderId: string, userId: string) {
     return { status: order.status as 'pending', order }
   }
 
-  const transparent = await getTransparentStatus(order.abacate_id)
-  if (transparent.status === 'PAID') {
+  const paid = await verifyProviderPayment(order)
+  if (paid) {
     await markOrderPaid(orderId)
     const result = await fulfillOrder(orderId)
     return {
@@ -321,7 +337,14 @@ export async function syncLeadCreditsPixOrder(orderId: string, userId: string) {
     }
   }
 
-  return { status: transparent.status.toLowerCase() as string, order }
+  const transparent = order.abacate_id
+    ? await getTransparentStatus(order.abacate_id)
+    : null
+
+  return {
+    status: (transparent?.status ?? order.status).toLowerCase() as string,
+    order,
+  }
 }
 
 export async function registerWebhookEvent(eventId: string, eventType: string) {
@@ -366,6 +389,11 @@ export async function handleWebhookPayload(body: {
     body.event === 'subscription.completed' ||
     body.event === 'subscription.renewed'
   ) {
+    const paid = await verifyProviderPayment(order)
+    if (!paid) {
+      return { processed: false, reason: 'payment_not_confirmed' as const }
+    }
+
     await markOrderPaid(order.id)
     await fulfillOrder(order.id)
     return { processed: true, orderId: order.id }

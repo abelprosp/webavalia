@@ -6,8 +6,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { loginRequest } from '@/lib/auth-api'
+import { loginRequest, isEmailNotVerifiedError } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { AuthHoneypotField } from '../components/auth-honeypot-field'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 
 function PageBackdrop() {
@@ -89,18 +90,31 @@ function SignInForm({ redirectTo }: { redirectTo?: string }) {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    if (String(formData.get('_honeypot') ?? '').trim()) return
+
     if (!email.trim() || !password) return
 
     setPending(true)
     try {
-      const { user, token } = await loginRequest(email.trim(), password)
+      const { user } = await loginRequest(email.trim(), password)
       auth.setUser(user)
-      auth.setAccessToken(token)
       toast.success(`Bem-vindo, ${user.name}!`)
       const target =
         redirectTo && redirectTo.startsWith('/') ? redirectTo : '/'
       navigate({ to: target, replace: true })
     } catch (error) {
+      if (isEmailNotVerifiedError(error)) {
+        toast.error(
+          'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.'
+        )
+        navigate({
+          to: '/verify-email',
+          search: { email: email.trim() },
+        })
+        return
+      }
+
       const message =
         error instanceof AxiosError
           ? (error.response?.data as { message?: string })?.message
@@ -113,6 +127,7 @@ function SignInForm({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <form onSubmit={onSubmit} className='mt-8 flex flex-col gap-4'>
+      <AuthHoneypotField />
       <div className='space-y-2'>
         <Label htmlFor='login-email'>
           E-mail <span className='text-muted-foreground'>*</span>

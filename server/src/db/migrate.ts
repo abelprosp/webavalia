@@ -33,6 +33,22 @@ async function migrate() {
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS lead_credits INT NOT NULL DEFAULT 0;
 
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS session_version INT NOT NULL DEFAULT 0;
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(64) NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS email_verification_tokens_hash_idx
+      ON email_verification_tokens (token_hash);
+
     CREATE TABLE IF NOT EXISTS plans (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(100) NOT NULL,
@@ -91,7 +107,44 @@ async function migrate() {
       event_type VARCHAR(100) NOT NULL,
       processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS auth_login_lockouts (
+      email_normalized VARCHAR(255) PRIMARY KEY,
+      failed_attempts INT NOT NULL DEFAULT 0,
+      locked_until TIMESTAMPTZ,
+      last_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_attempt_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email_normalized VARCHAR(255) NOT NULL,
+      ip_address VARCHAR(45),
+      action VARCHAR(30) NOT NULL,
+      success BOOLEAN NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS auth_attempt_logs_email_idx
+      ON auth_attempt_logs (email_normalized, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS auth_attempt_logs_ip_idx
+      ON auth_attempt_logs (ip_address, created_at DESC);
   `)
+
+  await pool.query(`
+    UPDATE users SET email_verified = true WHERE role = 'admin' AND email_verified = false
+  `)
+
+  const grandfather = await pool.query(
+    `SELECT 1 FROM platform_settings WHERE key = 'email_verification_grandfathered'`
+  )
+  if (!grandfather.rowCount) {
+    await pool.query(`UPDATE users SET email_verified = true WHERE email_verified = false`)
+    await pool.query(
+      `INSERT INTO platform_settings (key, value)
+       VALUES ('email_verification_grandfathered', '{"value": true}')`
+    )
+  }
 
   await pool.query(
     `INSERT INTO platform_settings (key, value) VALUES
@@ -126,8 +179,8 @@ async function migrate() {
     if (!existingAdmin.rowCount) {
       const passwordHash = await hashPassword(adminPassword)
       await pool.query(
-        `INSERT INTO users (name, email, password_hash, role, lead_credits, trial_evaluations_remaining)
-         VALUES ($1, $2, $3, 'admin', 999, 999)`,
+        `INSERT INTO users (name, email, password_hash, role, lead_credits, trial_evaluations_remaining, email_verified)
+         VALUES ($1, $2, $3, 'admin', 999, 999, true)`,
         [adminName, adminEmail, passwordHash]
       )
       console.log(`Usuário admin criado: ${adminEmail}`)

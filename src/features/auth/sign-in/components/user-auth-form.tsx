@@ -72,7 +72,6 @@ export function UserAuthForm({
 
         // Set user and access token
         auth.setUser(mockUser)
-        auth.setAccessToken('mock-access-token')
 
         // Redirect to the stored location or default to dashboard
         const targetPath = redirectTo || '/'

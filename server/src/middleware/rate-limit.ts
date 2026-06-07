@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import type { AuthRequest } from './auth.js'
 
 type RateLimitEntry = {
   count: number
@@ -8,10 +9,6 @@ type RateLimitEntry = {
 const buckets = new Map<string, RateLimitEntry>()
 
 function getClientKey(req: Request) {
-  const forwarded = req.headers['x-forwarded-for']
-  if (typeof forwarded === 'string') {
-    return forwarded.split(',')[0]?.trim() ?? req.ip ?? 'unknown'
-  }
   return req.ip ?? 'unknown'
 }
 
@@ -19,12 +16,17 @@ export function createRateLimiter(options: {
   windowMs: number
   max: number
   message?: string
+  keyGenerator?: (req: Request) => string
 }) {
-  const { windowMs, max, message = 'Muitas tentativas. Tente novamente em breve.' } =
-    options
+  const {
+    windowMs,
+    max,
+    message = 'Muitas tentativas. Tente novamente em breve.',
+    keyGenerator = getClientKey,
+  } = options
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = getClientKey(req)
+    const key = keyGenerator(req)
     const now = Date.now()
     const current = buckets.get(key)
 
@@ -45,8 +47,70 @@ export function createRateLimiter(options: {
   }
 }
 
+export function createUserRateLimiter(options: {
+  windowMs: number
+  max: number
+  message?: string
+}) {
+  return createRateLimiter({
+    ...options,
+    keyGenerator: (req) => {
+      const authReq = req as AuthRequest
+      return authReq.user?.id ?? getClientKey(req)
+    },
+  })
+}
+
 export const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: 'Muitas tentativas de login ou cadastro. Aguarde alguns minutos.',
+  max: 30,
+  message: 'Muitas tentativas. Aguarde alguns minutos.',
+})
+
+export const loginRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Muitas tentativas de login. Aguarde alguns minutos.',
+})
+
+export const loginIpRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 40,
+  message: 'Muitas tentativas de login deste dispositivo. Tente mais tarde.',
+})
+
+export const registerRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Limite de cadastros atingido. Tente novamente mais tarde.',
+})
+
+export const resendVerificationRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Muitas solicitações de reenvio. Aguarde antes de tentar novamente.',
+})
+
+export const forgotPasswordRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Muitas solicitações. Aguarde antes de tentar novamente.',
+})
+
+export const evaluationRateLimiter = createUserRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  message: 'Limite de avaliações por hora atingido. Tente novamente mais tarde.',
+})
+
+export const paymentRateLimiter = createUserRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: 'Muitas tentativas de pagamento. Aguarde alguns minutos.',
+})
+
+export const webhookRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: 'Limite de requisições excedido.',
 })

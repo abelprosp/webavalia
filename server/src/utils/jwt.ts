@@ -5,6 +5,7 @@ export type JwtPayload = {
   sub: string
   email: string
   role: string
+  sessionVersion: number
 }
 
 export function signToken(payload: JwtPayload) {

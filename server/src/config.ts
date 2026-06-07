@@ -16,7 +16,7 @@ export const config = {
     process.env.DATABASE_URL ??
     'postgresql://avalia:avalia123@localhost:5433/avalia_imob',
   jwtSecret: process.env.JWT_SECRET ?? 'avalia-imob-dev-secret-change-me',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   corsOrigin: resolveCorsOrigin(),
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
@@ -25,6 +25,15 @@ export const config = {
   abacatePayApiKey: process.env.ABACATEPAY_API_KEY ?? '',
   abacatePayWebhookSecret: process.env.ABACATEPAY_WEBHOOK_SECRET ?? '',
   appUrl: process.env.APP_URL ?? resolveCorsOrigin(),
+  smtp: {
+    host: process.env.SMTP_HOST ?? 'smtp.hostinger.com',
+    port: Number(process.env.SMTP_PORT ?? 465),
+    secure: process.env.SMTP_SECURE !== 'false',
+    user: process.env.SMTP_USER ?? '',
+    pass: process.env.SMTP_PASS ?? '',
+    from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? '',
+    fromName: process.env.SMTP_FROM_NAME ?? 'Avalia Imob',
+  },
 }
 
 const weakSecrets = new Set([
@@ -41,4 +50,14 @@ if (
   throw new Error(
     'JWT_SECRET ausente ou inseguro. Defina uma chave forte nas variáveis de ambiente.'
   )
+}
+
+if (config.isProduction && !config.abacatePayWebhookSecret) {
+  throw new Error(
+    'ABACATEPAY_WEBHOOK_SECRET ausente. Obrigatório em produção.'
+  )
+}
+
+if (config.isProduction && !process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL ausente em produção.')
 }

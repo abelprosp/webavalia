@@ -7,12 +7,12 @@ export const Route = createFileRoute('/_authenticated/admin')({
   beforeLoad: async () => {
     const { auth } = useAuthStore.getState()
 
-    if (!auth.user && auth.accessToken) {
+    if (!auth.user) {
       try {
         const user = await fetchMe()
         auth.setUser(user)
       } catch {
-        auth.reset()
+        auth.reset({ skipServer: true })
         throw redirect({ to: '/sign-in' })
       }
     }

@@ -1,65 +1,42 @@
 import { create } from 'zustand'
-import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
 import { syncCreditsFromUser } from '@/stores/credits-store'
+import { logoutRequest } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
-
-const ACCESS_TOKEN = 'avalia_access_token'
 
 interface AuthState {
   auth: {
     user: AuthUser | null
     setUser: (user: AuthUser | null) => void
     updateTrialEvaluationsRemaining: (remaining: number) => void
-    accessToken: string
-    setAccessToken: (accessToken: string) => void
-    resetAccessToken: () => void
-    reset: () => void
+    reset: (options?: { skipServer?: boolean }) => void
   }
 }
 
-export const useAuthStore = create<AuthState>()((set) => {
-  const cookieState = getCookie(ACCESS_TOKEN)
-  const initToken = cookieState ? JSON.parse(cookieState) : ''
-  return {
-    auth: {
-      user: null,
-      setUser: (user) => {
-        if (user) syncCreditsFromUser(user.leadCredits ?? 0)
-        set((state) => ({ ...state, auth: { ...state.auth, user } }))
-      },
-      updateTrialEvaluationsRemaining: (remaining) =>
-        set((state) => ({
-          ...state,
-          auth: {
-            ...state.auth,
-            user: state.auth.user
-              ? { ...state.auth.user, trialEvaluationsRemaining: remaining }
-              : null,
-          },
-        })),
-      accessToken: initToken,
-      setAccessToken: (accessToken) =>
-        set((state) => {
-          setCookie(ACCESS_TOKEN, JSON.stringify(accessToken))
-          return { ...state, auth: { ...state.auth, accessToken } }
-        }),
-      resetAccessToken: () =>
-        set((state) => {
-          removeCookie(ACCESS_TOKEN)
-          return { ...state, auth: { ...state.auth, accessToken: '' } }
-        }),
-      reset: () =>
-        set((state) => {
-          removeCookie(ACCESS_TOKEN)
-          return {
-            ...state,
-            auth: { ...state.auth, user: null, accessToken: '' },
-          }
-        }),
+export const useAuthStore = create<AuthState>()((set) => ({
+  auth: {
+    user: null,
+    setUser: (user) => {
+      if (user) syncCreditsFromUser(user.leadCredits ?? 0)
+      set((state) => ({ ...state, auth: { ...state.auth, user } }))
     },
-  }
-})
-
-export function getAccessToken() {
-  return useAuthStore.getState().auth.accessToken
-}
+    updateTrialEvaluationsRemaining: (remaining) =>
+      set((state) => ({
+        ...state,
+        auth: {
+          ...state.auth,
+          user: state.auth.user
+            ? { ...state.auth.user, trialEvaluationsRemaining: remaining }
+            : null,
+        },
+      })),
+    reset: (options) => {
+      if (!options?.skipServer) {
+        void logoutRequest().catch(() => undefined)
+      }
+      set((state) => ({
+        ...state,
+        auth: { ...state.auth, user: null },
+      }))
+    },
+  },
+}))

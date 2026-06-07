@@ -11,13 +11,11 @@ const FORM_MESSAGES = {
 
 const navigate = vi.fn()
 const setUserMock = vi.fn()
-const setAccessTokenMock = vi.fn()
 
 vi.mock('@/stores/auth-store', () => ({
   useAuthStore: () => ({
     auth: {
       setUser: setUserMock,
-      setAccessToken: setAccessTokenMock,
     },
   }),
 }))
@@ -94,13 +92,9 @@ describe('UserAuthForm', () => {
       expect(setUserMock).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'a@b.com',
-          accountNo: expect.any(String),
-          role: expect.any(Array),
-          exp: expect.any(Number),
+          role: 'corretor',
         })
       )
-      expect(setAccessTokenMock).toHaveBeenCalledOnce()
-      expect(setAccessTokenMock).toHaveBeenCalledWith('mock-access-token')
 
       await vi.waitFor(() =>
         expect(navigate).toHaveBeenCalledWith({ to: '/', replace: true })
@@ -121,7 +115,6 @@ describe('UserAuthForm', () => {
     await userEvent.click(getByRole('button', { name: /Sign in/i }))
 
     await vi.waitFor(() => expect(setUserMock).toHaveBeenCalledOnce())
-    expect(setAccessTokenMock).toHaveBeenCalledOnce()
 
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({

@@ -134,8 +134,14 @@ export async function createProduct(input: {
 }
 
 export async function getTransparentStatus(id: string) {
-  return abacateRequest<{ id: string; status: string }>(
+  return abacateRequest<{ id: string; status: string; amount?: number }>(
     `/transparents/get?id=${encodeURIComponent(id)}`
+  )
+}
+
+export async function getCheckoutStatus(id: string) {
+  return abacateRequest<{ id: string; status: string; amount: number }>(
+    `/checkouts/get?id=${encodeURIComponent(id)}`
   )
 }
 
@@ -159,7 +165,17 @@ export function verifyWebhookSignature(
   )
 }
 
-export function verifyWebhookSecret(querySecret: string | undefined) {
-  if (!config.abacatePayWebhookSecret) return true
-  return querySecret === config.abacatePayWebhookSecret
+export function verifyWebhookSecret(secret: string | undefined) {
+  if (!config.abacatePayWebhookSecret) {
+    return !config.isProduction
+  }
+
+  if (!secret) return false
+
+  const expected = Buffer.from(config.abacatePayWebhookSecret)
+  const received = Buffer.from(secret)
+
+  if (expected.length !== received.length) return false
+
+  return crypto.timingSafeEqual(expected, received)
 }

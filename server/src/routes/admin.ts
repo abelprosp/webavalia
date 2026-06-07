@@ -143,6 +143,10 @@ router.patch('/users/:id', async (req: AuthRequest, res) => {
     values.push(value)
   }
 
+  if (parsed.data.role !== undefined || parsed.data.status !== undefined) {
+    fields.push(`session_version = session_version + 1`)
+  }
+
   if (!fields.length) {
     return res.status(400).json({ message: 'Nenhum campo para atualizar.' })
   }

@@ -10,6 +10,7 @@ import { registerRequest } from '@/lib/auth-api'
 import { validatePassword, TRIAL_EVALUATIONS_TOTAL } from '@/lib/password-policy'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
+import { AuthHoneypotField } from '../components/auth-honeypot-field'
 
 function PageBackdrop() {
   return (
@@ -83,6 +84,9 @@ function SignUpForm() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    if (String(formData.get('_honeypot') ?? '').trim()) return
+
     if (password !== confirmPassword) {
       toast.error('As senhas não coincidem.')
       return
@@ -96,17 +100,32 @@ function SignUpForm() {
 
     setPending(true)
     try {
-      const { user, token } = await registerRequest(
+      const result = await registerRequest(
         name.trim(),
         email.trim(),
         password
       )
-      auth.setUser(user)
-      auth.setAccessToken(token)
-      toast.success(
-        `Conta criada! Você tem ${user.trialEvaluationsRemaining} avaliações grátis.`
-      )
-      navigate({ to: '/', replace: true })
+
+      if (result.needsEmailVerification) {
+        toast.success(
+          result.message ??
+            'Enviamos um link de confirmação para o seu e-mail.'
+        )
+        navigate({
+          to: '/verify-email',
+          search: { email: result.email ?? email.trim() },
+          replace: true,
+        })
+        return
+      }
+
+      if (result.user) {
+        auth.setUser(result.user)
+        toast.success(
+          `Conta criada! Você tem ${result.user.trialEvaluationsRemaining} avaliações grátis.`
+        )
+        navigate({ to: '/', replace: true })
+      }
     } catch (error) {
       const message =
         error instanceof AxiosError
@@ -120,6 +139,7 @@ function SignUpForm() {
 
   return (
     <form onSubmit={onSubmit} className='mt-8 flex flex-col gap-4'>
+      <AuthHoneypotField />
       <div className='space-y-2'>
         <Label htmlFor='signup-name'>
           Nome <span className='text-muted-foreground'>*</span>

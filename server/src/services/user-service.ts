@@ -9,6 +9,8 @@ export type UserRow = {
   lead_credits: number
   trial_evaluations_remaining: number
   evaluations_used: number
+  session_version: number
+  email_verified: boolean
   created_at: Date | string
   updated_at?: Date | string
 }
@@ -25,6 +27,7 @@ export async function mapUserResponse(row: UserRow) {
     email: row.email,
     role: row.role,
     status: row.status,
+    emailVerified: row.email_verified,
     leadCredits: row.lead_credits,
     trialEvaluationsRemaining: row.trial_evaluations_remaining,
     trialEvaluationsTotal,
@@ -37,6 +40,7 @@ export async function mapUserResponse(row: UserRow) {
 }
 
 export const USER_SELECT_FIELDS = `
-  id, name, email, role, status, lead_credits,
-  trial_evaluations_remaining, evaluations_used, created_at, updated_at
+  id, name, email, role, status, email_verified, lead_credits,
+  trial_evaluations_remaining, evaluations_used, session_version,
+  created_at, updated_at
 `

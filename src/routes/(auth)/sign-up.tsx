@@ -1,12 +1,16 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, isRedirect } from '@tanstack/react-router'
+import { fetchMe } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { SignUp } from '@/features/auth/sign-up'
 
 export const Route = createFileRoute('/(auth)/sign-up')({
-  beforeLoad: () => {
-    const token = useAuthStore.getState().auth.accessToken
-    if (token) {
+  beforeLoad: async () => {
+    try {
+      const user = await fetchMe()
+      useAuthStore.getState().auth.setUser(user)
       throw redirect({ to: '/' })
+    } catch (error) {
+      if (isRedirect(error)) throw error
     }
   },
   component: SignUp,

@@ -9,6 +9,7 @@ import {
   getPublicPricing,
   syncLeadCreditsPixOrder,
 } from '../services/payment-service.js'
+import { paymentRateLimiter } from '../middleware/rate-limit.js'
 
 const router = Router()
 
@@ -16,7 +17,7 @@ router.get('/pricing', (_req, res) => {
   res.json(getPublicPricing())
 })
 
-router.use(requireAuth)
+router.use(requireAuth, paymentRateLimiter)
 
 router.post('/credits/pix', async (req: AuthRequest, res) => {
   const parsed = z

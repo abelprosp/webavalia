@@ -13,7 +13,13 @@ export async function abacatePayWebhookHandler(req: Request, res: Response) {
         ? req.body
         : ''
 
-  if (!verifyWebhookSecret(req.query.webhookSecret as string | undefined)) {
+  const webhookSecret =
+    req.header('X-Webhook-Secret') ??
+    (typeof req.query.webhookSecret === 'string'
+      ? req.query.webhookSecret
+      : undefined)
+
+  if (!verifyWebhookSecret(webhookSecret)) {
     return res.status(401).json({ message: 'Webhook não autorizado.' })
   }
 
