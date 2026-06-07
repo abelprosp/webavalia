@@ -162,6 +162,41 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS user_achievements_user_idx
       ON user_achievements (user_id, unlocked_at DESC);
+
+    CREATE TABLE IF NOT EXISTS background_jobs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'queued',
+      payload JSONB NOT NULL,
+      result JSONB,
+      error_message TEXT,
+      trial_evaluations_remaining INT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      started_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS background_jobs_user_idx
+      ON background_jobs (user_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS background_jobs_status_idx
+      ON background_jobs (status, created_at ASC);
+
+    CREATE TABLE IF NOT EXISTS user_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      body TEXT,
+      link VARCHAR(500),
+      metadata JSONB NOT NULL DEFAULT '{}',
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS user_notifications_user_idx
+      ON user_notifications (user_id, created_at DESC);
   `)
 
   await pool.query(`

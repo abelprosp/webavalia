@@ -15,13 +15,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { CreditsBadge } from '@/components/credits-badge'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { useCreditsStore } from '@/stores/credits-store'
 import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
 import { useLeadsStore } from '@/stores/leads-store'
@@ -47,11 +43,7 @@ export function Dashboard() {
   return (
     <>
       <Header>
-        <Search className='me-auto' />
-        <CreditsBadge />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
+        <HeaderActions />
       </Header>
 
       <Main>

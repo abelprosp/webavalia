@@ -10,21 +10,37 @@ type PhotoPayload = {
   data: string
 }
 
-export type AnalyzePropertyResponse = {
+export type EvaluationJobStatus =
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+
+export type EvaluationJobResult = {
   evaluation: EvaluationResult
   evaluationId: string | null
   feedbackModeEnabled: boolean
+  propertyInput?: EvaluationFormValues
   trialEvaluationsRemaining: number
   gamification?: GamificationPayload
 }
 
-export type SubmitFeedbackResponse = {
+export type EvaluationJob = {
+  id: string
+  status: EvaluationJobStatus
+  result: EvaluationJobResult | null
+  errorMessage: string | null
+  trialEvaluationsRemaining: number | null
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+}
+
+export type EnqueueEvaluationResponse = {
+  jobId: string
+  status: EvaluationJobStatus
   message: string
-  reward?: {
-    trialEvaluations: number
-    trialEvaluationsRemaining: number | null
-  }
-  gamification?: GamificationPayload
+  trialEvaluationsRemaining: number
 }
 
 export async function submitEvaluationFeedback(input: {
@@ -32,10 +48,14 @@ export async function submitEvaluationFeedback(input: {
   rating: 'good' | 'bad'
   comment: string
 }) {
-  const { data } = await api.post<SubmitFeedbackResponse>(
-    '/evaluation/feedback',
-    input
-  )
+  const { data } = await api.post<{
+    message: string
+    reward?: {
+      trialEvaluations: number
+      trialEvaluationsRemaining: number | null
+    }
+    gamification?: GamificationPayload
+  }>('/evaluation/feedback', input)
   return data
 }
 
@@ -56,10 +76,10 @@ export async function fileToBase64(file: File): Promise<string> {
   })
 }
 
-export async function analyzeProperty(
+export async function enqueueEvaluation(
   values: EvaluationFormValues,
   photos: { file: File }[]
-): Promise<AnalyzePropertyResponse> {
+): Promise<EnqueueEvaluationResponse> {
   const photoPayloads: PhotoPayload[] = await Promise.all(
     photos.slice(0, 5).map(async (photo) => ({
       mimeType: photo.file.type,
@@ -67,26 +87,56 @@ export async function analyzeProperty(
     }))
   )
 
-  const { data } = await api.post<{
-    evaluation: EvaluationResult
-    evaluationId: string | null
-    feedbackModeEnabled: boolean
-    trialEvaluationsRemaining: number
-    gamification?: GamificationPayload
-  }>('/evaluation/analyze', {
+  const { data } = await api.post<EnqueueEvaluationResponse>('/evaluation/analyze', {
     ...values,
     photos: photoPayloads.length > 0 ? photoPayloads : undefined,
   })
 
+  return data
+}
+
+export async function fetchEvaluationJob(jobId: string) {
+  const { data } = await api.get<{ job: EvaluationJob }>(
+    `/evaluation/jobs/${jobId}`
+  )
+  return data.job
+}
+
+export function normalizeJobResult(
+  result: EvaluationJobResult,
+  photos: { file: File }[]
+): EvaluationJobResult {
   return {
+    ...result,
     evaluation: {
-      ...data.evaluation,
-      evaluatedAt: new Date(data.evaluation.evaluatedAt),
+      ...result.evaluation,
+      evaluatedAt: new Date(result.evaluation.evaluatedAt),
       photoPreviews: photos.map((p) => URL.createObjectURL(p.file)),
     },
-    evaluationId: data.evaluationId,
-    feedbackModeEnabled: data.feedbackModeEnabled,
-    trialEvaluationsRemaining: data.trialEvaluationsRemaining,
-    gamification: data.gamification,
+  }
+}
+
+export async function waitForEvaluationJob(
+  jobId: string,
+  options?: {
+    intervalMs?: number
+    onStatus?: (status: EvaluationJobStatus) => void
+  }
+) {
+  const intervalMs = options?.intervalMs ?? 2000
+
+  while (true) {
+    const job = await fetchEvaluationJob(jobId)
+    options?.onStatus?.(job.status)
+
+    if (job.status === 'completed' && job.result) {
+      return job
+    }
+
+    if (job.status === 'failed') {
+      throw new Error(job.errorMessage ?? 'Erro ao processar avaliação.')
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
   }
 }

@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Sparkles, Home, Loader2, Camera, Gem } from 'lucide-react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
-import { analyzeProperty } from '@/lib/evaluation-api'
+import {
+  enqueueEvaluation,
+  fetchEvaluationJob,
+  normalizeJobResult,
+  waitForEvaluationJob,
+} from '@/lib/evaluation-api'
 import { showGamificationUpdates } from '@/features/gamification/lib/show-gamification-toasts'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,13 +41,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CreditsBadge } from '@/components/credits-badge'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
 import {
   condominiumLevels,
   conservationStates,
@@ -86,6 +88,8 @@ const defaultValues: EvaluationFormValues = {
 }
 
 export function Avaliacao() {
+  const navigate = useNavigate()
+  const { job: jobFromUrl } = useSearch({ from: '/_authenticated/avaliacao/' })
   const [result, setResult] = useState<EvaluationResult | null>(null)
   const [evaluatedProperty, setEvaluatedProperty] =
     useState<EvaluationFormValues | null>(null)
@@ -111,6 +115,86 @@ export function Avaliacao() {
     }
   }, [])
 
+  async function applyCompletedJob(
+    jobResult: NonNullable<Awaited<ReturnType<typeof fetchEvaluationJob>>['result']>
+  ) {
+    const propertyValues = jobResult.propertyInput ?? defaultValues
+    const normalized = normalizeJobResult(jobResult, photos)
+    setResult(normalized.evaluation)
+    setEvaluatedProperty(propertyValues)
+    setEvaluationId(normalized.evaluationId)
+    setFeedbackModeEnabled(normalized.feedbackModeEnabled)
+    updateTrialRemaining(normalized.trialEvaluationsRemaining)
+    recordEvaluation()
+    showGamificationUpdates(normalized.gamification)
+    toast.success('Avaliação concluída com sucesso!')
+  }
+
+  useEffect(() => {
+    if (!jobFromUrl) return
+
+    const jobId = jobFromUrl
+    let cancelled = false
+
+    async function loadJobFromUrl() {
+      setIsEvaluating(true)
+      setEvaluatingStep('Carregando resultado da avaliação...')
+
+      try {
+        const job = await fetchEvaluationJob(jobId)
+
+        if (cancelled) return
+
+        if (job.status === 'completed' && job.result) {
+          await applyCompletedJob(job.result)
+        } else if (job.status === 'failed') {
+          toast.error(job.errorMessage ?? 'Avaliação falhou.')
+        } else {
+          setEvaluatingStep(
+            job.status === 'queued'
+              ? 'Na fila de processamento...'
+              : 'Gerando análise completa...'
+          )
+          const completed = await waitForEvaluationJob(jobId, {
+            onStatus: (status) => {
+              if (cancelled) return
+              setEvaluatingStep(
+                status === 'queued'
+                  ? 'Na fila de processamento...'
+                  : status === 'processing'
+                    ? 'Gerando análise completa...'
+                    : 'Finalizando...'
+              )
+            },
+          })
+          if (!cancelled && completed.result) {
+            await applyCompletedJob(completed.result)
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Erro ao carregar avaliação.'
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setIsEvaluating(false)
+          setEvaluatingStep('')
+          navigate({ to: '/avaliacao', search: {}, replace: true })
+        }
+      }
+    }
+
+    void loadJobFromUrl()
+
+    return () => {
+      cancelled = true
+    }
+  }, [jobFromUrl])
+
   const form = useForm<EvaluationFormValues>({
     resolver: zodResolver(evaluationFormSchema),
     defaultValues,
@@ -129,25 +213,29 @@ export function Avaliacao() {
     setEvaluatedProperty(null)
     setEvaluationId(null)
     setFeedbackSubmitted(false)
-    setEvaluatingStep('Pesquisando o mercado local...')
+    setEvaluatingStep('Enviando solicitação...')
 
     try {
-      setEvaluatingStep('Gerando análise completa...')
-      const {
-        evaluation,
-        evaluationId: newEvaluationId,
-        feedbackModeEnabled: modeEnabled,
-        trialEvaluationsRemaining,
-        gamification,
-      } = await analyzeProperty(values, photos)
-      setResult(evaluation)
-      setEvaluatedProperty(values)
-      setEvaluationId(newEvaluationId)
-      setFeedbackModeEnabled(modeEnabled)
-      updateTrialRemaining(trialEvaluationsRemaining)
-      recordEvaluation()
-      showGamificationUpdates(gamification)
-      toast.success('Avaliação concluída com sucesso!')
+      const enqueue = await enqueueEvaluation(values, photos)
+      updateTrialRemaining(enqueue.trialEvaluationsRemaining)
+      toast.info(enqueue.message)
+
+      setEvaluatingStep('Na fila de processamento...')
+      const job = await waitForEvaluationJob(enqueue.jobId, {
+        onStatus: (status) => {
+          setEvaluatingStep(
+            status === 'queued'
+              ? 'Na fila de processamento...'
+              : status === 'processing'
+                ? 'Pesquisando mercado e gerando análise...'
+                : 'Finalizando...'
+          )
+        },
+      })
+
+      if (job.result) {
+        await applyCompletedJob(job.result)
+      }
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         updateTrialRemaining(0)
@@ -168,11 +256,7 @@ export function Avaliacao() {
   return (
     <>
       <Header fixed>
-        <Search className='me-auto' />
-        <CreditsBadge />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
+        <HeaderActions />
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>

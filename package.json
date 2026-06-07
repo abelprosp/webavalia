@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "npm run dev --prefix server",
-    "dev:apps": "concurrently -n api,web -c green,blue \"npm run dev:server\" \"npm run dev\"",
+    "dev:apps": "concurrently -n api,worker,web -c green,magenta,blue \"npm run dev:server\" \"npm run dev:worker --prefix server\" \"npm run dev\"",
     "setup": "node scripts/check-docker.mjs && npm run docker:up && npm run db:migrate",
     "dev:all": "npm run setup && npm run dev:apps",
     "docker:up": "docker compose up -d --wait",
@@ -15,7 +15,7 @@
     "db:migrate": "npm run migrate --prefix server",
     "build": "tsc -b && vite build",
     "build:prod": "npm run build && npm run build --prefix server",
-    "start:prod": "npm run migrate:prod --prefix server && npm run start --prefix server",
+    "start:prod": "npm run migrate:prod --prefix server && concurrently -n api,worker \"npm run start --prefix server\" \"npm run start:worker --prefix server\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "format:check": "prettier --check .",
