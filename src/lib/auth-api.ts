@@ -4,7 +4,9 @@ export type AuthUser = {
   id: string
   name: string
   email: string
-  role: string
+  role: 'admin' | 'corretor' | string
+  status?: 'active' | 'suspended'
+  leadCredits: number
   trialEvaluationsRemaining: number
   trialEvaluationsTotal: number
 }
@@ -38,4 +40,8 @@ export async function registerRequest(
 export async function fetchMe() {
   const { data } = await api.get<{ user: AuthUser }>('/auth/me')
   return data.user
+}
+
+export function isAdmin(user: AuthUser | null | undefined) {
+  return user?.role === 'admin'
 }

@@ -22,6 +22,9 @@ export const config = {
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
   serperApiKey: process.env.SERPER_API_KEY ?? '',
   isProduction: process.env.NODE_ENV === 'production',
+  abacatePayApiKey: process.env.ABACATEPAY_API_KEY ?? '',
+  abacatePayWebhookSecret: process.env.ABACATEPAY_WEBHOOK_SECRET ?? '',
+  appUrl: process.env.APP_URL ?? resolveCorsOrigin(),
 }
 
 const weakSecrets = new Set([

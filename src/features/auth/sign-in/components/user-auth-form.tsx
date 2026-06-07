@@ -65,6 +65,7 @@ export function UserAuthForm({
           name: data.email.split('@')[0],
           email: data.email,
           role: 'corretor',
+          leadCredits: 0,
           trialEvaluationsRemaining: 3,
           trialEvaluationsTotal: 3,
         }

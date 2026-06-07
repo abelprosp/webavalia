@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuthStore } from '@/stores/auth-store'
 import { AppTitle } from './app-title'
-import { sidebarData } from './data/sidebar-data'
+import { getSidebarNavGroups } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 
@@ -22,13 +22,15 @@ export function AppSidebar() {
     avatar: '/avatars/shadcn.jpg',
   }
 
+  const navGroups = getSidebarNavGroups(authUser)
+
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
       <SidebarHeader>
         <AppTitle />
       </SidebarHeader>
       <SidebarContent>
-        {sidebarData.navGroups.map((props) => (
+        {navGroups.map((props) => (
           <NavGroup key={props.title} {...props} />
         ))}
       </SidebarContent>

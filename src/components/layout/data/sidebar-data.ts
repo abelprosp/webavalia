@@ -11,8 +11,13 @@ import {
   Home,
   Users,
   Contact,
+  Shield,
+  CreditCard,
+  Settings2,
 } from 'lucide-react'
-import { type SidebarData } from '../types'
+import { isAdmin } from '@/lib/auth-api'
+import type { AuthUser } from '@/lib/auth-api'
+import { type NavGroup, type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
@@ -27,7 +32,11 @@ export const sidebarData: SidebarData = {
       plan: 'imobiliárias',
     },
   ],
-  navGroups: [
+  navGroups: [],
+}
+
+export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
+  const groups = [
     {
       title: 'Plataforma',
       items: [
@@ -95,5 +104,35 @@ export const sidebarData: SidebarData = {
         },
       ],
     },
-  ],
+  ]
+
+  if (isAdmin(user)) {
+    groups.unshift({
+      title: 'Administração',
+      items: [
+        {
+          title: 'Painel Admin',
+          url: '/admin',
+          icon: Shield,
+        },
+        {
+          title: 'Usuários',
+          url: '/admin/users',
+          icon: Users,
+        },
+        {
+          title: 'Planos',
+          url: '/admin/plans',
+          icon: CreditCard,
+        },
+        {
+          title: 'Config. plataforma',
+          url: '/admin/settings',
+          icon: Settings2,
+        },
+      ],
+    })
+  }
+
+  return groups
 }

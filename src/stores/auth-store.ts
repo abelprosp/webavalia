@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
+import { syncCreditsFromUser } from '@/stores/credits-store'
 import type { AuthUser } from '@/lib/auth-api'
 
 const ACCESS_TOKEN = 'avalia_access_token'
@@ -22,8 +23,10 @@ export const useAuthStore = create<AuthState>()((set) => {
   return {
     auth: {
       user: null,
-      setUser: (user) =>
-        set((state) => ({ ...state, auth: { ...state.auth, user } })),
+      setUser: (user) => {
+        if (user) syncCreditsFromUser(user.leadCredits ?? 0)
+        set((state) => ({ ...state, auth: { ...state.auth, user } }))
+      },
       updateTrialEvaluationsRemaining: (remaining) =>
         set((state) => ({
           ...state,
