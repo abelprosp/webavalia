@@ -97,6 +97,22 @@ export function AdminSettingsPage() {
 
         <div className='flex items-center justify-between rounded-lg border p-4'>
           <div>
+            <Label>Modo experimental de feedback na avaliação</Label>
+            <p className='text-sm text-muted-foreground'>
+              Permite que corretores avaliem se a IA acertou ou errou, para
+              calibrar próximas análises
+            </p>
+          </div>
+          <Switch
+            checked={settings.evaluationFeedbackMode}
+            onCheckedChange={(checked) =>
+              setSettings({ ...settings, evaluationFeedbackMode: checked })
+            }
+          />
+        </div>
+
+        <div className='flex items-center justify-between rounded-lg border p-4'>
+          <div>
             <Label>Cadastro público habilitado</Label>
             <p className='text-sm text-muted-foreground'>
               Permite que novos corretores criem conta em /sign-up

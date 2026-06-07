@@ -7,6 +7,7 @@ import {
   adjustLeadCredits,
   setTrialEvaluations,
 } from '../services/credits-service.js'
+import { getFeedbackStats } from '../services/evaluation-feedback-service.js'
 import {
   getPlatformSettings,
   updatePlatformSettings,
@@ -68,6 +69,8 @@ router.get('/stats', async (_req, res) => {
     'SELECT COUNT(*)::int AS count FROM plans WHERE is_active = true'
   )
 
+  const feedbackStats = await getFeedbackStats()
+
   return res.json({
     stats: {
       totalUsers: Number(result.rows[0].total_users),
@@ -76,6 +79,9 @@ router.get('/stats', async (_req, res) => {
       totalEvaluationsUsed: Number(result.rows[0].total_evaluations_used),
       totalLeadCredits: Number(result.rows[0].total_lead_credits),
       activePlans: plans.rows[0]?.count ?? 0,
+      evaluationFeedbackTotal: feedbackStats.total,
+      evaluationFeedbackGood: feedbackStats.good,
+      evaluationFeedbackBad: feedbackStats.bad,
     },
   })
 })
@@ -342,6 +348,7 @@ router.patch('/settings', async (req, res) => {
       trialEvaluationsTotal: z.number().int().min(0).optional(),
       defaultLeadCredits: z.number().int().min(0).optional(),
       registrationEnabled: z.boolean().optional(),
+      evaluationFeedbackMode: z.boolean().optional(),
     })
     .safeParse(req.body)
 

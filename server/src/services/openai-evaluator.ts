@@ -6,6 +6,7 @@ import type {
   PhotoInput,
 } from '../types/evaluation.js'
 import type { SerperResult } from './serper.js'
+import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
 
 const aiResponseSchema = z.object({
   estimatedValue: z.number(),
@@ -170,6 +171,8 @@ Dados do imóvel:
 - Observações: ${input.notes || 'nenhuma'}
 `
 
+  const feedbackLearning = await buildFeedbackLearningPrompt()
+
   const systemPrompt = `Você é um avaliador imobiliário especialista no mercado brasileiro.
 Analise o imóvel com base nos dados informados, nos resultados de pesquisa de mercado (imobiliárias locais) e no Plano Diretor/zoneamento urbano.
 Estime você mesmo as pontuações de cada critério (1 a 5) com base nas informações disponíveis.
@@ -209,7 +212,7 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
 Use os resultados Serper para estimar média de preço/m² e listar comparáveis reais.
 Para o Plano Diretor, analise zoneamento, usos permitidos, restrições e potencial de valorização/desenvolvimento.
 Se faltar informação oficial, indique incerteza no texto mas faça a melhor análise possível com os snippets.
-Valores em reais (BRL). Textos em português do Brasil.`
+Valores em reais (BRL). Textos em português do Brasil.${feedbackLearning}`
 
   const userText = `${propertyBlock}
 

@@ -9,6 +9,11 @@ import {
   reserveTrialEvaluation,
   TrialExhaustedError,
 } from '../services/trial-service.js'
+import {
+  isEvaluationFeedbackModeEnabled,
+  savePropertyEvaluation,
+  submitEvaluationFeedback,
+} from '../services/evaluation-feedback-service.js'
 import { config } from '../config.js'
 
 const router = Router()
@@ -42,6 +47,17 @@ const evaluationSchema = z.object({
   askingPrice: z.number().optional(),
   notes: z.string().optional(),
   photos: z.array(photoSchema).max(5).optional(),
+})
+
+const feedbackSchema = z.object({
+  evaluationId: z.uuid(),
+  rating: z.enum(['good', 'bad']),
+  comment: z.string().trim().min(10, 'Explique com ao menos 10 caracteres.').max(2000),
+})
+
+router.get('/config', requireAuth, async (_req, res) => {
+  const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
+  return res.json({ feedbackModeEnabled })
 })
 
 router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequest, res) => {
@@ -81,8 +97,21 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
 
   try {
     const result = await runPropertyEvaluation(parsed.data)
+    const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
+
+    let evaluationId: string | null = null
+    if (feedbackModeEnabled) {
+      evaluationId = await savePropertyEvaluation({
+        userId,
+        propertyInput: parsed.data,
+        evaluationResult: result,
+      })
+    }
+
     return res.json({
       evaluation: result,
+      evaluationId,
+      feedbackModeEnabled,
       trialEvaluationsRemaining,
     })
   } catch (error) {
@@ -91,6 +120,39 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     const message =
       error instanceof Error ? error.message : 'Erro ao processar avaliação.'
     return res.status(500).json({ message })
+  }
+})
+
+router.post('/feedback', requireAuth, async (req: AuthRequest, res) => {
+  const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
+  if (!feedbackModeEnabled) {
+    return res.status(403).json({
+      message: 'Modo de feedback temporário está desativado.',
+    })
+  }
+
+  const parsed = feedbackSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  try {
+    await submitEvaluationFeedback({
+      evaluationId: parsed.data.evaluationId,
+      userId: req.user!.id,
+      rating: parsed.data.rating,
+      comment: parsed.data.comment,
+    })
+
+    return res.status(201).json({
+      message: 'Obrigado! Seu feedback ajuda a IA a melhorar nas próximas avaliações.',
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Erro ao enviar feedback.'
+    return res.status(400).json({ message })
   }
 })
 

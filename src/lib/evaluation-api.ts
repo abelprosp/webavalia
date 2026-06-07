@@ -11,7 +11,18 @@ type PhotoPayload = {
 
 export type AnalyzePropertyResponse = {
   evaluation: EvaluationResult
+  evaluationId: string | null
+  feedbackModeEnabled: boolean
   trialEvaluationsRemaining: number
+}
+
+export async function submitEvaluationFeedback(input: {
+  evaluationId: string
+  rating: 'good' | 'bad'
+  comment: string
+}) {
+  const { data } = await api.post<{ message: string }>('/evaluation/feedback', input)
+  return data
 }
 
 export async function fileToBase64(file: File): Promise<string> {
@@ -44,6 +55,8 @@ export async function analyzeProperty(
 
   const { data } = await api.post<{
     evaluation: EvaluationResult
+    evaluationId: string | null
+    feedbackModeEnabled: boolean
     trialEvaluationsRemaining: number
   }>('/evaluation/analyze', {
     ...values,
@@ -56,6 +69,8 @@ export async function analyzeProperty(
       evaluatedAt: new Date(data.evaluation.evaluatedAt),
       photoPreviews: photos.map((p) => URL.createObjectURL(p.file)),
     },
+    evaluationId: data.evaluationId,
+    feedbackModeEnabled: data.feedbackModeEnabled,
     trialEvaluationsRemaining: data.trialEvaluationsRemaining,
   }
 }

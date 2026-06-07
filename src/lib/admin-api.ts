@@ -23,6 +23,7 @@ export type PlatformSettings = {
   trialEvaluationsTotal: number
   defaultLeadCredits: number
   registrationEnabled: boolean
+  evaluationFeedbackMode: boolean
 }
 
 export type AdminStats = {
@@ -32,6 +33,9 @@ export type AdminStats = {
   totalEvaluationsUsed: number
   totalLeadCredits: number
   activePlans: number
+  evaluationFeedbackTotal?: number
+  evaluationFeedbackGood?: number
+  evaluationFeedbackBad?: number
 }
 
 export type CreditTransaction = {

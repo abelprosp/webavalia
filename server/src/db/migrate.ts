@@ -129,6 +129,29 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS auth_attempt_logs_ip_idx
       ON auth_attempt_logs (ip_address, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS property_evaluations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      property_input JSONB NOT NULL,
+      evaluation_result JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS property_evaluations_user_idx
+      ON property_evaluations (user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS evaluation_feedback (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      evaluation_id UUID NOT NULL UNIQUE REFERENCES property_evaluations(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating VARCHAR(10) NOT NULL CHECK (rating IN ('good', 'bad')),
+      comment TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS evaluation_feedback_rating_idx
+      ON evaluation_feedback (rating, created_at DESC);
   `)
 
   await pool.query(`
@@ -150,7 +173,8 @@ async function migrate() {
     `INSERT INTO platform_settings (key, value) VALUES
       ('trial_evaluations_total', '{"value": 3}'),
       ('default_lead_credits', '{"value": 0}'),
-      ('registration_enabled', '{"value": true}')
+      ('registration_enabled', '{"value": true}'),
+      ('evaluation_feedback_mode', '{"value": true}')
      ON CONFLICT (key) DO NOTHING`
   )
 

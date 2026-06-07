@@ -59,6 +59,7 @@ import {
 import { useEvaluationsStore } from '@/stores/evaluations-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { EvaluationResultPanel } from './components/evaluation-result'
+import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
 import {
   PhotoUpload,
   type EvaluationPhoto,
@@ -87,6 +88,9 @@ export function Avaliacao() {
   const [result, setResult] = useState<EvaluationResult | null>(null)
   const [evaluatedProperty, setEvaluatedProperty] =
     useState<EvaluationFormValues | null>(null)
+  const [evaluationId, setEvaluationId] = useState<string | null>(null)
+  const [feedbackModeEnabled, setFeedbackModeEnabled] = useState(false)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [evaluatingStep, setEvaluatingStep] = useState('')
   const [photos, setPhotos] = useState<EvaluationPhoto[]>([])
@@ -122,16 +126,22 @@ export function Avaliacao() {
     setIsEvaluating(true)
     setResult(null)
     setEvaluatedProperty(null)
+    setEvaluationId(null)
+    setFeedbackSubmitted(false)
     setEvaluatingStep('Pesquisando o mercado local...')
 
     try {
       setEvaluatingStep('Gerando análise completa...')
-      const { evaluation, trialEvaluationsRemaining } = await analyzeProperty(
-        values,
-        photos
-      )
+      const {
+        evaluation,
+        evaluationId: newEvaluationId,
+        feedbackModeEnabled: modeEnabled,
+        trialEvaluationsRemaining,
+      } = await analyzeProperty(values, photos)
       setResult(evaluation)
       setEvaluatedProperty(values)
+      setEvaluationId(newEvaluationId)
+      setFeedbackModeEnabled(modeEnabled)
       updateTrialRemaining(trialEvaluationsRemaining)
       recordEvaluation()
       toast.success('Avaliação concluída com sucesso!')
@@ -680,10 +690,18 @@ export function Avaliacao() {
 
           <div className='space-y-6'>
             {result && evaluatedProperty ? (
-              <EvaluationResultPanel
-                result={result}
-                property={evaluatedProperty}
-              />
+              <>
+                <EvaluationResultPanel
+                  result={result}
+                  property={evaluatedProperty}
+                />
+                {feedbackModeEnabled && evaluationId && !feedbackSubmitted && (
+                  <EvaluationFeedbackPanel
+                    evaluationId={evaluationId}
+                    onSubmitted={() => setFeedbackSubmitted(true)}
+                  />
+                )}
+              </>
             ) : (
               <Card className='flex min-h-100 flex-col items-center justify-center border-dashed'>
                 <CardContent className='flex flex-col items-center gap-4 py-12 text-center'>
