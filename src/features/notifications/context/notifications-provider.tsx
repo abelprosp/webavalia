@@ -57,30 +57,15 @@ export function NotificationsProvider({
         knownIdsRef.current.add(notification.id)
 
         if (!notification.readAt) {
-          const jobId =
-            typeof notification.metadata?.jobId === 'string'
-              ? notification.metadata.jobId
-              : undefined
-
           toast.success(notification.title, {
             description: notification.body ?? undefined,
             duration: 8000,
-            action:
-              jobId || notification.link
-                ? {
-                    label: 'Ver',
-                    onClick: () => {
-                      if (jobId) {
-                        navigate({
-                          to: '/avaliacao',
-                          search: { job: jobId },
-                        })
-                      } else if (notification.link) {
-                        navigate({ to: notification.link })
-                      }
-                    },
-                  }
-                : undefined,
+            action: notification.link
+              ? {
+                  label: 'Ver',
+                  onClick: () => navigate({ to: notification.link! }),
+                }
+              : undefined,
           })
         }
       }

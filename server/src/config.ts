@@ -34,8 +34,6 @@ export const config = {
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? '',
     fromName: process.env.SMTP_FROM_NAME ?? 'Avalia Imob',
   },
-  rabbitmqUrl:
-    process.env.RABBITMQ_URL ?? 'amqp://avalia:avalia123@localhost:5672',
 }
 
 const weakSecrets = new Set([

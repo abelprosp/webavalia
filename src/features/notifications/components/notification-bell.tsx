@@ -27,17 +27,8 @@ export function NotificationBell() {
   const { notifications, unreadCount, loading, markRead, markAllRead } =
     useNotifications()
 
-  async function openNotification(
-    id: string,
-    link: string | null,
-    metadata: Record<string, unknown>
-  ) {
+  async function openNotification(id: string, link: string | null) {
     await markRead(id)
-    const jobId = typeof metadata.jobId === 'string' ? metadata.jobId : undefined
-    if (jobId) {
-      navigate({ to: '/avaliacao', search: { job: jobId } })
-      return
-    }
     if (link) navigate({ to: link })
   }
 
@@ -88,11 +79,7 @@ export function NotificationBell() {
                 !notification.readAt && 'bg-primary/5'
               )}
               onClick={() =>
-                void openNotification(
-                  notification.id,
-                  notification.link,
-                  notification.metadata
-                )
+                void openNotification(notification.id, notification.link)
               }
             >
               <div className='flex w-full items-start justify-between gap-2'>

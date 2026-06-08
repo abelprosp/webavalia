@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { evaluationRateLimiter } from '../middleware/rate-limit.js'
+import { runPropertyEvaluation } from '../services/evaluation-service.js'
 import { validatePhotos } from '../utils/photo-validation.js'
 import {
   refundTrialEvaluation,
@@ -10,14 +11,14 @@ import {
 } from '../services/trial-service.js'
 import {
   isEvaluationFeedbackModeEnabled,
+  savePropertyEvaluation,
   submitEvaluationFeedback,
 } from '../services/evaluation-feedback-service.js'
 import {
   mapAchievementForResponse,
+  processEvaluationGamification,
   processFeedbackGamification,
 } from '../services/gamification-service.js'
-import { createBackgroundJob, getBackgroundJob } from '../services/job-service.js'
-import { publishEvaluationJob, isRabbitAvailable } from '../queue/rabbitmq.js'
 import { config } from '../config.js'
 
 const router = Router()
@@ -61,18 +62,7 @@ const feedbackSchema = z.object({
 
 router.get('/config', requireAuth, async (_req, res) => {
   const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
-  const queueAvailable = await isRabbitAvailable()
-  return res.json({ feedbackModeEnabled, queueAvailable })
-})
-
-router.get('/jobs/:jobId', requireAuth, async (req: AuthRequest, res) => {
-  const jobId = String(req.params.jobId)
-  const job = await getBackgroundJob(jobId, req.user!.id)
-  if (!job) {
-    return res.status(404).json({ message: 'Solicitação não encontrada.' })
-  }
-
-  return res.json({ job })
+  return res.json({ feedbackModeEnabled })
 })
 
 router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequest, res) => {
@@ -80,14 +70,6 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     return res.status(503).json({
       message:
         'Serviço de IA indisponível. Configure OPENAI_API_KEY no server/.env',
-    })
-  }
-
-  const queueAvailable = await isRabbitAvailable()
-  if (!queueAvailable) {
-    return res.status(503).json({
-      message:
-        'Fila de processamento indisponível. Verifique se o RabbitMQ e o worker estão rodando.',
     })
   }
 
@@ -119,27 +101,36 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
   }
 
   try {
-    const job = await createBackgroundJob({
+    const result = await runPropertyEvaluation(parsed.data)
+    const feedbackModeEnabled = await isEvaluationFeedbackModeEnabled()
+
+    const evaluationId = await savePropertyEvaluation({
       userId,
-      type: 'evaluation',
-      payload: { input: parsed.data },
-      trialEvaluationsRemaining,
+      propertyInput: parsed.data,
+      evaluationResult: result,
     })
 
-    await publishEvaluationJob(job.id)
+    const gamification = await processEvaluationGamification(userId)
 
-    return res.status(202).json({
-      jobId: job.id,
-      status: job.status,
-      message:
-        'Solicitação recebida. Você será notificado quando a avaliação estiver pronta.',
-      trialEvaluationsRemaining,
+    return res.json({
+      evaluation: result,
+      evaluationId,
+      feedbackModeEnabled,
+      trialEvaluationsRemaining:
+        gamification.trialEvaluationsRemaining ?? trialEvaluationsRemaining,
+      gamification: {
+        level: gamification.level,
+        monthlyGoalCompleted: gamification.monthlyGoalCompleted,
+        achievementTrialReward: gamification.achievementTrialReward,
+        trialEvaluationsRemaining: gamification.trialEvaluationsRemaining,
+        newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
+      },
     })
   } catch (error) {
     await refundTrialEvaluation(userId)
-    console.error('Erro ao enfileirar avaliação:', error)
+    console.error('Erro na avaliação:', error)
     const message =
-      error instanceof Error ? error.message : 'Erro ao enfileirar avaliação.'
+      error instanceof Error ? error.message : 'Erro ao processar avaliação.'
     return res.status(500).json({ message })
   }
 })
