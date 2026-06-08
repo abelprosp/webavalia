@@ -34,6 +34,11 @@ export const config = {
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? '',
     fromName: process.env.SMTP_FROM_NAME ?? 'Avalia Imob',
   },
+  whatsapp: {
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? '',
+    webhookSecret: process.env.WHATSAPP_WEBHOOK_SECRET ?? '',
+    appSecret: process.env.WHATSAPP_APP_SECRET ?? '',
+  },
 }
 
 const weakSecrets = new Set([

@@ -11,7 +11,13 @@ import evaluationRoutes from './routes/evaluation.js'
 import gamificationRoutes from './routes/gamification.js'
 import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
+import leadsRoutes from './routes/leads.js'
 import { abacatePayWebhookHandler } from './routes/payment-webhook.js'
+import {
+  whatsappLeadsWebhookHandler,
+  whatsappMetaWebhookHandler,
+  whatsappVerifyHandler,
+} from './routes/whatsapp-webhook.js'
 import { webhookRateLimiter } from './middleware/rate-limit.js'
 
 const app = express()
@@ -72,6 +78,31 @@ app.post(
   abacatePayWebhookHandler
 )
 
+app.get('/api/webhooks/whatsapp', whatsappVerifyHandler)
+app.post(
+  '/api/webhooks/whatsapp',
+  webhookRateLimiter,
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  whatsappMetaWebhookHandler
+)
+app.post(
+  '/api/webhooks/whatsapp/leads',
+  webhookRateLimiter,
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  (req, res, next) => {
+    try {
+      req.body =
+        req.body instanceof Buffer
+          ? JSON.parse(req.body.toString('utf8'))
+          : req.body
+      next()
+    } catch {
+      res.status(400).json({ message: 'Payload inválido.' })
+    }
+  },
+  whatsappLeadsWebhookHandler
+)
+
 app.use(express.json({ limit: '8mb' }))
 
 app.get('/api/health', (_req, res) => {
@@ -85,6 +116,7 @@ app.use('/api/evaluation', evaluationRoutes)
 app.use('/api/gamification', gamificationRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/payments', paymentRoutes)
+app.use('/api/leads', leadsRoutes)
 
 if (config.isProduction) {
   const frontendDist = path.join(__dirname, '../../dist')

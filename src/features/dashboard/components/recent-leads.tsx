@@ -1,18 +1,32 @@
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Inbox, Lock, MapPin } from 'lucide-react'
+import { Inbox, Lock, MapPin, Loader2 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { leads, maskContact } from '@/features/leads/data/leads'
-import { useLeadsStore } from '@/stores/leads-store'
+import { fetchLeads, type LeadItem } from '@/lib/leads-api'
 
 export function RecentLeads() {
-  const isUnlocked = useLeadsStore((s) => s.isUnlocked)
-  const recentLeads = [...leads]
-    .sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime())
-    .slice(0, 5)
+  const [leads, setLeads] = useState<LeadItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  if (recentLeads.length === 0) {
+  useEffect(() => {
+    fetchLeads()
+      .then((data) => setLeads(data.slice(0, 5)))
+      .catch(() => setLeads([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+        <Loader2 className='size-4 animate-spin' />
+        <span className='text-sm'>Carregando...</span>
+      </div>
+    )
+  }
+
+  if (leads.length === 0) {
     return (
       <div className='flex flex-col items-center gap-3 py-8 text-center'>
         <Inbox className='size-8 text-muted-foreground' />
@@ -28,8 +42,7 @@ export function RecentLeads() {
 
   return (
     <div className='space-y-6'>
-      {recentLeads.map((lead) => {
-        const unlocked = isUnlocked(lead.id)
+      {leads.map((lead) => {
         const initials = lead.name
           .split(' ')
           .map((n) => n[0])
@@ -43,9 +56,7 @@ export function RecentLeads() {
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className='flex-1 space-y-1'>
-              <p className='text-sm leading-none font-medium'>
-                {unlocked ? lead.name : maskContact(lead.name)}
-              </p>
+              <p className='text-sm leading-none font-medium'>{lead.name}</p>
               <div className='flex items-center gap-2 text-xs text-muted-foreground'>
                 <MapPin className='size-3' />
                 {lead.location}
@@ -53,7 +64,7 @@ export function RecentLeads() {
             </div>
             <div className='flex items-center gap-2'>
               <Badge variant='outline'>{lead.interest}</Badge>
-              {!unlocked && (
+              {!lead.unlocked && (
                 <Button variant='ghost' size='icon' className='size-8' asChild>
                   <Link to='/leads'>
                     <Lock className='size-3' />

@@ -1,0 +1,365 @@
+{
+  "name": "Avalia - Avaliação WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "avalia-imovel",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "avalia-imovel-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const data = $json.body;\n\nconst message = data.msg?.text?.body;\nlet phone = data.msg?.from;\nconst contactName = data.msg?.pushName || data.contact?.name || '';\n\nif (!message || !phone) {\n  return [{ ignore: true }];\n}\n\nphone = phone.replace(/\\D/g, '');\nif (!phone.startsWith('55')) {\n  phone = '55' + phone;\n}\n\nreturn [{\n  phone,\n  contactName,\n  chatInput: message,\n  sessionId: phone,\n  ignore: false\n}];"
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Format Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [288, 32]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ignore-check",
+              "leftValue": "={{ $json.ignore }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Mensagem válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 32]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [720, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "CONFIGURE_OPENAI_CREDENTIAL",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.phone }}"
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [880, 520]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Você é a assistente de avaliação imobiliária da **Avalia Imob**, responsável por conduzir avaliações de imóveis pelo WhatsApp de forma humana, objetiva e profissional.\n\n### OBJETIVO\nColetar os dados do imóvel, estimar valor de mercado com base nas informações fornecidas e registrar a avaliação na plataforma Avalia para que corretores parceiros possam acompanhar o lead.\n\n### IDENTIDADE E TOM\n- Apresente-se como assistente da Avalia Imob na primeira mensagem da conversa.\n- Tom profissional, consultivo, cordial e objetivo.\n- Sem emojis.\n- Mensagens curtas (máximo 3 parágrafos).\n- Uma pergunta por vez.\n- Nunca soar robótica.\n\n### ABERTURA (apenas na 1ª mensagem da conversa)\n\"Olá! Sou a assistente de avaliação da Avalia Imob. Posso estimar o valor do seu imóvel com base nas informações que você me passar. Para começar, qual é o endereço ou bairro/cidade do imóvel?\"\n\n### DADOS A COLETAR (na ordem, pulando o que o cliente já informou)\n1. Endereço ou localização (bairro + cidade)\n2. Tipo do imóvel (apartamento, casa, terreno, comercial, etc.)\n3. Área útil em m²\n4. Quartos, banheiros e vagas de garagem\n5. Ano de construção (ou \"novo\")\n6. Estado de conservação (novo, excelente, bom, regular, precisa reforma)\n7. Padrão do imóvel (padrão, alto padrão, luxo)\n8. Preço pedido pelo proprietário (se souber)\n9. Nome do proprietário/interessado\n10. Finalidade: venda, aluguel ou avaliação para conhecimento\n\n### QUANDO GERAR A AVALIAÇÃO\nQuando tiver no mínimo: localização, tipo, área, quartos e conservação — calcule:\n- Valor estimado (R$)\n- Valor por m²\n- Score de 0 a 100\n- Label do score (ex: \"Bom investimento\", \"Preço justo\", \"Acima do mercado\")\n- 3 a 5 insights objetivos sobre o imóvel e mercado\n\n### RESPOSTA AO CLIENTE\nEnvie um resumo amigável com os valores estimados e insights principais.\nAo final da mensagem, inclua OBRIGATORIAMENTE um bloco técnico oculto no formato exato abaixo (o cliente não verá esse bloco — ele será removido antes do envio):\n\n```avalia\n{\n  \"name\": \"Nome do cliente\",\n  \"interest\": \"Venda ou Aluguel\",\n  \"propertyType\": \"apartamento\",\n  \"location\": \"Endereço completo ou bairro + cidade\",\n  \"propertyInput\": {\n    \"address\": \"endereço\",\n    \"propertyType\": \"apartamento\",\n    \"area\": 70,\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"parking\": 1,\n    \"yearBuilt\": 2015,\n    \"conservation\": \"bom\",\n    \"standardLevel\": \"padrao\",\n    \"furnishing\": \"sem\",\n    \"finishLevel\": \"padrao\",\n    \"condominiumLevel\": \"nao-aplica\",\n    \"askingPrice\": 500000\n  },\n  \"evaluationResult\": {\n    \"estimatedValue\": 480000,\n    \"valuePerSqm\": 6857,\n    \"score\": 75,\n    \"scoreLabel\": \"Bom negócio\",\n    \"aiInsights\": [\"insight 1\", \"insight 2\", \"insight 3\"],\n    \"marketAnalysis\": {\n      \"summary\": \"Resumo do mercado local\"\n    }\n  }\n}\n```\n\n### REGRAS DO BLOCO ```avalia\n- Use somente JSON válido dentro do bloco.\n- propertyType deve ser um destes valores: apartamento, casa, casa-condominio, cobertura, studio, kitnet, loft, terreno, comercial, loja, galpao.\n- conservation: novo, excelente, bom, regular, reforma.\n- standardLevel: padrao, alto-padrao, luxo.\n- furnishing: sem, semi, completo.\n- finishLevel: basico, padrao, alto-padrao, luxo.\n- Inclua o bloco SOMENTE quando a avaliação estiver completa, nunca em mensagens intermediárias de coleta de dados.\n\n### NUNCA FAZER\n- Inventar dados que o cliente não informou (use valores padrão razoáveis apenas para campos opcionais não informados).\n- Enviar o bloco ```avalia em mensagens de perguntas.\n- Prometer visita presencial ou laudo oficial.\n- Falar de créditos ou planos da plataforma.\n\n### FORA DE ESCOPO\n- Locação de imóveis de terceiros → oriente a buscar imobiliárias locais.\n- Assuntos jurídicos, financiamento ou contratos → sugira consultar um corretor credenciado após o registro na Avalia."
+        }
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Agente Avaliação - Avalia",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [720, 32]
+    },
+    {
+      "parameters": {
+        "functionCode": "const phone = $node['Format Input'].json.phone;\nconst contactName = $node['Format Input'].json.contactName || '';\nconst output = String($json.output || '');\n\nconst marker = /```avalia\\s*([\\s\\S]*?)\\s*```/i;\nconst match = output.match(marker);\n\nlet replyText = output.replace(marker, '').trim();\nlet sendToAvalia = false;\nlet avaliaPayload = null;\n\nif (match) {\n  try {\n    const parsed = JSON.parse(match[1].trim());\n    const eventId = `avalia_${phone}_${Date.now()}`;\n\n    avaliaPayload = {\n      eventId,\n      name: parsed.name || contactName || 'Lead WhatsApp',\n      phone,\n      interest: parsed.interest || 'Avaliação via WhatsApp',\n      propertyType: parsed.propertyType,\n      location: parsed.location || parsed.propertyInput?.address,\n      propertyInput: parsed.propertyInput || null,\n      evaluationResult: parsed.evaluationResult || null\n    };\n\n    sendToAvalia = Boolean(\n      avaliaPayload.location &&\n      avaliaPayload.evaluationResult?.estimatedValue\n    );\n  } catch (error) {\n    sendToAvalia = false;\n  }\n}\n\nreturn [{\n  phone,\n  replyText,\n  sendToAvalia,\n  avaliaPayload\n}];"
+      },
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Extrair Avaliação",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 32]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "avalia-ready",
+              "leftValue": "={{ $json.sendToAvalia }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Avaliação pronta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, 32]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AVALIA_API_URL || 'https://SEU-DOMINIO.railway.app' }}/api/webhooks/whatsapp/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $env.AVALIA_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.avaliaPayload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Enviar para Avalia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, -96]
+    },
+    {
+      "parameters": {
+        "functionCode": "const phone = $node['Format Input'].json.phone;\nconst replyText = $node['Extrair Avaliação'].json.replyText;\n\nreturn [{\n  number: phone,\n  body: replyText,\n  externalKey: 'avalia_' + phone,\n  isClosed: false\n}];"
+      },
+      "id": "a1b2c3d4-0010-4000-8000-000000000010",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1440, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MYCHATBOT_API_URL || 'https://api.prime.mychatbot.com.br/v2/api/external/SEU-UUID' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.MYCHATBOT_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.number }}\",\n  \"body\": {{ $json.body ? JSON.stringify($json.body) : \"\\\"\\\"\" }},\n  \"externalKey\": \"{{ $json.externalKey }}\",\n  \"isClosed\": false\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0011-4000-8000-000000000011",
+      "name": "Send to MyChatbot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1680, 160]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0012-4000-8000-000000000012",
+      "name": "Ignorar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 200]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Input": {
+      "main": [
+        [
+          {
+            "node": "Mensagem válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagem válida?": {
+      "main": [
+        [
+          {
+            "node": "Agente Avaliação - Avalia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignorar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Avaliação - Avalia",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Avaliação - Avalia",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Avaliação - Avalia": {
+      "main": [
+        [
+          {
+            "node": "Extrair Avaliação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Avaliação": {
+      "main": [
+        [
+          {
+            "node": "Avaliação pronta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avaliação pronta?": {
+      "main": [
+        [
+          {
+            "node": "Enviar para Avalia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar para Avalia": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Send to MyChatbot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "avalia-whatsapp-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "avalia-imob-n8n"
+  },
+  "id": "AvaliaWhatsappAvaliacao",
+  "tags": [
+    {
+      "name": "avalia"
+    },
+    {
+      "name": "whatsapp"
+    }
+  ]
+}

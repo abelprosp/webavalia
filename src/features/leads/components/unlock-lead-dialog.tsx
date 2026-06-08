@@ -1,4 +1,6 @@
-import { Lock, User, Phone, MapPin, Coins } from 'lucide-react'
+import { useState } from 'react'
+import { AxiosError } from 'axios'
+import { Lock, User, Phone, MapPin, Coins, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -12,14 +14,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { useCreditsStore } from '@/stores/credits-store'
-import { useLeadsStore } from '@/stores/leads-store'
-import { type Lead } from '../data/schema'
+import { unlockLead, type LeadItem } from '@/lib/leads-api'
 
 type UnlockLeadDialogProps = {
-  lead: Lead | null
+  lead: LeadItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: (lead: LeadItem, leadCredits: number) => void
 }
 
 export function UnlockLeadDialog({
@@ -29,23 +30,30 @@ export function UnlockLeadDialog({
   onSuccess,
 }: UnlockLeadDialogProps) {
   const credits = useCreditsStore((s) => s.credits)
-  const consumeCredits = useCreditsStore((s) => s.consumeCredits)
   const getLeadUnlockCost = useCreditsStore((s) => s.getLeadUnlockCost)
-  const unlockLead = useLeadsStore((s) => s.unlockLead)
+  const [loading, setLoading] = useState(false)
 
   const cost = getLeadUnlockCost()
   const hasCredits = credits >= cost
 
-  function handleUnlock() {
+  async function handleUnlock() {
     if (!lead) return
 
-    if (!consumeCredits(cost)) {
-      toast.error('Créditos insuficientes. Compre mais créditos em Settings.')
-      return
+    setLoading(true)
+    try {
+      const result = await unlockLead(lead.id)
+      onSuccess(result.lead, result.leadCredits)
+    } catch (error) {
+      const message =
+        error instanceof AxiosError
+          ? (error.response?.data as { message?: string })?.message
+          : error instanceof Error
+            ? error.message
+            : undefined
+      toast.error(message ?? 'Erro ao desbloquear lead.')
+    } finally {
+      setLoading(false)
     }
-
-    unlockLead(lead.id)
-    onSuccess()
   }
 
   if (!lead) return null
@@ -68,7 +76,7 @@ export function UnlockLeadDialog({
               <div className='rounded-lg border bg-muted/50 p-4 space-y-2 text-sm'>
                 <div className='flex items-center gap-2'>
                   <User className='size-4 text-muted-foreground' />
-                  <span className='font-medium'>{lead.id}</span>
+                  <span className='font-medium'>{lead.name}</span>
                 </div>
                 <div className='flex items-center gap-2'>
                   <MapPin className='size-4 text-muted-foreground' />
@@ -97,9 +105,19 @@ export function UnlockLeadDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleUnlock} disabled={!hasCredits}>
-            <Phone className='size-4' />
+          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault()
+              void handleUnlock()
+            }}
+            disabled={!hasCredits || loading}
+          >
+            {loading ? (
+              <Loader2 className='size-4 animate-spin' />
+            ) : (
+              <Phone className='size-4' />
+            )}
             Desbloquear e ver contato
           </AlertDialogAction>
         </AlertDialogFooter>

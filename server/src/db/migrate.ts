@@ -197,6 +197,42 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS user_notifications_user_idx
       ON user_notifications (user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS leads (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      external_id VARCHAR(255) UNIQUE,
+      name VARCHAR(255),
+      phone VARCHAR(50) NOT NULL,
+      email VARCHAR(255),
+      property_type VARCHAR(100),
+      interest TEXT,
+      budget VARCHAR(100),
+      location VARCHAR(500),
+      source VARCHAR(50) NOT NULL DEFAULT 'whatsapp',
+      status VARCHAR(20) NOT NULL DEFAULT 'novo',
+      property_input JSONB,
+      evaluation_result JSONB,
+      raw_payload JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS leads_created_idx
+      ON leads (created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS leads_status_idx
+      ON leads (status, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS lead_unlocks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      credits_spent INT NOT NULL DEFAULT 1,
+      unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (lead_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS lead_unlocks_user_idx
+      ON lead_unlocks (user_id, unlocked_at DESC);
   `)
 
   await pool.query(`
