@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { ContentSection } from '../components/content-section'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
@@ -24,6 +26,21 @@ import {
 import { PixPaymentDialog } from './pix-payment-dialog'
 import { getApiErrorMessage } from '@/lib/api-error'
 
+function formatCpfCnpj(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 14)
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+}
+
 export function CreditsSettings() {
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
@@ -35,7 +52,8 @@ export function CreditsSettings() {
 
   const search = useSearch({ from: '/_authenticated/settings/credits' })
   const [pricing, setPricing] = useState<PaymentPricing | null>(null)
-  const [packs, setPacks] = useState(1)
+  const [quantity, setQuantity] = useState(1)
+  const [cpfCnpj, setCpfCnpj] = useState('')
   const [loadingPix, setLoadingPix] = useState(false)
   const [loadingPlan, setLoadingPlan] = useState(false)
   const [pixPayment, setPixPayment] = useState<PixPaymentResponse | null>(null)
@@ -66,10 +84,28 @@ export function CreditsSettings() {
     }
   }
 
+  function getCpfDigits() {
+    return cpfCnpj.replace(/\D/g, '')
+  }
+
+  function validateCpfCnpj() {
+    const digits = getCpfDigits()
+    if (digits.length !== 11 && digits.length !== 14) {
+      toast.error('Informe um CPF ou CNPJ válido para continuar.')
+      return false
+    }
+    return true
+  }
+
   async function handleBuyLeadCredits() {
+    if (!validateCpfCnpj()) return
+
     setLoadingPix(true)
     try {
-      const pix = await createLeadCreditsPix(packs)
+      const pix = await createLeadCreditsPix({
+        packs: quantity,
+        cpfCnpj: getCpfDigits(),
+      })
       setPixPayment(pix)
       setPixDialogOpen(true)
     } catch (error) {
@@ -80,25 +116,27 @@ export function CreditsSettings() {
   }
 
   async function handleBuyPlan() {
+    if (!validateCpfCnpj()) return
+
     setLoadingPlan(true)
     try {
-      const checkout = await createPlanCheckout()
+      const checkout = await createPlanCheckout(getCpfDigits())
       window.location.href = checkout.checkoutUrl
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Erro ao iniciar checkout.'))
+      toast.error(getApiErrorMessage(error, 'Erro ao iniciar assinatura.'))
       setLoadingPlan(false)
     }
   }
 
-  const leadCreditsTotal =
-    (pricing?.leadCreditPack.credits ?? 2) * packs
-  const leadPriceTotal =
-    (pricing?.leadCreditPack.priceCents ?? 799) * packs
+  const creditsPerUnit = pricing?.leadCreditPack.credits ?? 1
+  const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 799
+  const leadCreditsTotal = creditsPerUnit * quantity
+  const leadPriceTotal = pricePerUnit * quantity
 
   return (
     <ContentSection
       title='Créditos'
-      desc='Compre créditos para desbloquear leads e plano de avaliações com IA.'
+      desc='Compre créditos para desbloquear leads e assine o plano de avaliações com IA.'
     >
       <div className='space-y-6'>
         <Card>
@@ -121,15 +159,36 @@ export function CreditsSettings() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados para pagamento</CardTitle>
+            <CardDescription>
+              CPF ou CNPJ exigido pelo Asaas para gerar cobranças e assinaturas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-2 max-w-sm'>
+              <Label htmlFor='cpfCnpj'>CPF ou CNPJ</Label>
+              <Input
+                id='cpfCnpj'
+                inputMode='numeric'
+                placeholder='000.000.000-00'
+                value={cpfCnpj}
+                onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className='border-primary'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Sparkles className='size-5' />
-              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 50 avaliações IA'}
+              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 40 avaliações IA'}
             </CardTitle>
             <CardDescription>
               {pricing?.evaluationPlan.description ??
-                '50 créditos mensais de avaliação com IA'}
+                '40 créditos mensais de avaliação com IA'}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -140,7 +199,7 @@ export function CreditsSettings() {
               </span>
             </div>
             <p className='text-sm text-muted-foreground'>
-              Pagamento via PIX ou cartão de crédito
+              Assinatura recorrente via Asaas — PIX ou cartão de crédito
             </p>
             <Button
               className='w-full sm:w-auto'
@@ -174,11 +233,11 @@ export function CreditsSettings() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {pricing?.leadCreditPack.label ?? '2 créditos de leads'}
+              {pricing?.leadCreditPack.label ?? '1 crédito de lead'}
             </CardTitle>
             <CardDescription>
-              {pricing?.leadCreditPack.priceLabel ?? 'R$ 7,99'} por pacote — pagamento
-              somente via PIX
+              {pricing?.leadCreditPack.priceLabel ?? 'R$ 7,99'} por crédito —
+              pagamento somente via PIX
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -186,19 +245,19 @@ export function CreditsSettings() {
               <Button
                 variant='outline'
                 size='icon'
-                onClick={() => setPacks((p) => Math.max(1, p - 1))}
-                disabled={packs <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
               >
                 <Minus className='size-4' />
               </Button>
               <span className='min-w-24 text-center text-lg font-medium'>
-                {packs} {packs === 1 ? 'pacote' : 'pacotes'}
+                {quantity} {quantity === 1 ? 'crédito' : 'créditos'}
               </span>
               <Button
                 variant='outline'
                 size='icon'
-                onClick={() => setPacks((p) => Math.min(20, p + 1))}
-                disabled={packs >= 20}
+                onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                disabled={quantity >= 20}
               >
                 <Plus className='size-4' />
               </Button>
@@ -206,7 +265,7 @@ export function CreditsSettings() {
 
             <div className='rounded-lg bg-muted/50 p-4 text-sm'>
               <p>
-                <strong>{leadCreditsTotal} créditos</strong> —{' '}
+                <strong>{leadCreditsTotal} crédito(s)</strong> —{' '}
                 {(leadPriceTotal / 100).toLocaleString('pt-BR', {
                   style: 'currency',
                   currency: 'BRL',
@@ -238,8 +297,8 @@ export function CreditsSettings() {
               utiliza 1 crédito para desbloqueá-lo.
             </p>
             <p>
-              As avaliações com IA consomem créditos de avaliação. Compre o
-              plano mensal para receber 50 avaliações por mês.
+              As avaliações com IA consomem créditos de avaliação. Assine o
+              plano mensal para receber 40 avaliações por mês.
             </p>
           </CardContent>
         </Card>

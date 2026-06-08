@@ -22,8 +22,12 @@ export const config = {
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
   serperApiKey: process.env.SERPER_API_KEY ?? '',
   isProduction: process.env.NODE_ENV === 'production',
-  abacatePayApiKey: process.env.ABACATEPAY_API_KEY ?? '',
-  abacatePayWebhookSecret: process.env.ABACATEPAY_WEBHOOK_SECRET ?? '',
+  asaas: {
+    apiKey: process.env.ASAAS_API_KEY ?? '',
+    webhookToken: process.env.ASAAS_WEBHOOK_TOKEN ?? '',
+    environment:
+      process.env.ASAAS_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'production',
+  },
   appUrl: process.env.APP_URL ?? resolveCorsOrigin(),
   smtp: {
     host: process.env.SMTP_HOST ?? 'smtp.hostinger.com',
@@ -57,10 +61,12 @@ if (
   )
 }
 
-if (config.isProduction && !config.abacatePayWebhookSecret) {
-  throw new Error(
-    'ABACATEPAY_WEBHOOK_SECRET ausente. Obrigatório em produção.'
-  )
+if (config.isProduction && !config.asaas.webhookToken) {
+  throw new Error('ASAAS_WEBHOOK_TOKEN ausente. Obrigatório em produção.')
+}
+
+if (config.isProduction && !config.asaas.apiKey) {
+  throw new Error('ASAAS_API_KEY ausente. Obrigatório em produção.')
 }
 
 if (config.isProduction && !process.env.DATABASE_URL) {

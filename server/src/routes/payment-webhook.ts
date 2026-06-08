@@ -1,43 +1,28 @@
 import type { Request, Response } from 'express'
-import { handleWebhookPayload } from '../services/payment-service.js'
-import {
-  verifyWebhookSecret,
-  verifyWebhookSignature,
-} from '../services/abacatepay-service.js'
+import { handleAsaasWebhookPayload } from '../services/payment-service.js'
+import { verifyAsaasWebhookToken } from '../services/asaas-service.js'
 
-export async function abacatePayWebhookHandler(req: Request, res: Response) {
-  const rawBody =
-    req.body instanceof Buffer
-      ? req.body.toString('utf8')
-      : typeof req.body === 'string'
-        ? req.body
-        : ''
-
-  const webhookSecret =
-    req.header('X-Webhook-Secret') ??
-    (typeof req.query.webhookSecret === 'string'
-      ? req.query.webhookSecret
+export async function asaasWebhookHandler(req: Request, res: Response) {
+  const token =
+    req.header('asaas-access-token') ??
+    (typeof req.query.access_token === 'string'
+      ? req.query.access_token
       : undefined)
 
-  if (!verifyWebhookSecret(webhookSecret)) {
+  if (!verifyAsaasWebhookToken(token)) {
     return res.status(401).json({ message: 'Webhook não autorizado.' })
   }
 
-  const signature = req.header('X-Webhook-Signature')
-  if (!verifyWebhookSignature(rawBody, signature ?? undefined)) {
-    return res.status(401).json({ message: 'Assinatura inválida.' })
-  }
-
-  let payload: {
+  const payload = req.body as {
     id?: string
     event?: string
-    data?: Record<string, unknown>
-  }
-
-  try {
-    payload = JSON.parse(rawBody)
-  } catch {
-    return res.status(400).json({ message: 'Payload inválido.' })
+    payment?: {
+      id: string
+      status: string
+      externalReference?: string | null
+      subscription?: string | null
+      value?: number
+    }
   }
 
   if (!payload.id || !payload.event) {
@@ -45,13 +30,10 @@ export async function abacatePayWebhookHandler(req: Request, res: Response) {
   }
 
   try {
-    const result = await handleWebhookPayload({
+    const result = await handleAsaasWebhookPayload({
       id: payload.id,
       event: payload.event,
-      data: (payload.data ?? {}) as {
-        transparent?: { externalId?: string | null; status?: string }
-        checkout?: { externalId?: string | null; status?: string }
-      },
+      payment: payload.payment,
     })
 
     if (result.reason === 'duplicate') {
@@ -60,7 +42,7 @@ export async function abacatePayWebhookHandler(req: Request, res: Response) {
 
     return res.status(200).json({ ok: true, ...result })
   } catch (error) {
-    console.error('Erro no webhook AbacatePay:', error)
+    console.error('Erro no webhook Asaas:', error)
     return res.status(500).json({ message: 'Erro ao processar webhook.' })
   }
 }

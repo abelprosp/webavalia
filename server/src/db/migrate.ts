@@ -39,6 +39,12 @@ async function migrate() {
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
 
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS asaas_customer_id VARCHAR(255);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS asaas_subscription_id VARCHAR(255);
+
     CREATE TABLE IF NOT EXISTS email_verification_tokens (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       token_hash VARCHAR(64) NOT NULL UNIQUE,

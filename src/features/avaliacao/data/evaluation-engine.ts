@@ -49,6 +49,57 @@ export type MasterPlanAnalysis = {
   summary: string
 }
 
+export type NbrHomogenizationFactor = {
+  id: string
+  label: string
+  value: number
+  justification: string
+}
+
+export type NbrHomogenizedComparable = {
+  title: string
+  source: string
+  link?: string
+  declaredPrice: string
+  area?: string
+  areaSqm?: number | null
+  unitPriceSqm?: number | null
+  factors: NbrHomogenizationFactor[]
+  homogenizedUnitPriceSqm: number | null
+  weight: number
+}
+
+export type Nbr14653Analysis = {
+  standard: string
+  purpose: string
+  referenceDate: string
+  specificationGrade: 'I' | 'II' | 'III'
+  specificationGradeLabel: string
+  maxDeviationPercent: number
+  specificationDescription: string
+  primaryMethod: {
+    id: string
+    name: string
+    justification: string
+  }
+  complementaryMethods: Array<{
+    id: string
+    name: string
+    justification: string
+    estimatedValue?: number | null
+  }>
+  homogenizedComparables: NbrHomogenizedComparable[]
+  calculationMemory: {
+    steps: string[]
+    homogenizedAveragePriceSqm: number | null
+    adjustmentsApplied: string[]
+    finalValue: number
+    valuePerSqm: number
+  }
+  limitations: string[]
+  disclaimer: string
+}
+
 export type EvaluationResult = {
   estimatedValue: number
   valuePerSqm: number
@@ -58,6 +109,7 @@ export type EvaluationResult = {
   aiInsights: string[]
   marketAnalysis: MarketAnalysis
   masterPlanAnalysis: MasterPlanAnalysis
+  nbr14653?: Nbr14653Analysis
   photoPreviews: string[]
   photoCount: number
   evaluatedAt: Date

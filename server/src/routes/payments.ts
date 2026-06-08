@@ -19,10 +19,21 @@ router.get('/pricing', (_req, res) => {
 
 router.use(requireAuth, paymentRateLimiter)
 
+const cpfCnpjSchema = z
+  .string()
+  .trim()
+  .min(11, 'Informe um CPF ou CNPJ válido.')
+  .max(18)
+  .transform((value) => value.replace(/\D/g, ''))
+  .refine((value) => value.length === 11 || value.length === 14, {
+    message: 'CPF ou CNPJ inválido.',
+  })
+
 router.post('/credits/pix', async (req: AuthRequest, res) => {
   const parsed = z
     .object({
       packs: z.number().int().min(1).max(20).optional(),
+      cpfCnpj: cpfCnpjSchema,
     })
     .safeParse(req.body)
 
@@ -47,6 +58,7 @@ router.post('/credits/pix', async (req: AuthRequest, res) => {
       userId: user.id,
       userName: user.name,
       userEmail: user.email,
+      cpfCnpj: parsed.data.cpfCnpj,
       packs: parsed.data.packs,
     })
 
@@ -71,9 +83,22 @@ router.get('/credits/pix/:orderId/status', async (req: AuthRequest, res) => {
 })
 
 router.post('/plan/checkout', async (req: AuthRequest, res) => {
+  const parsed = z
+    .object({
+      cpfCnpj: cpfCnpjSchema,
+    })
+    .safeParse(req.body)
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
   try {
     const checkout = await createEvaluationPlanCheckout({
       userId: req.user!.id,
+      cpfCnpj: parsed.data.cpfCnpj,
     })
     return res.status(201).json(checkout)
   } catch (error) {

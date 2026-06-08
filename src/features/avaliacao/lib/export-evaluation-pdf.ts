@@ -247,6 +247,47 @@ export async function exportEvaluationPdf({
   )
   y = addParagraph(doc, result.masterPlanAnalysis.summary, y)
 
+  if (result.nbr14653) {
+    const nbr = result.nbr14653
+    y = addSectionTitle(doc, 'Metodologia ABNT NBR 14653', y)
+    y = addParagraph(doc, `${nbr.standard}`, y)
+    y = addParagraph(doc, `Objetivo: ${nbr.purpose}`, y)
+    y = addParagraph(
+      doc,
+      `${nbr.specificationGradeLabel} — tolerância máxima de ±${nbr.maxDeviationPercent}%`,
+      y
+    )
+    y = addParagraph(
+      doc,
+      `Método principal: ${nbr.primaryMethod.name}. ${nbr.primaryMethod.justification}`,
+      y
+    )
+    if (nbr.homogenizedComparables.length > 0) {
+      y = addParagraph(doc, 'Comparáveis homogeneizados:', y, { bold: true })
+      for (const item of nbr.homogenizedComparables) {
+        const factors = item.factors
+          .map((f) => `${f.label} ×${f.value.toFixed(3)}`)
+          .join('; ')
+        y = addParagraph(
+          doc,
+          `${item.title} — ${item.declaredPrice}${item.homogenizedUnitPriceSqm != null ? ` → ${formatCurrency(item.homogenizedUnitPriceSqm)}/m²` : ''}. Fatores: ${factors}`,
+          y
+        )
+      }
+    }
+    y = addParagraph(doc, 'Memória de cálculo:', y, { bold: true })
+    y = addBulletList(doc, nbr.calculationMemory.steps, y)
+    y = addParagraph(
+      doc,
+      `Valor de mercado (NBR 14653): ${formatCurrency(nbr.calculationMemory.finalValue)} (${formatCurrency(nbr.calculationMemory.valuePerSqm)}/m²)`,
+      y,
+      { bold: true }
+    )
+    y = addParagraph(doc, 'Limitações:', y, { bold: true })
+    y = addBulletList(doc, nbr.limitations, y)
+    y = addParagraph(doc, nbr.disclaimer, y)
+  }
+
   y = addSectionTitle(doc, 'Pontuação por critério', y)
   for (const criterion of result.criteriaScores) {
     y = addParagraph(doc, `${criterion.label}: ${criterion.score}/5`, y)

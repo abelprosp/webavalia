@@ -39,6 +39,7 @@ import {
   type EvaluationResult,
 } from '../data/evaluation-engine'
 import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
+import { Nbr14653Panel } from './nbr-14653-panel'
 
 type EvaluationResultPanelProps = {
   result: EvaluationResult
@@ -285,6 +286,13 @@ export function EvaluationResultPanel({
             </p>
           </div>
         </div>
+
+        {result.nbr14653 && (
+          <>
+            <Separator />
+            <Nbr14653Panel nbr={result.nbr14653} />
+          </>
+        )}
 
         <Separator />
 

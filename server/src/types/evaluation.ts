@@ -49,7 +49,61 @@ export type MasterPlanAnalysis = {
   summary: string
 }
 
-export type EvaluationAIResponse = {
+export type NbrHomogenizationFactor = {
+  id: string
+  label: string
+  value: number
+  justification: string
+}
+
+export type NbrHomogenizedComparable = {
+  title: string
+  source: string
+  link?: string
+  declaredPrice: string
+  area?: string
+  areaSqm?: number | null
+  unitPriceSqm?: number | null
+  factors: NbrHomogenizationFactor[]
+  homogenizedUnitPriceSqm: number | null
+  weight: number
+}
+
+export type Nbr14653Draft = {
+  purpose: string
+  primaryMethod: {
+    id: string
+    name: string
+    justification: string
+  }
+  complementaryMethods: Array<{
+    id: string
+    name: string
+    justification: string
+    estimatedValue?: number | null
+  }>
+  homogenizedComparables: NbrHomogenizedComparable[]
+  calculationMemory: {
+    steps: string[]
+    homogenizedAveragePriceSqm: number | null
+    adjustmentsApplied: string[]
+    finalValue: number
+    valuePerSqm: number
+  }
+  limitations: string[]
+  disclaimer: string
+}
+
+export type Nbr14653Analysis = Nbr14653Draft & {
+  standard: string
+  referenceDate: string
+  specificationGrade: 'I' | 'II' | 'III'
+  specificationGradeLabel: string
+  maxDeviationPercent: number
+  specificationDescription: string
+}
+
+type EvaluationAIBase = {
   estimatedValue: number
   valuePerSqm: number
   score: number
@@ -63,4 +117,12 @@ export type EvaluationAIResponse = {
   aiInsights: string[]
   marketAnalysis: MarketAnalysis
   masterPlanAnalysis: MasterPlanAnalysis
+}
+
+export type EvaluationAIDraftResponse = EvaluationAIBase & {
+  nbr14653: Nbr14653Draft
+}
+
+export type EvaluationAIResponse = EvaluationAIBase & {
+  nbr14653: Nbr14653Analysis
 }

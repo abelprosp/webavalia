@@ -12,7 +12,7 @@ import gamificationRoutes from './routes/gamification.js'
 import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
 import leadsRoutes from './routes/leads.js'
-import { abacatePayWebhookHandler } from './routes/payment-webhook.js'
+import { asaasWebhookHandler } from './routes/payment-webhook.js'
 import {
   whatsappLeadsWebhookHandler,
   whatsappMetaWebhookHandler,
@@ -72,10 +72,10 @@ app.use(
 )
 
 app.post(
-  '/api/payments/webhooks/abacatepay',
+  '/api/payments/webhooks/asaas',
   webhookRateLimiter,
-  express.raw({ type: 'application/json', limit: '256kb' }),
-  abacatePayWebhookHandler
+  express.json({ limit: '256kb' }),
+  asaasWebhookHandler
 )
 
 app.get('/api/webhooks/whatsapp', whatsappVerifyHandler)

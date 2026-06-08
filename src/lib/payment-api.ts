@@ -30,10 +30,11 @@ export type PixPaymentResponse = {
 }
 
 export type PlanCheckoutResponse = {
-  orderId: string
+  orderId: string | null
   checkoutUrl: string
   amountCents: number
   trialEvaluations: number
+  existingSubscription?: boolean
 }
 
 export async function fetchPaymentPricing() {
@@ -41,9 +42,13 @@ export async function fetchPaymentPricing() {
   return data
 }
 
-export async function createLeadCreditsPix(packs = 1) {
+export async function createLeadCreditsPix(input: {
+  packs?: number
+  cpfCnpj: string
+}) {
   const { data } = await api.post<PixPaymentResponse>('/payments/credits/pix', {
-    packs,
+    packs: input.packs,
+    cpfCnpj: input.cpfCnpj,
   })
   return data
 }
@@ -55,9 +60,10 @@ export async function pollLeadCreditsPixStatus(orderId: string) {
   return data
 }
 
-export async function createPlanCheckout() {
+export async function createPlanCheckout(cpfCnpj: string) {
   const { data } = await api.post<PlanCheckoutResponse>(
-    '/payments/plan/checkout'
+    '/payments/plan/checkout',
+    { cpfCnpj }
   )
   return data
 }

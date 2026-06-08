@@ -2,16 +2,16 @@ import { randomUUID } from 'node:crypto'
 import { pool } from '../db/pool.js'
 import { PRICING } from '../constants/pricing.js'
 import {
-  createCheckout,
-  createProduct,
-  createTransparentPix,
-  getCheckoutStatus,
-  getTransparentStatus,
-} from './abacatepay-service.js'
+  createMonthlySubscription,
+  createPixPayment,
+  findOrCreateCustomer,
+  getPayment,
+  getPixQrCode,
+  getSubscriptionPayments,
+  isAsaasPaymentPaid,
+} from './asaas-service.js'
+import { addTrialEvaluations } from './credits-service.js'
 import { config } from '../config.js'
-
-const PLAN_PRODUCT_KEY = 'abacate_plan_product_id'
-const PLAN_EXTERNAL_ID = 'avalia-plano-mensal-50'
 
 type PaymentOrderRow = {
   id: string
@@ -24,49 +24,12 @@ type PaymentOrderRow = {
   external_id: string
 }
 
-async function getSettingValue(key: string): Promise<string | null> {
-  const result = await pool.query<{ value: unknown }>(
-    'SELECT value FROM platform_settings WHERE key = $1',
-    [key]
-  )
-
-  if (!result.rowCount) return null
-
-  const raw = result.rows[0].value
-  if (typeof raw === 'object' && raw !== null && 'productId' in raw) {
-    return String((raw as { productId: string }).productId)
-  }
-
-  return null
-}
-
-async function saveSettingValue(key: string, productId: string) {
-  await pool.query(
-    `INSERT INTO platform_settings (key, value, updated_at)
-     VALUES ($1, $2::jsonb, NOW())
-     ON CONFLICT (key) DO UPDATE
-     SET value = EXCLUDED.value, updated_at = NOW()`,
-    [key, JSON.stringify({ productId })]
-  )
-}
-
-export async function ensurePlanProductId() {
-  const fromEnv = process.env.ABACATEPAY_PLAN_PRODUCT_ID
-  if (fromEnv) return fromEnv
-
-  const cached = await getSettingValue(PLAN_PRODUCT_KEY)
-  if (cached) return cached
-
-  const product = await createProduct({
-    externalId: PLAN_EXTERNAL_ID,
-    name: PRICING.evaluationPlan.label,
-    priceCents: PRICING.evaluationPlan.priceCents,
-    description: PRICING.evaluationPlan.description,
-    cycle: 'MONTHLY',
-  })
-
-  await saveSettingValue(PLAN_PRODUCT_KEY, product.id)
-  return product.id
+type UserPaymentRow = {
+  id: string
+  name: string
+  email: string
+  asaas_customer_id: string | null
+  asaas_subscription_id: string | null
 }
 
 export function getPublicPricing() {
@@ -95,10 +58,20 @@ export function getPublicPricing() {
   }
 }
 
+async function getUserForPayment(userId: string) {
+  const result = await pool.query<UserPaymentRow>(
+    `SELECT id, name, email, asaas_customer_id, asaas_subscription_id
+     FROM users WHERE id = $1`,
+    [userId]
+  )
+  return result.rows[0] ?? null
+}
+
 export async function createLeadCreditsPixOrder(input: {
   userId: string
   userName: string
   userEmail: string
+  cpfCnpj: string
   packs?: number
 }) {
   const packs = Math.min(Math.max(input.packs ?? 1, 1), 20)
@@ -107,6 +80,24 @@ export async function createLeadCreditsPixOrder(input: {
   const amountCents = PRICING.leadCreditPack.priceCents * packs
   const credits = PRICING.leadCreditPack.credits * packs
 
+  const user = await getUserForPayment(input.userId)
+  if (!user) throw new Error('Usuário não encontrado.')
+
+  const customer = await findOrCreateCustomer({
+    userId: input.userId,
+    name: input.userName,
+    email: input.userEmail,
+    cpfCnpj: input.cpfCnpj,
+    existingCustomerId: user.asaas_customer_id,
+  })
+
+  if (!user.asaas_customer_id) {
+    await pool.query(
+      `UPDATE users SET asaas_customer_id = $2, updated_at = NOW() WHERE id = $1`,
+      [input.userId, customer.id]
+    )
+  }
+
   await pool.query(
     `INSERT INTO payment_orders
        (id, user_id, type, status, amount_cents, packs, external_id)
@@ -114,25 +105,18 @@ export async function createLeadCreditsPixOrder(input: {
     [orderId, input.userId, amountCents, packs, externalId]
   )
 
-  const pix = await createTransparentPix({
+  const payment = await createPixPayment({
+    customerId: customer.id,
     amountCents,
-    description: `${credits} créditos de leads — Avalia Imob`,
-    externalId,
-    customer: {
-      name: input.userName,
-      email: input.userEmail,
-    },
-    metadata: {
-      orderId,
-      userId: input.userId,
-      type: 'lead_credits_pix',
-      packs: String(packs),
-    },
+    description: `${credits} crédito(s) de leads — Avalia Imob`,
+    externalReference: externalId,
   })
+
+  const qrCode = await getPixQrCode(payment.id)
 
   await pool.query(
     `UPDATE payment_orders SET abacate_id = $1 WHERE id = $2`,
-    [pix.id, orderId]
+    [payment.id, orderId]
   )
 
   return {
@@ -140,21 +124,46 @@ export async function createLeadCreditsPixOrder(input: {
     externalId,
     credits,
     amountCents,
-    brCode: pix.brCode,
-    brCodeBase64: pix.brCodeBase64,
-    expiresAt: pix.expiresAt,
-    status: pix.status,
+    brCode: qrCode.payload,
+    brCodeBase64: qrCode.encodedImage,
+    expiresAt: qrCode.expirationDate,
+    status: payment.status.toLowerCase(),
   }
 }
 
 export async function createEvaluationPlanCheckout(input: {
   userId: string
+  cpfCnpj: string
 }) {
-  const productId = await ensurePlanProductId()
+  const user = await getUserForPayment(input.userId)
+  if (!user) throw new Error('Usuário não encontrado.')
+
+  if (user.asaas_subscription_id) {
+    const pendingPayment = await getSubscriptionPayments(
+      user.asaas_subscription_id
+    )
+    if (pendingPayment?.invoiceUrl && !isAsaasPaymentPaid(pendingPayment.status)) {
+      return {
+        orderId: null,
+        checkoutUrl: pendingPayment.invoiceUrl,
+        amountCents: PRICING.evaluationPlan.priceCents,
+        trialEvaluations: PRICING.evaluationPlan.trialEvaluations,
+        existingSubscription: true,
+      }
+    }
+  }
+
   const orderId = randomUUID()
   const externalId = `plan-${orderId}`
   const amountCents = PRICING.evaluationPlan.priceCents
-  const returnBase = `${config.appUrl}/settings/credits`
+
+  const customer = await findOrCreateCustomer({
+    userId: input.userId,
+    name: user.name,
+    email: user.email,
+    cpfCnpj: input.cpfCnpj,
+    existingCustomerId: user.asaas_customer_id,
+  })
 
   await pool.query(
     `INSERT INTO payment_orders
@@ -163,29 +172,38 @@ export async function createEvaluationPlanCheckout(input: {
     [orderId, input.userId, amountCents, externalId]
   )
 
-  const checkout = await createCheckout({
-    productId,
-    externalId,
-    methods: ['PIX', 'CARD'],
-    completionUrl: `${returnBase}?payment=success&order=${orderId}`,
-    returnUrl: `${returnBase}?payment=cancelled`,
-    metadata: {
-      orderId,
-      userId: input.userId,
-      type: 'evaluation_plan',
-    },
+  const subscription = await createMonthlySubscription({
+    customerId: customer.id,
+    amountCents,
+    description: PRICING.evaluationPlan.label,
+    externalReference: externalId,
   })
+
+  const firstPayment = await getSubscriptionPayments(subscription.id)
+  if (!firstPayment?.invoiceUrl) {
+    throw new Error('Não foi possível gerar a fatura da assinatura.')
+  }
 
   await pool.query(
     `UPDATE payment_orders SET abacate_id = $1 WHERE id = $2`,
-    [checkout.id, orderId]
+    [subscription.id, orderId]
+  )
+
+  await pool.query(
+    `UPDATE users
+     SET asaas_customer_id = COALESCE(asaas_customer_id, $2),
+         asaas_subscription_id = $3,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [input.userId, customer.id, subscription.id]
   )
 
   return {
     orderId,
-    checkoutUrl: checkout.url,
+    checkoutUrl: firstPayment.invoiceUrl,
     amountCents,
     trialEvaluations: PRICING.evaluationPlan.trialEvaluations,
+    existingSubscription: false,
   }
 }
 
@@ -228,7 +246,7 @@ export async function fulfillOrder(orderId: string) {
         [
           order.user_id,
           credits,
-          `Compra PIX — ${credits} créditos de leads`,
+          `Compra PIX — ${credits} crédito(s) de leads`,
         ]
       )
     } else if (order.type === 'evaluation_plan') {
@@ -267,6 +285,36 @@ export async function fulfillOrder(orderId: string) {
   }
 }
 
+export async function fulfillSubscriptionRenewal(input: {
+  paymentId: string
+  subscriptionId: string
+}) {
+  const isNew = await registerWebhookEvent(
+    `asaas:renewal:${input.paymentId}`,
+    'asaas.subscription_renewal'
+  )
+  if (!isNew) {
+    return { fulfilled: false, reason: 'duplicate' as const }
+  }
+
+  const userResult = await pool.query<{ id: string }>(
+    `SELECT id FROM users WHERE asaas_subscription_id = $1`,
+    [input.subscriptionId]
+  )
+  const user = userResult.rows[0]
+  if (!user) {
+    return { fulfilled: false, reason: 'user_not_found' as const }
+  }
+
+  await addTrialEvaluations(
+    user.id,
+    PRICING.evaluationPlan.trialEvaluations,
+    `Renovação mensal — ${PRICING.evaluationPlan.trialEvaluations} avaliações IA`
+  )
+
+  return { fulfilled: true, userId: user.id }
+}
+
 export async function markOrderPaid(orderId: string) {
   await pool.query(
     `UPDATE payment_orders
@@ -286,8 +334,20 @@ export async function findOrderByExternalId(externalId: string) {
   return result.rows[0] ?? null
 }
 
+export async function findOrderBySubscriptionId(subscriptionId: string) {
+  const result = await pool.query<PaymentOrderRow>(
+    `SELECT id, user_id, type, status, amount_cents, packs, abacate_id, external_id
+     FROM payment_orders
+     WHERE abacate_id = $1 AND type = 'evaluation_plan'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [subscriptionId]
+  )
+  return result.rows[0] ?? null
+}
+
 export async function findOrderById(orderId: string, userId?: string) {
-  const result = await pool.query<PaymentOrderRow & { status: string }>(
+  const result = await pool.query<PaymentOrderRow>(
     userId
       ? `SELECT id, user_id, type, status, amount_cents, packs, abacate_id, external_id
          FROM payment_orders WHERE id = $1 AND user_id = $2`
@@ -302,15 +362,20 @@ async function verifyProviderPayment(order: PaymentOrderRow) {
   if (!order.abacate_id) return false
 
   if (order.type === 'lead_credits_pix') {
-    const transparent = await getTransparentStatus(order.abacate_id)
+    const payment = await getPayment(order.abacate_id)
     return (
-      transparent.status === 'PAID' &&
-      (transparent.amount == null || transparent.amount >= order.amount_cents)
+      isAsaasPaymentPaid(payment.status) &&
+      Math.round(payment.value * 100) >= order.amount_cents
     )
   }
 
-  const checkout = await getCheckoutStatus(order.abacate_id)
-  return checkout.status === 'PAID' && checkout.amount >= order.amount_cents
+  const payments = await getSubscriptionPayments(order.abacate_id)
+  if (!payments) return false
+
+  return (
+    isAsaasPaymentPaid(payments.status) &&
+    Math.round(payments.value * 100) >= order.amount_cents
+  )
 }
 
 export async function syncLeadCreditsPixOrder(orderId: string, userId: string) {
@@ -337,12 +402,9 @@ export async function syncLeadCreditsPixOrder(orderId: string, userId: string) {
     }
   }
 
-  const transparent = order.abacate_id
-    ? await getTransparentStatus(order.abacate_id)
-    : null
-
+  const payment = await getPayment(order.abacate_id)
   return {
-    status: (transparent?.status ?? order.status).toLowerCase() as string,
+    status: payment.status.toLowerCase(),
     order,
   }
 }
@@ -358,46 +420,69 @@ export async function registerWebhookEvent(eventId: string, eventType: string) {
   return Boolean(inserted.rowCount)
 }
 
-export async function handleWebhookPayload(body: {
+export async function handleAsaasWebhookPayload(body: {
   id: string
   event: string
-  data: {
-    transparent?: { externalId?: string | null; status?: string }
-    checkout?: { externalId?: string | null; status?: string }
+  payment?: {
+    id: string
+    status: string
+    externalReference?: string | null
+    subscription?: string | null
+    value?: number
   }
 }) {
-  const isNew = await registerWebhookEvent(body.id, body.event)
+  const isNew = await registerWebhookEvent(`asaas:${body.id}`, body.event)
   if (!isNew) {
     return { processed: false, reason: 'duplicate' as const }
   }
 
-  const externalId =
-    body.data.transparent?.externalId ?? body.data.checkout?.externalId
-
-  if (!externalId) {
-    return { processed: false, reason: 'no_external_id' as const }
-  }
-
-  const order = await findOrderByExternalId(externalId)
-  if (!order) {
-    return { processed: false, reason: 'order_not_found' as const }
+  const payment = body.payment
+  if (!payment?.id) {
+    return { processed: false, reason: 'no_payment' as const }
   }
 
   if (
-    body.event === 'transparent.completed' ||
-    body.event === 'checkout.completed' ||
-    body.event === 'subscription.completed' ||
-    body.event === 'subscription.renewed'
+    body.event !== 'PAYMENT_RECEIVED' &&
+    body.event !== 'PAYMENT_CONFIRMED'
   ) {
-    const paid = await verifyProviderPayment(order)
-    if (!paid) {
-      return { processed: false, reason: 'payment_not_confirmed' as const }
+    return { processed: false, reason: 'ignored_event' as const }
+  }
+
+  if (!isAsaasPaymentPaid(payment.status)) {
+    return { processed: false, reason: 'payment_not_confirmed' as const }
+  }
+
+  if (payment.externalReference?.startsWith('lead-')) {
+    const order = await findOrderByExternalId(payment.externalReference)
+    if (!order) {
+      return { processed: false, reason: 'order_not_found' as const }
     }
 
     await markOrderPaid(order.id)
     await fulfillOrder(order.id)
-    return { processed: true, orderId: order.id }
+    return { processed: true, orderId: order.id, type: 'lead_credits_pix' }
   }
 
-  return { processed: false, reason: 'ignored_event' as const }
+  if (payment.subscription) {
+    const order = await findOrderBySubscriptionId(payment.subscription)
+    if (order && order.status !== 'fulfilled') {
+      await markOrderPaid(order.id)
+      await fulfillOrder(order.id)
+      return { processed: true, orderId: order.id, type: 'evaluation_plan' }
+    }
+
+    const renewal = await fulfillSubscriptionRenewal({
+      paymentId: payment.id,
+      subscriptionId: payment.subscription,
+    })
+    if (renewal.fulfilled) {
+      return {
+        processed: true,
+        type: 'subscription_renewal',
+        userId: renewal.userId,
+      }
+    }
+  }
+
+  return { processed: false, reason: 'unmatched_payment' as const }
 }

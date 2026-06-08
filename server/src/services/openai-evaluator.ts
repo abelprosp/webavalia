@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { config } from '../config.js'
 import type {
-  EvaluationAIResponse,
+  EvaluationAIDraftResponse,
   EvaluationRequest,
   PhotoInput,
 } from '../types/evaluation.js'
@@ -53,6 +53,56 @@ const aiResponseSchema = z.object({
     restrictions: z.array(z.string()),
     developmentPotential: z.string(),
     summary: z.string(),
+  }),
+  nbr14653: z.object({
+    purpose: z.string(),
+    primaryMethod: z.object({
+      id: z.string(),
+      name: z.string(),
+      justification: z.string(),
+    }),
+    complementaryMethods: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          justification: z.string(),
+          estimatedValue: z.number().nullable().optional(),
+        })
+      )
+      .default([]),
+    homogenizedComparables: z
+      .array(
+        z.object({
+          title: z.string(),
+          source: z.string(),
+          link: z.string().optional(),
+          declaredPrice: z.string(),
+          area: z.string().optional(),
+          areaSqm: z.number().nullable().optional(),
+          unitPriceSqm: z.number().nullable().optional(),
+          factors: z.array(
+            z.object({
+              id: z.string(),
+              label: z.string(),
+              value: z.number().min(0.5).max(1.5),
+              justification: z.string(),
+            })
+          ),
+          homogenizedUnitPriceSqm: z.number().nullable(),
+          weight: z.number().min(0).max(1),
+        })
+      )
+      .min(1),
+    calculationMemory: z.object({
+      steps: z.array(z.string()).min(3),
+      homogenizedAveragePriceSqm: z.number().nullable(),
+      adjustmentsApplied: z.array(z.string()),
+      finalValue: z.number(),
+      valuePerSqm: z.number(),
+    }),
+    limitations: z.array(z.string()).min(1),
+    disclaimer: z.string(),
   }),
 })
 
@@ -144,7 +194,7 @@ export async function evaluateWithOpenAI(
   input: EvaluationRequest,
   marketResults: SerperResult[],
   masterPlanResults: SerperResult[]
-): Promise<EvaluationAIResponse> {
+): Promise<EvaluationAIDraftResponse> {
   if (!config.openaiApiKey) {
     throw new Error(
       'OPENAI_API_KEY não configurada. Adicione a chave no arquivo server/.env'
@@ -173,12 +223,21 @@ Dados do imóvel:
 
   const feedbackLearning = await buildFeedbackLearningPrompt()
 
-  const systemPrompt = `Você é um avaliador imobiliário especialista no mercado brasileiro.
-Analise o imóvel com base nos dados informados, nos resultados de pesquisa de mercado (imobiliárias locais) e no Plano Diretor/zoneamento urbano.
-Estime você mesmo as pontuações de cada critério (1 a 5) com base nas informações disponíveis.
-Considere com peso significativo: padrão do imóvel (alto padrão/luxo), nível de acabamento, mobília, condomínio, vista, diferenciais e amenidades — estes fatores devem impactar valor estimado, preço/m² e comparáveis selecionados.
-Para imóveis de alto padrão ou luxo, busque comparáveis equivalentes e aplique prêmio de valorização sobre a média de mercado quando justificado.
-Mobília completa ou semi-mobiliada deve ser considerada no valor final quando relevante para o segmento.
+  const systemPrompt = `Você é um avaliador imobiliário especialista no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
+
+METODOLOGIA OBRIGATÓRIA (NBR 14653):
+1. Objetivo: determinação do valor de mercado do imóvel avaliando.
+2. Método principal: Comparativo Direto de Dados de Mercado (preferencial conforme norma).
+3. Selecione de 3 a 6 imóveis comparáveis reais da pesquisa Serper.
+4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,50 e 1,50) para: localização, área, conservação, padrão, idade, layout, vagas, condomínio, vista e mercado.
+5. Calcule o valor unitário homogeneizado de cada comparável: (preço ÷ área) × produto dos fatores.
+6. Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0).
+7. Valor final = média unitária homogeneizada × área do imóvel avaliando.
+8. Métodos complementares (renda ou evolutivo): inclua somente se aplicável, com justificativa técnica.
+9. Registre memória de cálculo passo a passo e limitações da amostra.
+
+Analise também o Plano Diretor/zoneamento urbano.
+Estime pontuações de critérios (1 a 5). Considere padrão, acabamento, mobília, condomínio, vista e amenidades.
 Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutura:
 {
   "estimatedValue": number,
@@ -206,13 +265,52 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
     "restrictions": ["string"],
     "developmentPotential": "string",
     "summary": "string"
+  },
+  "nbr14653": {
+    "purpose": "Determinação do valor de mercado conforme NBR 14653",
+    "primaryMethod": {
+      "id": "comparativo_direto",
+      "name": "Método Comparativo Direto de Dados de Mercado",
+      "justification": "string — por que este método foi adotado"
+    },
+    "complementaryMethods": [
+      {
+        "id": "renda|evolutivo|custo",
+        "name": "string",
+        "justification": "string",
+        "estimatedValue": number | null
+      }
+    ],
+    "homogenizedComparables": [
+      {
+        "title": "string",
+        "source": "string",
+        "link": "string?",
+        "declaredPrice": "R$ ...",
+        "area": "string?",
+        "areaSqm": number,
+        "unitPriceSqm": number,
+        "factors": [
+          { "id": "location|area|conservation|standard|age|layout|parking|condominium|view|market", "label": "string", "value": 0.95, "justification": "string" }
+        ],
+        "homogenizedUnitPriceSqm": number,
+        "weight": 0.25
+      }
+    ],
+    "calculationMemory": {
+      "steps": ["string — passos da memória de cálculo"],
+      "homogenizedAveragePriceSqm": number,
+      "adjustmentsApplied": ["string — fatores aplicados"],
+      "finalValue": number,
+      "valuePerSqm": number
+    },
+    "limitations": ["string"],
+    "disclaimer": "string — ressalva sobre laudo formal"
   }
 }
 
-Use os resultados Serper para estimar média de preço/m² e listar comparáveis reais.
-Para o Plano Diretor, analise zoneamento, usos permitidos, restrições e potencial de valorização/desenvolvimento.
-Se faltar informação oficial, indique incerteza no texto mas faça a melhor análise possível com os snippets.
-Valores em reais (BRL). Textos em português do Brasil.${feedbackLearning}`
+Os campos estimatedValue e valuePerSqm DEVEM ser consistentes com nbr14653.calculationMemory.
+Use os resultados Serper para comparáveis reais. Valores em reais (BRL). Textos em português do Brasil.${feedbackLearning}`
 
   const userText = `${propertyBlock}
 
