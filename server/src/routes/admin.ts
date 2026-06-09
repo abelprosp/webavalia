@@ -53,6 +53,8 @@ router.get('/stats', async (_req, res) => {
     total_users: string
     total_corretores: string
     total_admins: string
+    total_pf_users: string
+    total_pj_users: string
     total_evaluations_used: string
     total_lead_credits: string
   }>(`
@@ -60,6 +62,8 @@ router.get('/stats', async (_req, res) => {
       COUNT(*)::text AS total_users,
       COUNT(*) FILTER (WHERE role = 'corretor')::text AS total_corretores,
       COUNT(*) FILTER (WHERE role = 'admin')::text AS total_admins,
+      COUNT(*) FILTER (WHERE account_type = 'pf')::text AS total_pf_users,
+      COUNT(*) FILTER (WHERE account_type = 'pj')::text AS total_pj_users,
       COALESCE(SUM(evaluations_used), 0)::text AS total_evaluations_used,
       COALESCE(SUM(lead_credits), 0)::text AS total_lead_credits
     FROM users
@@ -76,6 +80,8 @@ router.get('/stats', async (_req, res) => {
       totalUsers: Number(result.rows[0].total_users),
       totalCorretores: Number(result.rows[0].total_corretores),
       totalAdmins: Number(result.rows[0].total_admins),
+      totalPfUsers: Number(result.rows[0].total_pf_users),
+      totalPjUsers: Number(result.rows[0].total_pj_users),
       totalEvaluationsUsed: Number(result.rows[0].total_evaluations_used),
       totalLeadCredits: Number(result.rows[0].total_lead_credits),
       activePlans: plans.rows[0]?.count ?? 0,
@@ -89,6 +95,7 @@ router.get('/stats', async (_req, res) => {
 router.get('/users', async (req, res) => {
   const search = String(req.query.search ?? '').trim()
   const role = String(req.query.role ?? '').trim()
+  const accountType = String(req.query.accountType ?? '').trim()
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -103,6 +110,11 @@ router.get('/users', async (req, res) => {
   if (role && role !== 'all') {
     params.push(role)
     conditions.push(`role = $${params.length}`)
+  }
+
+  if (accountType && accountType !== 'all') {
+    params.push(accountType)
+    conditions.push(`account_type = $${params.length}`)
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''

@@ -41,11 +41,13 @@ import {
   updateAdminUser,
   type AdminUser,
 } from '@/lib/admin-api'
+import { getAccountTypeLabel } from '@/lib/account-type'
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [accountTypeFilter, setAccountTypeFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<AdminUser | null>(null)
   const [creditAmount, setCreditAmount] = useState('10')
@@ -58,6 +60,8 @@ export function AdminUsersPage() {
       const data = await fetchAdminUsers({
         search: search || undefined,
         role: roleFilter === 'all' ? undefined : roleFilter,
+        accountType:
+          accountTypeFilter === 'all' ? undefined : accountTypeFilter,
       })
       setUsers(data)
     } catch {
@@ -69,7 +73,7 @@ export function AdminUsersPage() {
 
   useEffect(() => {
     loadUsers()
-  }, [roleFilter])
+  }, [roleFilter, accountTypeFilter])
 
   async function handleUpdateRole(user: AdminUser, role: 'admin' | 'corretor') {
     try {
@@ -171,6 +175,19 @@ export function AdminUsersPage() {
                 <SelectItem value='corretor'>Corretor</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={accountTypeFilter}
+              onValueChange={setAccountTypeFilter}
+            >
+              <SelectTrigger className='w-full sm:w-52'>
+                <SelectValue placeholder='Tipo de conta' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todos os tipos</SelectItem>
+                <SelectItem value='pf'>Pessoa física</SelectItem>
+                <SelectItem value='pj'>Imobiliária / Corretor</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant='outline' onClick={loadUsers}>
               Buscar
             </Button>
@@ -187,6 +204,7 @@ export function AdminUsersPage() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>E-mail</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Papel</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Créditos</TableHead>
@@ -199,6 +217,11 @@ export function AdminUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className='font-medium'>{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant='outline'>
+                        {getAccountTypeLabel(user.accountType)}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                         {user.role}

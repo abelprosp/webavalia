@@ -10,6 +10,7 @@ import {
   syncLeadCreditsPixOrder,
 } from '../services/payment-service.js'
 import { paymentRateLimiter } from '../middleware/rate-limit.js'
+import { requireBrokerAccount } from '../middleware/account-type.js'
 
 const router = Router()
 
@@ -29,7 +30,7 @@ const cpfCnpjSchema = z
     message: 'CPF ou CNPJ inválido.',
   })
 
-router.post('/credits/pix', async (req: AuthRequest, res) => {
+router.post('/credits/pix', requireBrokerAccount, async (req: AuthRequest, res) => {
   const parsed = z
     .object({
       packs: z.number().int().min(1).max(20).optional(),

@@ -46,7 +46,7 @@ export function AdminDashboard() {
     {
       title: 'Usuários',
       value: stats.totalUsers,
-      description: `${stats.totalCorretores} corretores · ${stats.totalAdmins} admins`,
+      description: `${stats.totalPfUsers} PF · ${stats.totalPjUsers} PJ · ${stats.totalAdmins} admins`,
       icon: Users,
     },
     {

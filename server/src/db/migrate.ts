@@ -45,6 +45,20 @@ async function migrate() {
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS asaas_subscription_id VARCHAR(255);
 
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS account_type VARCHAR(2) NOT NULL DEFAULT 'pj';
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS document VARCHAR(14);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS trade_name VARCHAR(255);
+
+    CREATE INDEX IF NOT EXISTS users_account_type_idx ON users (account_type);
+
     CREATE TABLE IF NOT EXISTS email_verification_tokens (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       token_hash VARCHAR(64) NOT NULL UNIQUE,

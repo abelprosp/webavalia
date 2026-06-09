@@ -6,11 +6,17 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { registerRequest } from '@/lib/auth-api'
+import { registerRequest, type AccountType } from '@/lib/auth-api'
+import { ACCOUNT_TYPE_OPTIONS } from '@/lib/account-type'
+import {
+  documentDigits,
+  formatDocumentForAccountType,
+} from '@/lib/document'
 import { validatePassword, TRIAL_EVALUATIONS_TOTAL } from '@/lib/password-policy'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 import { AuthHoneypotField } from '../components/auth-honeypot-field'
+import { cn } from '@/lib/utils'
 
 function PageBackdrop() {
   return (
@@ -54,8 +60,8 @@ function SignUpPanel() {
             Criar conta
           </h1>
           <p className='text-sm text-muted-foreground'>
-            Cadastre-se e ganhe {TRIAL_EVALUATIONS_TOTAL} avaliações grátis com
-            IA para testar a plataforma.
+            Escolha o tipo de conta e ganhe {TRIAL_EVALUATIONS_TOTAL} avaliações
+            grátis com IA para testar a plataforma.
           </p>
         </div>
 
@@ -73,7 +79,11 @@ function SignUpPanel() {
 }
 
 function SignUpForm() {
+  const [accountType, setAccountType] = useState<AccountType>('pf')
   const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [tradeName, setTradeName] = useState('')
+  const [document, setDocument] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -98,13 +108,33 @@ function SignUpForm() {
       return
     }
 
+    const documentValue = documentDigits(document)
+    const expectedLength = accountType === 'pf' ? 11 : 14
+    if (documentValue.length !== expectedLength) {
+      toast.error(
+        accountType === 'pf'
+          ? 'Informe um CPF válido.'
+          : 'Informe um CNPJ válido.'
+      )
+      return
+    }
+
+    if (accountType === 'pj' && !companyName.trim()) {
+      toast.error('Informe a razão social da imobiliária.')
+      return
+    }
+
     setPending(true)
     try {
-      const result = await registerRequest(
-        name.trim(),
-        email.trim(),
-        password
-      )
+      const result = await registerRequest({
+        accountType,
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        document: documentValue,
+        companyName: accountType === 'pj' ? companyName.trim() : undefined,
+        tradeName: accountType === 'pj' ? tradeName.trim() || undefined : undefined,
+      })
 
       if (result.needsEmailVerification) {
         toast.success(
@@ -140,17 +170,90 @@ function SignUpForm() {
   return (
     <form onSubmit={onSubmit} className='mt-8 flex flex-col gap-4'>
       <AuthHoneypotField />
+
+      <div className='space-y-2'>
+        <Label>Tipo de conta</Label>
+        <div className='grid gap-3 sm:grid-cols-2'>
+          {ACCOUNT_TYPE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type='button'
+              onClick={() => {
+                setAccountType(option.value)
+                setDocument('')
+              }}
+              className={cn(
+                'rounded-xl border p-4 text-left transition-colors',
+                accountType === option.value
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/40'
+              )}
+            >
+              <p className='font-medium'>{option.label}</p>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                {option.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {accountType === 'pj' && (
+        <>
+          <div className='space-y-2'>
+            <Label htmlFor='signup-company'>
+              Razão social <span className='text-muted-foreground'>*</span>
+            </Label>
+            <Input
+              id='signup-company'
+              required
+              placeholder='Imobiliária Exemplo Ltda'
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='signup-trade'>Nome fantasia</Label>
+            <Input
+              id='signup-trade'
+              placeholder='Opcional'
+              value={tradeName}
+              onChange={(e) => setTradeName(e.target.value)}
+            />
+          </div>
+        </>
+      )}
+
       <div className='space-y-2'>
         <Label htmlFor='signup-name'>
-          Nome <span className='text-muted-foreground'>*</span>
+          {accountType === 'pj' ? 'Nome do responsável' : 'Nome completo'}{' '}
+          <span className='text-muted-foreground'>*</span>
         </Label>
         <Input
           id='signup-name'
           required
-          placeholder='Seu nome'
+          placeholder={accountType === 'pj' ? 'Corretor responsável' : 'Seu nome'}
           autoComplete='name'
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+
+      <div className='space-y-2'>
+        <Label htmlFor='signup-document'>
+          {accountType === 'pf' ? 'CPF' : 'CNPJ'}{' '}
+          <span className='text-muted-foreground'>*</span>
+        </Label>
+        <Input
+          id='signup-document'
+          required
+          inputMode='numeric'
+          placeholder={accountType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00'}
+          value={document}
+          onChange={(e) =>
+            setDocument(formatDocumentForAccountType(accountType, e.target.value))
+          }
         />
       </div>
 

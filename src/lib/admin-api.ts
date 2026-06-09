@@ -30,6 +30,8 @@ export type AdminStats = {
   totalUsers: number
   totalCorretores: number
   totalAdmins: number
+  totalPfUsers: number
+  totalPjUsers: number
   totalEvaluationsUsed: number
   totalLeadCredits: number
   activePlans: number
@@ -57,6 +59,7 @@ export async function fetchAdminStats() {
 export async function fetchAdminUsers(params?: {
   search?: string
   role?: string
+  accountType?: string
 }) {
   const { data } = await api.get<{ users: AdminUser[] }>('/admin/users', {
     params,

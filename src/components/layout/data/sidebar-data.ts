@@ -15,9 +15,9 @@ import {
   CreditCard,
   Settings2,
 } from 'lucide-react'
-import { isAdmin } from '@/lib/auth-api'
+import { isAdmin, isBrokerAccount } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
-import { type NavGroup, type SidebarData } from '../types'
+import { type NavGroup, type NavItem, type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
@@ -36,32 +36,41 @@ export const sidebarData: SidebarData = {
 }
 
 export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
+  const broker = isBrokerAccount(user)
+
+  const platformItems: NavItem[] = [
+    {
+      title: 'Dashboard',
+      url: '/',
+      icon: LayoutDashboard,
+    },
+    {
+      title: 'Avaliação de Imóveis',
+      url: '/avaliacao',
+      icon: Home,
+    },
+  ]
+
+  if (broker) {
+    platformItems.push(
+      {
+        title: 'Leads',
+        url: '/leads',
+        icon: Users,
+        badge: 'Em breve',
+      },
+      {
+        title: 'CRM',
+        url: '/crm',
+        icon: Contact,
+      }
+    )
+  }
+
   const groups = [
     {
       title: 'Plataforma',
-      items: [
-        {
-          title: 'Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'Avaliação de Imóveis',
-          url: '/avaliacao',
-          icon: Home,
-        },
-        {
-          title: 'Leads',
-          url: '/leads',
-          icon: Users,
-          badge: 'Em breve',
-        },
-        {
-          title: 'CRM',
-          url: '/crm',
-          icon: Contact,
-        },
-      ],
+      items: platformItems,
     },
     {
       title: 'Configurações',

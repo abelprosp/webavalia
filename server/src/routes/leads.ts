@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { requireBrokerAccount } from '../middleware/account-type.js'
 import {
   getLeadForUser,
   listLeadsForUser,
@@ -10,16 +11,18 @@ import {
 
 const router = Router()
 
+router.use(requireAuth, requireBrokerAccount)
+
 const statusSchema = z.object({
   status: z.enum(['novo', 'contatado']),
 })
 
-router.get('/', requireAuth, async (req: AuthRequest, res) => {
+router.get('/', async (req: AuthRequest, res) => {
   const leads = await listLeadsForUser(req.user!.id)
   return res.json({ leads })
 })
 
-router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   const lead = await getLeadForUser(req.user!.id, String(req.params.id))
   if (!lead) {
     return res.status(404).json({ message: 'Lead não encontrado.' })
@@ -27,7 +30,7 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
   return res.json({ lead })
 })
 
-router.post('/:id/unlock', requireAuth, async (req: AuthRequest, res) => {
+router.post('/:id/unlock', async (req: AuthRequest, res) => {
   try {
     const result = await unlockLeadForUser(req.user!.id, String(req.params.id))
     return res.json(result)
@@ -39,7 +42,7 @@ router.post('/:id/unlock', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
-router.patch('/:id/status', requireAuth, async (req: AuthRequest, res) => {
+router.patch('/:id/status', async (req: AuthRequest, res) => {
   const parsed = statusSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({

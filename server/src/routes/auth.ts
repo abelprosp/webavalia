@@ -47,6 +47,8 @@ import {
   FORGOT_PASSWORD_GENERIC,
   REGISTER_GENERIC_FAILURE,
 } from '../constants/auth-messages.js'
+import { ACCOUNT_TYPES } from '../constants/account-type.js'
+import { validateDocumentForAccountType } from '../utils/document.js'
 
 const router = Router()
 
@@ -54,11 +56,39 @@ const honeypotSchema = z.object({
   _honeypot: z.string().optional(),
 })
 
-const registerSchema = honeypotSchema.extend({
-  name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres.'),
-  email: z.email('E-mail inválido.'),
-  password: passwordSchema,
-})
+const registerSchema = honeypotSchema
+  .extend({
+    accountType: z.enum(ACCOUNT_TYPES, {
+      message: 'Selecione o tipo de conta.',
+    }),
+    name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres.'),
+    email: z.email('E-mail inválido.'),
+    password: passwordSchema,
+    document: z.string().trim().min(11, 'Informe um CPF ou CNPJ válido.'),
+    companyName: z.string().trim().optional(),
+    tradeName: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const documentCheck = validateDocumentForAccountType(
+      data.accountType,
+      data.document
+    )
+    if (!documentCheck.ok) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['document'],
+        message: documentCheck.message,
+      })
+    }
+
+    if (data.accountType === 'pj' && !data.companyName?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['companyName'],
+        message: 'Informe a razão social da imobiliária.',
+      })
+    }
+  })
 
 const loginSchema = honeypotSchema.extend({
   email: z.email('E-mail inválido.'),
@@ -137,9 +167,15 @@ router.post(
       })
     }
 
-    const { name, email, password } = parsed.data
+    const { name, email, password, accountType, document, companyName, tradeName } =
+      parsed.data
     const normalizedEmail = normalizeEmail(email)
     const ipAddress = getClientIp(req)
+    const documentCheck = validateDocumentForAccountType(accountType, document)
+    if (!documentCheck.ok) {
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({ message: documentCheck.message })
+    }
 
     const passwordHash = await hashPassword(password)
 
@@ -191,12 +227,27 @@ router.post(
       'default_lead_credits',
       0
     )
+    const leadCredits = accountType === 'pf' ? 0 : defaultLeadCredits
 
     const result = await pool.query<UserRow>(
-      `INSERT INTO users (name, email, password_hash, role, trial_evaluations_remaining, lead_credits, email_verified)
-       VALUES ($1, $2, $3, 'corretor', $4, $5, false)
+      `INSERT INTO users (
+         name, email, password_hash, role, account_type, document,
+         company_name, trade_name, trial_evaluations_remaining, lead_credits,
+         email_verified
+       )
+       VALUES ($1, $2, $3, 'corretor', $4, $5, $6, $7, $8, $9, false)
        RETURNING ${USER_SELECT_FIELDS}`,
-      [name, normalizedEmail, passwordHash, trialTotal, defaultLeadCredits]
+      [
+        name,
+        normalizedEmail,
+        passwordHash,
+        accountType,
+        documentCheck.digits,
+        accountType === 'pj' ? companyName?.trim() ?? null : null,
+        accountType === 'pj' ? tradeName?.trim() || null : null,
+        trialTotal,
+        leadCredits,
+      ]
     )
 
     const user = result.rows[0]

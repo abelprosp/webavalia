@@ -3,11 +3,14 @@ import { pool } from '../db/pool.js'
 import { AUTH_COOKIE_NAME } from '../utils/auth-cookie.js'
 import { verifyToken } from '../utils/jwt.js'
 
+import type { AccountType } from '../constants/account-type.js'
+
 export type AuthRequest = Request & {
   user?: {
     id: string
     email: string
     role: string
+    accountType: AccountType
   }
 }
 
@@ -15,6 +18,7 @@ type DbUser = {
   id: string
   email: string
   role: string
+  account_type: AccountType
   status: string
   session_version: number
   email_verified: boolean
@@ -48,7 +52,7 @@ export async function requireAuth(
   try {
     const payload = verifyToken(token)
     const result = await pool.query<DbUser>(
-      `SELECT id, email, role, status, session_version, email_verified
+      `SELECT id, email, role, account_type, status, session_version, email_verified
        FROM users WHERE id = $1`,
       [payload.sub]
     )
@@ -85,6 +89,7 @@ export async function requireAuth(
       id: user.id,
       email: user.email,
       role: user.role,
+      accountType: user.account_type,
     }
     return next()
   } catch {

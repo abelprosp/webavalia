@@ -14,6 +14,7 @@ const sampleUser = {
   name: 'User Test',
   email: 'user@example.com',
   role: 'corretor',
+  accountType: 'pf' as const,
   leadCredits: 0,
   trialEvaluationsRemaining: 3,
   trialEvaluationsTotal: 3,

@@ -1,12 +1,18 @@
 import { AxiosError } from 'axios'
 import { api } from './api'
 
+export type AccountType = 'pf' | 'pj'
+
 export type AuthUser = {
   id: string
   name: string
   email: string
   role: 'admin' | 'corretor' | string
   status?: 'active' | 'suspended'
+  accountType: AccountType
+  document?: string | null
+  companyName?: string | null
+  tradeName?: string | null
   emailVerified?: boolean
   leadCredits: number
   trialEvaluationsRemaining: number
@@ -33,15 +39,19 @@ export async function loginRequest(email: string, password: string) {
   return data
 }
 
-export async function registerRequest(
-  name: string,
-  email: string,
+export type RegisterPayload = {
+  accountType: AccountType
+  name: string
+  email: string
   password: string
-) {
+  document: string
+  companyName?: string
+  tradeName?: string
+}
+
+export async function registerRequest(payload: RegisterPayload) {
   const { data } = await api.post<RegisterResponse>('/auth/register', {
-    name,
-    email,
-    password,
+    ...payload,
     _honeypot: '',
   })
   return data
@@ -82,6 +92,10 @@ export async function fetchMe() {
 
 export function isAdmin(user: AuthUser | null | undefined) {
   return user?.role === 'admin'
+}
+
+export function isBrokerAccount(user: AuthUser | null | undefined) {
+  return user?.accountType === 'pj'
 }
 
 export function isEmailNotVerifiedError(error: unknown) {
