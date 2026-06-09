@@ -2,11 +2,13 @@ import { jsPDF } from 'jspdf'
 import {
   conservationStates,
   formatAmenities,
+  getBuildingAgeLabel,
   getCondominiumLevelLabel,
   getFinishLevelLabel,
   getFurnishingLabel,
   getStandardLevelLabel,
   getViewTypeLabel,
+  isLandOnlyPropertyType,
   propertyTypes,
 } from '../data/criteria'
 import {
@@ -163,11 +165,18 @@ export async function exportEvaluationPdf({
   y += 12
 
   y = addSectionTitle(doc, 'Dados do imóvel', y)
+  const landOnly = isLandOnlyPropertyType(property.propertyType)
   const propertyLines = [
+    property.cep ? `CEP: ${property.cep}` : null,
     `Endereço: ${property.address}`,
     `Tipo: ${getPropertyTypeLabel(property.propertyType)}`,
-    `Área: ${property.area} m² · Quartos: ${property.bedrooms} · Banheiros: ${property.bathrooms} · Vagas: ${property.parking}`,
-    `Ano: ${property.yearBuilt} · Conservação: ${getConservationLabel(property.conservation)}`,
+    landOnly
+      ? `Metragem do terreno: ${property.area} m²`
+      : `Área: ${property.area} m² · Quartos: ${property.bedrooms} · Banheiros: ${property.bathrooms} · Vagas: ${property.parking}`,
+    property.lotArea ? `Terreno: ${property.lotArea} m²` : null,
+    !landOnly
+      ? `Idade da construção: ${getBuildingAgeLabel(property.buildingAge)} · Conservação: ${getConservationLabel(property.conservation)}`
+      : `Conservação: ${getConservationLabel(property.conservation)}`,
     `Padrão: ${getStandardLevelLabel(property.standardLevel ?? 'padrao')} · Mobília: ${getFurnishingLabel(property.furnishing ?? 'sem')}`,
     `Acabamento: ${getFinishLevelLabel(property.finishLevel ?? 'padrao')} · Condomínio: ${getCondominiumLevelLabel(property.condominiumLevel ?? 'nao-aplica')}`,
     property.viewType
@@ -178,8 +187,8 @@ export async function exportEvaluationPdf({
       ? `Valor pedido: ${formatCurrency(property.askingPrice)}`
       : 'Valor pedido: não informado',
   ]
-  for (const line of propertyLines) {
-    y = addParagraph(doc, line, y)
+  for (const line of propertyLines.filter(Boolean)) {
+    y = addParagraph(doc, line as string, y)
   }
   if (property.notes) {
     y = addParagraph(doc, `Observações: ${property.notes}`, y)

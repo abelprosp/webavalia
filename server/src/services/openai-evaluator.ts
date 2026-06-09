@@ -7,6 +7,7 @@ import type {
 } from '../types/evaluation.js'
 import type { SerperResult } from './serper.js'
 import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
+import { getBuildingAgeLabel } from '../constants/building-age.js'
 
 const aiResponseSchema = z.object({
   estimatedValue: z.number(),
@@ -203,13 +204,15 @@ export async function evaluateWithOpenAI(
 
   const propertyBlock = `
 Dados do imóvel:
+- CEP: ${input.cep || 'não informado'}
 - Endereço: ${input.address}
 - Tipo: ${input.propertyType}
-- Área: ${input.area} m²
+- Área útil/construída: ${input.area} m²
+- Metragem do terreno: ${input.lotArea ? `${input.lotArea} m²` : 'não informada'}
 - Quartos: ${input.bedrooms}
 - Banheiros: ${input.bathrooms}
 - Vagas: ${input.parking}
-- Ano de construção: ${input.yearBuilt}
+- Idade da construção: ${getBuildingAgeLabel(input.buildingAge)}
 - Conservação: ${input.conservation}
 - Padrão do imóvel: ${STANDARD_LEVEL_LABELS[input.standardLevel] ?? input.standardLevel}
 - Mobília: ${FURNISHING_LABELS[input.furnishing] ?? input.furnishing}

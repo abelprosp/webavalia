@@ -1,11 +1,16 @@
+import type { BuildingAge } from '../constants/building-age.js'
+
 export type EvaluationCriteriaInput = {
+  cep?: string
+  streetNumber?: string
   address: string
   propertyType: string
   area: number
+  lotArea?: number
   bedrooms: number
   bathrooms: number
   parking: number
-  yearBuilt: number
+  buildingAge: BuildingAge
   conservation: string
   standardLevel: 'padrao' | 'alto-padrao' | 'luxo'
   furnishing: 'sem' | 'semi' | 'completo'

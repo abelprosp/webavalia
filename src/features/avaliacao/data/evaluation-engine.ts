@@ -1,16 +1,27 @@
 import { z } from 'zod'
+import { buildingAgeOptions } from './criteria'
+
+const buildingAgeValues = buildingAgeOptions.map((option) => option.value) as [
+  (typeof buildingAgeOptions)[number]['value'],
+  ...(typeof buildingAgeOptions)[number]['value'][],
+]
 
 export const evaluationFormSchema = z.object({
+  cep: z.union([
+    z.literal(''),
+    z.string().regex(/^\d{5}-?\d{3}$/, 'Informe um CEP válido'),
+  ]),
+  streetNumber: z.string().optional(),
   address: z.string().min(5, 'Informe o endereço completo'),
   propertyType: z.string().min(1, 'Selecione o tipo de imóvel'),
   area: z.number().min(10, 'Área mínima de 10 m²'),
+  lotArea: z.number().min(10, 'Metragem mínima de 10 m²').optional(),
   bedrooms: z.number().min(0),
   bathrooms: z.number().min(0),
   parking: z.number().min(0),
-  yearBuilt: z
-    .number()
-    .min(1950, 'Ano inválido')
-    .max(new Date().getFullYear(), 'Ano não pode ser futuro'),
+  buildingAge: z.enum(buildingAgeValues, {
+    message: 'Selecione a idade da construção',
+  }),
   conservation: z.string().min(1, 'Selecione o estado de conservação'),
   standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']),
   furnishing: z.enum(['sem', 'semi', 'completo']),

@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js'
 import adminRoutes from './routes/admin.js'
 import plansRoutes from './routes/plans.js'
 import evaluationRoutes from './routes/evaluation.js'
+import addressRoutes from './routes/address.js'
 import gamificationRoutes from './routes/gamification.js'
 import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
@@ -113,6 +114,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/plans', plansRoutes)
 app.use('/api/evaluation', evaluationRoutes)
+app.use('/api/address', addressRoutes)
 app.use('/api/gamification', gamificationRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/payments', paymentRoutes)

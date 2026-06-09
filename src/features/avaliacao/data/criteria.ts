@@ -59,6 +59,47 @@ export const propertyTypes = propertyTypeGroups.flatMap((group) =>
   group.types.map((type) => ({ ...type }))
 )
 
+export const buildingAgeOptions = [
+  { label: 'Mais de 1 ano', value: 'mais-1' },
+  { label: 'Mais de 5 anos', value: 'mais-5' },
+  { label: 'Mais de 10 anos', value: 'mais-10' },
+  { label: 'Mais de 20 anos', value: 'mais-20' },
+  { label: 'Mais de 30 anos', value: 'mais-30' },
+] as const
+
+export const landOnlyPropertyTypes = [
+  'terreno',
+  'lote',
+  'terreno-industrial',
+  'area-industrial',
+] as const
+
+export const propertiesWithLot = [
+  'casa',
+  'casa-condominio',
+  'sobrado',
+  'chacara',
+  'sitio',
+  'fazenda',
+  'edicula',
+  'barracao',
+  'misto',
+  'galpao',
+  'galpao-industrial',
+] as const
+
+export function isLandOnlyPropertyType(type: string) {
+  return (landOnlyPropertyTypes as readonly string[]).includes(type)
+}
+
+export function showsLotAreaField(type: string) {
+  return (propertiesWithLot as readonly string[]).includes(type)
+}
+
+export function getBuildingAgeLabel(value: string) {
+  return findLabel(buildingAgeOptions, value)
+}
+
 export const conservationStates = [
   { label: 'Novo / Na planta', value: 'novo' },
   { label: 'Excelente', value: 'excelente' },

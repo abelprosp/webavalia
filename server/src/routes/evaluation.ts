@@ -20,6 +20,7 @@ import {
   processFeedbackGamification,
 } from '../services/gamification-service.js'
 import { config } from '../config.js'
+import { BUILDING_AGE_VALUES } from '../constants/building-age.js'
 
 const router = Router()
 
@@ -29,13 +30,16 @@ const photoSchema = z.object({
 })
 
 const evaluationSchema = z.object({
+  cep: z.union([z.literal(''), z.string().regex(/^\d{5}-?\d{3}$/)]).optional(),
+  streetNumber: z.string().optional(),
   address: z.string().min(5),
   propertyType: z.string().min(1),
   area: z.number().min(10),
+  lotArea: z.number().min(10).optional(),
   bedrooms: z.number().min(0),
   bathrooms: z.number().min(0),
   parking: z.number().min(0),
-  yearBuilt: z.number().min(1950).max(new Date().getFullYear()),
+  buildingAge: z.enum(BUILDING_AGE_VALUES),
   conservation: z.string().min(1),
   standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']).default('padrao'),
   furnishing: z.enum(['sem', 'semi', 'completo']).default('sem'),

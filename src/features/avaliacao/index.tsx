@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Sparkles, Home, Loader2, Camera, Gem } from 'lucide-react'
+import { Sparkles, Home, Loader2, Camera, Gem, MapPin } from 'lucide-react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { analyzeProperty } from '@/lib/evaluation-api'
@@ -39,15 +39,24 @@ import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import {
+  buildingAgeOptions,
   condominiumLevels,
   conservationStates,
   finishLevels,
   furnishingOptions,
+  isLandOnlyPropertyType,
   propertyAmenities,
   propertyTypeGroups,
+  showsLotAreaField,
   standardLevels,
   viewTypes,
 } from './data/criteria'
+import {
+  composeAddressFromCep,
+  formatCepInput,
+  lookupCep,
+  type CepLookupResult,
+} from '@/lib/address-api'
 import {
   evaluationFormSchema,
   type EvaluationFormValues,
@@ -63,13 +72,16 @@ import {
 } from './components/photo-upload'
 
 const defaultValues: EvaluationFormValues = {
+  cep: '',
+  streetNumber: '',
   address: '',
   propertyType: 'apartamento',
   area: 70,
+  lotArea: undefined,
   bedrooms: 2,
   bathrooms: 1,
   parking: 1,
-  yearBuilt: 2015,
+  buildingAge: 'mais-10',
   conservation: 'bom',
   standardLevel: 'padrao',
   furnishing: 'sem',
@@ -100,6 +112,8 @@ export function Avaliacao() {
   )
   const photosRef = useRef(photos)
   photosRef.current = photos
+  const [cepLookup, setCepLookup] = useState<CepLookupResult | null>(null)
+  const [cepLoading, setCepLoading] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -111,6 +125,45 @@ export function Avaliacao() {
     resolver: zodResolver(evaluationFormSchema),
     defaultValues,
   })
+
+  const propertyType = form.watch('propertyType')
+  const showLotArea = showsLotAreaField(propertyType)
+  const isLandOnly = isLandOnlyPropertyType(propertyType)
+  const areaLabel = isLandOnly
+    ? 'Metragem do terreno (m²)'
+    : 'Área útil / construída (m²)'
+
+  function updateAddressFromCep(
+    lookup: CepLookupResult,
+    streetNumber?: string
+  ) {
+    form.setValue(
+      'address',
+      composeAddressFromCep({
+        ...lookup,
+        streetNumber: streetNumber?.trim() || undefined,
+      }),
+      { shouldValidate: true }
+    )
+  }
+
+  async function handleCepLookup(cep: string) {
+    const digits = cep.replace(/\D/g, '')
+    if (digits.length !== 8) return
+
+    setCepLoading(true)
+    try {
+      const result = await lookupCep(digits)
+      setCepLookup(result)
+      updateAddressFromCep(result, form.getValues('streetNumber'))
+      toast.success('Endereço preenchido automaticamente.')
+    } catch {
+      setCepLookup(null)
+      toast.error('CEP não encontrado. Verifique e tente novamente.')
+    } finally {
+      setCepLoading(false)
+    }
+  }
 
   async function onSubmit(values: EvaluationFormValues) {
     if (trialRemaining != null && trialRemaining <= 0) {
@@ -209,18 +262,88 @@ export function Avaliacao() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className='space-y-4'>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='cep'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CEP</FormLabel>
+                          <FormControl>
+                            <div className='relative'>
+                              <Input
+                                placeholder='00000-000'
+                                inputMode='numeric'
+                                maxLength={9}
+                                value={field.value ?? ''}
+                                onChange={(e) => {
+                                  const formatted = formatCepInput(e.target.value)
+                                  field.onChange(formatted)
+                                  if (formatted.replace(/\D/g, '').length === 8) {
+                                    void handleCepLookup(formatted)
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (field.value) {
+                                    void handleCepLookup(field.value)
+                                  }
+                                }}
+                              />
+                              {cepLoading && (
+                                <Loader2 className='absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            Preenche o endereço automaticamente
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='streetNumber'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder='Ex: 123'
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e.target.value)
+                                if (cepLookup) {
+                                  updateAddressFromCep(cepLookup, e.target.value)
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name='address'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Endereço</FormLabel>
+                        <FormLabel className='flex items-center gap-2'>
+                          <MapPin className='size-4' />
+                          Endereço
+                        </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder='Rua, número, bairro, cidade'
+                            placeholder='Rua, bairro, cidade — UF'
                             {...field}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Preenchido pelo CEP; você pode ajustar se necessário
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -298,7 +421,7 @@ export function Avaliacao() {
                       name='area'
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Área (m²)</FormLabel>
+                          <FormLabel>{areaLabel}</FormLabel>
                           <FormControl>
                             <Input
                               type='number'
@@ -312,25 +435,66 @@ export function Avaliacao() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name='yearBuilt'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ano de construção</FormLabel>
-                          <FormControl>
-                            <Input
-                              type='number'
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
+                    {showLotArea && (
+                      <FormField
+                        control={form.control}
+                        name='lotArea'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Metragem do terreno (m²)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                placeholder='Ex: 360'
+                                value={field.value ?? ''}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {!isLandOnly && (
+                      <FormField
+                        control={form.control}
+                        name='buildingAge'
+                        render={({ field }) => (
+                          <FormItem className={showLotArea ? 'sm:col-span-2' : ''}>
+                            <FormLabel>Idade da construção</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Selecione' />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {buildingAgeOptions.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
 
                   <div className='grid gap-4 sm:grid-cols-3'>
