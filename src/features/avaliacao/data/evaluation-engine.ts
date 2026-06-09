@@ -52,6 +52,29 @@ export const evaluationFormSchema = z.object({
 
 export type EvaluationFormValues = z.infer<typeof evaluationFormSchema>
 
+export const DEFAULT_EVALUATION_FORM_VALUES: EvaluationFormValues = {
+  cep: '',
+  streetNumber: '',
+  address: '',
+  propertyType: 'apartamento',
+  area: 70,
+  lotArea: undefined,
+  bedrooms: 2,
+  bathrooms: 1,
+  parking: 1,
+  buildingAge: 'mais-10',
+  conservation: 'bom',
+  standardLevel: 'padrao',
+  furnishing: 'sem',
+  finishLevel: 'padrao',
+  condominiumLevel: 'nao-aplica',
+  viewType: undefined,
+  amenities: [],
+  highEndFurnitureValue: undefined,
+  askingPrice: undefined,
+  notes: '',
+}
+
 export type ComparableListing = {
   title: string
   price: string

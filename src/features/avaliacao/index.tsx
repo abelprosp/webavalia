@@ -59,41 +59,22 @@ import {
   type CepLookupResult,
 } from '@/lib/address-api'
 import {
+  DEFAULT_EVALUATION_FORM_VALUES,
   evaluationFormSchema,
   type EvaluationFormValues,
   type EvaluationResult,
 } from './data/evaluation-engine'
+import { isDraftWorthy } from './lib/evaluation-draft'
 import { useEvaluationsStore } from '@/stores/evaluations-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
+import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
 import {
   PhotoUpload,
   type EvaluationPhoto,
 } from './components/photo-upload'
-
-const defaultValues: EvaluationFormValues = {
-  cep: '',
-  streetNumber: '',
-  address: '',
-  propertyType: 'apartamento',
-  area: 70,
-  lotArea: undefined,
-  bedrooms: 2,
-  bathrooms: 1,
-  parking: 1,
-  buildingAge: 'mais-10',
-  conservation: 'bom',
-  standardLevel: 'padrao',
-  furnishing: 'sem',
-  finishLevel: 'padrao',
-  condominiumLevel: 'nao-aplica',
-  viewType: undefined,
-  amenities: [],
-  highEndFurnitureValue: undefined,
-  askingPrice: undefined,
-  notes: '',
-}
 
 export function Avaliacao() {
   const [result, setResult] = useState<EvaluationResult | null>(null)
@@ -112,10 +93,17 @@ export function Avaliacao() {
   const updateTrialRemaining = useAuthStore(
     (s) => s.auth.updateTrialEvaluationsRemaining
   )
+  const userId = useAuthStore((s) => s.auth.user?.id)
+  const saveDraft = useEvaluationDraftStore((s) => s.saveDraft)
+  const getDraftForUser = useEvaluationDraftStore((s) => s.getDraftForUser)
+  const clearDraft = useEvaluationDraftStore((s) => s.clearDraft)
   const photosRef = useRef(photos)
   photosRef.current = photos
+  const draftRestoredRef = useRef(false)
   const [cepLookup, setCepLookup] = useState<CepLookupResult | null>(null)
   const [cepLoading, setCepLoading] = useState(false)
+  const [showDraftBanner, setShowDraftBanner] = useState(false)
+  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -125,8 +113,68 @@ export function Avaliacao() {
 
   const form = useForm<EvaluationFormValues>({
     resolver: zodResolver(evaluationFormSchema),
-    defaultValues,
+    defaultValues: DEFAULT_EVALUATION_FORM_VALUES,
   })
+
+  useEffect(() => {
+    if (!userId || draftRestoredRef.current) return
+
+    const draft = getDraftForUser(userId)
+    if (draft && isDraftWorthy(draft.values)) {
+      form.reset(draft.values)
+      setShowDraftBanner(true)
+      setDraftUpdatedAt(draft.updatedAt)
+      draftRestoredRef.current = true
+    }
+  }, [userId, form, getDraftForUser])
+
+  useEffect(() => {
+    if (!userId) return
+
+    let timeout: ReturnType<typeof setTimeout>
+
+    const persistDraft = (values: EvaluationFormValues) => {
+      if (isDraftWorthy(values)) {
+        saveDraft(userId, values)
+        setDraftUpdatedAt(new Date().toISOString())
+        setShowDraftBanner(true)
+        return
+      }
+
+      clearDraft(userId)
+      setShowDraftBanner(false)
+      setDraftUpdatedAt(null)
+    }
+
+    const subscription = form.watch((values) => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        persistDraft(values as EvaluationFormValues)
+      }, 600)
+    })
+
+    const flushDraft = () => {
+      persistDraft(form.getValues())
+    }
+
+    window.addEventListener('pagehide', flushDraft)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+      window.removeEventListener('pagehide', flushDraft)
+      flushDraft()
+    }
+  }, [userId, form, saveDraft, clearDraft])
+
+  function handleDiscardDraft() {
+    if (userId) clearDraft(userId)
+    form.reset(DEFAULT_EVALUATION_FORM_VALUES)
+    setCepLookup(null)
+    setShowDraftBanner(false)
+    setDraftUpdatedAt(null)
+    toast.success('Rascunho descartado.')
+  }
 
   const propertyType = form.watch('propertyType')
   const selectedAmenities = form.watch('amenities')
@@ -202,6 +250,11 @@ export function Avaliacao() {
       updateTrialRemaining(trialEvaluationsRemaining)
       recordEvaluation()
       showGamificationUpdates(gamification)
+      if (userId) {
+        clearDraft(userId)
+        setShowDraftBanner(false)
+        setDraftUpdatedAt(null)
+      }
       toast.success('Avaliação concluída com sucesso!')
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
@@ -253,6 +306,13 @@ export function Avaliacao() {
             </p>
           )}
         </div>
+
+        {showDraftBanner && draftUpdatedAt && (
+          <EvaluationDraftBanner
+            updatedAt={draftUpdatedAt}
+            onDiscard={handleDiscardDraft}
+          />
+        )}
 
         <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
