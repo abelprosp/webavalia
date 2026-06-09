@@ -289,11 +289,13 @@ METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado do imóvel avaliando.
 2. Método principal: Comparativo Direto de Dados de Mercado (preferencial conforme norma).
 3. Selecione de 3 a 6 imóveis comparáveis reais da pesquisa Serper.
-4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,50 e 1,50) para: localização, área, terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades (incl. calefação, placas solares, móveis) e mercado.
-5. Calcule o valor unitário homogeneizado de cada comparável: (preço ÷ área) × produto dos fatores. Some valor de móveis alto padrão ao valor final se informado.
-6. Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0).
-7. Ajuste o valor final considerando risco de enchente e tendência de valorização do bairro quando relevante.
-8. Registre memória de cálculo passo a passo e limitações da amostra.
+4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,85 e 1,15 por fator) para: localização, área, terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades e mercado. O produto combinado dos fatores de cada comparável deve ficar entre 0,75 e 1,25.
+5. ATENÇÃO A PREÇOS: anúncios frequentemente informam valor POR M² (ex.: R$ 8.500/m²). Não divida novamente pela área nesses casos. declaredPrice deve refletir o preço total do anúncio; unitPriceSqm e homogenizedUnitPriceSqm devem estar em R$/m² coerentes com a região (tipicamente acima de R$ 1.500/m² em cidades médias/grandes).
+6. Calcule o valor unitário homogeneizado de cada comparável. Some valor de móveis alto padrão ao valor final se informado.
+7. Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área do imóvel (+ móveis se houver).
+8. Calibração: se houver valor pedido, o estimatedValue deve ficar em faixa plausível (em geral entre 75% e 115% do valor pedido, salvo evidência forte em contrário). Não subestime sistematicamente.
+9. Risco de enchente: desconto máximo de 5% (baixo), 10% (moderado) ou 15% (alto com histórico documentado) — nunca mais que isso sem evidência excepcional.
+10. Registre memória de cálculo passo a passo e limitações da amostra.
 
 Analise também o Plano Diretor/zoneamento urbano.
 Estime pontuações de critérios (1 a 5) ponderando localização (inclui bairro e risco hídrico), infraestrutura, conservação, layout, mercado (inclui valorização) e documentação.
@@ -421,7 +423,10 @@ ${formatSerperResults(appreciationResults)}
 
 ${input.photos?.length ? `Foram enviadas ${input.photos.length} foto(s) do imóvel para análise visual.` : 'Nenhuma foto enviada.'}
 
-Gere a avaliação avançada completa, integrando bairro, enchentes, valorização e todas as características do imóvel.`
+${input.askingPrice ? `O valor pedido pelo proprietário é R$ ${input.askingPrice.toLocaleString('pt-BR')} — use como referência de calibração do mercado local.` : ''}
+${feedbackLearning ? `\n${feedbackLearning}\n` : ''}
+
+Gere a avaliação avançada completa, integrando bairro, enchentes, valorização e todas as características do imóvel. Priorize precisão do valor de mercado — evite estimativas sistematicamente baixas.`
 
   const userContent: Array<
     | { type: 'text'; text: string }

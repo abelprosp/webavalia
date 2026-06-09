@@ -87,6 +87,13 @@ function summarizeProperty(input: StoredPropertyInput) {
     input.area ? `${input.area} m²` : null,
     input.address,
     input.standardLevel ? `padrão ${input.standardLevel}` : null,
+    input.finishLevel ? `acabamento ${input.finishLevel}` : null,
+    typeof input.askingPrice === 'number'
+      ? `valor pedido R$ ${input.askingPrice.toLocaleString('pt-BR')}`
+      : null,
+    Array.isArray(input.amenities) && input.amenities.length > 0
+      ? `diferenciais: ${input.amenities.join(', ')}`
+      : null,
   ].filter(Boolean)
 
   return parts.join(' · ') || 'Imóvel não especificado'
@@ -97,22 +104,38 @@ function summarizeResult(result: StoredEvaluationResult) {
     typeof result.estimatedValue === 'number'
       ? `R$ ${result.estimatedValue.toLocaleString('pt-BR')}`
       : 'valor não informado'
+  const valuePerSqm =
+    typeof result.valuePerSqm === 'number'
+      ? `${result.valuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²`
+      : null
+  const marketAvg =
+    typeof result.marketAnalysis === 'object' &&
+    result.marketAnalysis !== null &&
+    typeof (result.marketAnalysis as { averagePricePerSqm?: unknown })
+      .averagePricePerSqm === 'number'
+      ? `média mercado ${(
+          (result.marketAnalysis as { averagePricePerSqm: number })
+            .averagePricePerSqm
+        ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²`
+      : null
   const score =
     typeof result.score === 'number' ? `score ${result.score}/100` : null
-  return [value, score].filter(Boolean).join(' · ')
+
+  return [value, valuePerSqm, marketAvg, score].filter(Boolean).join(' · ')
 }
 
-export async function buildFeedbackLearningPrompt(limit = 8) {
-  if (!(await isEvaluationFeedbackModeEnabled())) {
-    return ''
-  }
-
+export async function buildFeedbackLearningPrompt(limit = 12) {
   const result = await pool.query<FeedbackLearningRow>(
     `SELECT f.rating, f.comment, e.property_input, e.evaluation_result
      FROM evaluation_feedback f
      JOIN property_evaluations e ON e.id = f.evaluation_id
      ORDER BY
        CASE WHEN f.rating = 'bad' THEN 0 ELSE 1 END,
+       CASE
+         WHEN f.comment ~* '(baixo|alto|subestim|superestim|valor|preço|preco|caro|barato)'
+         THEN 0
+         ELSE 1
+       END,
        char_length(f.comment) DESC,
        f.created_at DESC
      LIMIT $1`,
@@ -135,9 +158,12 @@ Feedback do corretor: ${row.comment}`
 
   return `
 
---- APRENDIZADO COM FEEDBACK DE CORRETORES (modo experimental) ---
-Use os exemplos reais abaixo para calibrar valor estimado, comparáveis, score e insights.
+--- APRENDIZADO COM FEEDBACK DE CORRETORES (PRIORIDADE ALTA) ---
+Estes são feedbacks reais de corretores sobre avaliações anteriores. Eles têm PRIORIDADE sobre suposições genéricas.
+Use-os para calibrar valor estimado, valor/m², comparáveis, score e insights.
+Quando o feedback indicar valor baixo/alto, ajuste a metodologia para imóveis similares (mesmo bairro, tipo e padrão).
 Evite repetir erros apontados. Reforce padrões elogiados quando o imóvel for similar.
+Se o corretor disser que o valor ficou baixo, revise se você confundiu preço total com preço/m² ou aplicou descontos excessivos.
 
 ${examples}
 `

@@ -10,7 +10,12 @@ import type {
   EvaluationAIResponse,
   EvaluationRequest,
   Nbr14653Analysis,
+  NbrHomogenizedComparable,
 } from '../types/evaluation.js'
+
+const MIN_PLAUSIBLE_UNIT_PRICE_SQM = 1_500
+const FACTOR_PRODUCT_MIN = 0.75
+const FACTOR_PRODUCT_MAX = 1.25
 
 function parseAreaSqm(area?: string | null) {
   if (!area) return null
@@ -29,6 +34,127 @@ function roundCurrency(value: number) {
   return Math.round(value)
 }
 
+function clampFactorProduct(factors: NbrHomogenizedComparable['factors']) {
+  const product = factors.reduce((acc, factor) => acc * factor.value, 1)
+  return Math.min(FACTOR_PRODUCT_MAX, Math.max(FACTOR_PRODUCT_MIN, product))
+}
+
+function inferUnitPriceSqm(
+  declaredPrice: string,
+  areaSqm: number | null,
+  marketAvgPerSqm: number | null
+) {
+  const price = parsePriceBrl(declaredPrice)
+  if (!price) return null
+
+  const priceLooksPerSqm =
+    /\/\s*m[²2]|por\s*m[²2]|\/m2/i.test(declaredPrice) ||
+    (price >= MIN_PLAUSIBLE_UNIT_PRICE_SQM &&
+      price <= 80_000 &&
+      (!areaSqm || price < areaSqm * 0.5))
+
+  if (priceLooksPerSqm) {
+    return price
+  }
+
+  if (!areaSqm || areaSqm <= 0) return null
+
+  const unitFromTotal = price / areaSqm
+
+  if (marketAvgPerSqm && unitFromTotal < marketAvgPerSqm * 0.35) {
+    if (price >= marketAvgPerSqm * 0.45 && price <= marketAvgPerSqm * 3) {
+      return price
+    }
+  }
+
+  if (unitFromTotal < MIN_PLAUSIBLE_UNIT_PRICE_SQM && price >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+    return price
+  }
+
+  return unitFromTotal
+}
+
+function resolveComparableUnitPrice(
+  item: NbrHomogenizedComparable,
+  marketAvgPerSqm: number | null
+) {
+  if (item.homogenizedUnitPriceSqm != null && item.homogenizedUnitPriceSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+    return item.homogenizedUnitPriceSqm
+  }
+
+  if (item.unitPriceSqm != null && item.unitPriceSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+    const factorProduct = clampFactorProduct(item.factors)
+    return item.unitPriceSqm * factorProduct
+  }
+
+  const area = item.areaSqm ?? parseAreaSqm(item.area ?? undefined)
+  const unitPrice = inferUnitPriceSqm(item.declaredPrice, area, marketAvgPerSqm)
+  if (unitPrice == null) return null
+
+  const factorProduct = clampFactorProduct(item.factors)
+  return unitPrice * factorProduct
+}
+
+function calibrateFinalValue(input: {
+  calculatedValue: number
+  calculatedValuePerSqm: number
+  aiEstimatedValue: number
+  aiValuePerSqm: number
+  area: number
+  askingPrice?: number
+  highEndFurnitureValue?: number
+  marketAvgPerSqm: number | null
+}) {
+  const {
+    calculatedValue,
+    calculatedValuePerSqm,
+    aiEstimatedValue,
+    aiValuePerSqm,
+    area,
+    askingPrice,
+    highEndFurnitureValue,
+    marketAvgPerSqm,
+  } = input
+
+  const furnitureValue = highEndFurnitureValue ?? 0
+  const aiBaseValue = Math.max(0, aiEstimatedValue - furnitureValue)
+
+  let baseValue = calculatedValue
+  let valuePerSqm = calculatedValuePerSqm
+
+  const marketFloor =
+    marketAvgPerSqm != null ? roundCurrency(marketAvgPerSqm * area * 0.72) : null
+
+  if (marketFloor != null && baseValue < marketFloor) {
+    baseValue = marketFloor
+    valuePerSqm = roundCurrency(baseValue / area)
+  }
+
+  const askingBase =
+    askingPrice && askingPrice > 0
+      ? Math.max(0, askingPrice - furnitureValue)
+      : null
+
+  if (askingBase && askingBase > 0 && baseValue < askingBase * 0.55) {
+    baseValue = roundCurrency(baseValue * 0.35 + askingBase * 0.65 * 0.88)
+    valuePerSqm = roundCurrency(baseValue / area)
+  }
+
+  if (aiBaseValue > baseValue * 1.35 && aiValuePerSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+    baseValue = roundCurrency(baseValue * 0.45 + aiBaseValue * 0.55)
+    valuePerSqm = roundCurrency(baseValue / area)
+  }
+
+  if (valuePerSqm < MIN_PLAUSIBLE_UNIT_PRICE_SQM && aiValuePerSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+    baseValue = roundCurrency(aiValuePerSqm * area)
+    valuePerSqm = roundCurrency(aiValuePerSqm)
+  }
+
+  const finalValue = baseValue + furnitureValue
+
+  return { finalValue, valuePerSqm }
+}
+
 export function buildNbr14653Analysis(
   aiResult: EvaluationAIDraftResponse,
   input: EvaluationRequest,
@@ -36,22 +162,17 @@ export function buildNbr14653Analysis(
 ): Nbr14653Analysis {
   const aiNbr = aiResult.nbr14653
   const comparables = aiNbr?.homogenizedComparables ?? []
+  const marketAvgPerSqm = aiResult.marketAnalysis.averagePricePerSqm
   const grade = inferSpecificationGrade(
     Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)
   )
 
   const weightedValues = comparables
     .map((item) => {
-      if (item.homogenizedUnitPriceSqm != null) {
-        return { value: item.homogenizedUnitPriceSqm, weight: item.weight }
+      const unitPrice = resolveComparableUnitPrice(item, marketAvgPerSqm)
+      if (unitPrice == null || unitPrice < MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+        return null
       }
-
-      const price = parsePriceBrl(item.declaredPrice)
-      const area = item.areaSqm ?? parseAreaSqm(item.area ?? undefined)
-      if (!price || !area) return null
-
-      const factorProduct = item.factors.reduce((acc, factor) => acc * factor.value, 1)
-      const unitPrice = (price / area) * factorProduct
       return { value: unitPrice, weight: item.weight }
     })
     .filter((item): item is { value: number; weight: number } => item != null)
@@ -61,17 +182,31 @@ export function buildNbr14653Analysis(
     totalWeight > 0
       ? weightedValues.reduce((sum, item) => sum + item.value * item.weight, 0) /
         totalWeight
-      : aiResult.marketAnalysis.averagePricePerSqm
+      : marketAvgPerSqm
 
-  const calculatedValue =
+  const rawCalculatedValue =
     homogenizedAverage != null
       ? roundCurrency(homogenizedAverage * input.area)
       : aiResult.estimatedValue
 
-  const calculatedValuePerSqm =
+  const rawCalculatedValuePerSqm =
     homogenizedAverage != null
       ? roundCurrency(homogenizedAverage)
       : aiResult.valuePerSqm
+
+  const calibrated = calibrateFinalValue({
+    calculatedValue: rawCalculatedValue,
+    calculatedValuePerSqm: rawCalculatedValuePerSqm,
+    aiEstimatedValue: aiResult.estimatedValue,
+    aiValuePerSqm: aiResult.valuePerSqm,
+    area: input.area,
+    askingPrice: input.askingPrice,
+    highEndFurnitureValue: input.highEndFurnitureValue,
+    marketAvgPerSqm,
+  })
+
+  const calculatedValue = calibrated.finalValue
+  const calculatedValuePerSqm = calibrated.valuePerSqm
 
   const steps = [
     '1. Definição do objetivo: determinação do valor de mercado (NBR 14653-1).',
@@ -80,8 +215,11 @@ export function buildNbr14653Analysis(
     homogenizedAverage != null
       ? `4. Valor unitário homogeneizado médio: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
       : '4. Valor unitário estimado com base na amostra e atributos do imóvel avaliando.',
-    `5. Valor final do imóvel: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${input.area} m² = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
-  ]
+    input.highEndFurnitureValue
+      ? `5. Acréscimo de móveis alto padrão: ${input.highEndFurnitureValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
+      : null,
+    `6. Valor final do imóvel: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${input.area} m²${input.highEndFurnitureValue ? ' + móveis' : ''} = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+  ].filter((step): step is string => step != null)
 
   const limitations = [
     ...(aiNbr?.limitations ?? []),
