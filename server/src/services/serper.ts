@@ -158,3 +158,65 @@ export async function searchMasterPlan(address: string) {
 
   return merged.slice(0, 12)
 }
+
+function mergeSerperResults(batches: SerperResult[][], limit: number) {
+  const seen = new Set<string>()
+  const merged: SerperResult[] = []
+
+  for (const batch of batches) {
+    for (const item of batch) {
+      if (!seen.has(item.link)) {
+        seen.add(item.link)
+        merged.push(item)
+      }
+    }
+  }
+
+  return merged.slice(0, limit)
+}
+
+export async function searchNeighborhoodProfile(address: string) {
+  const location = extractLocationHint(address)
+
+  const queries = [
+    `bairro ${location} infraestrutura escolas hospitais transporte`,
+    `${location} segurança qualidade de vida morar`,
+    `${location} comércio serviços metrô ônibus acesso`,
+    `perfil socioeconômico bairro ${location}`,
+  ]
+
+  const results = await Promise.all(queries.map((q) => serperSearch(q, 5)))
+  return mergeSerperResults(results, 14)
+}
+
+export async function searchFloodRisk(address: string) {
+  const location = extractLocationHint(address)
+
+  const queries = [
+    `enchente alagamento ${location} histórico`,
+    `risco inundação ${location} mapa áreas alagáveis`,
+    `cheia ${location} defesa civil prefeitura`,
+    `alagamento bairro ${location} chuva`,
+  ]
+
+  const results = await Promise.all(queries.map((q) => serperSearch(q, 5)))
+  return mergeSerperResults(results, 12)
+}
+
+export async function searchMarketAppreciation(
+  input: EvaluationRequest
+) {
+  const location = extractLocationHint(input.address)
+  const typeLabel =
+    PROPERTY_TYPE_LABELS[input.propertyType] ?? input.propertyType
+
+  const queries = [
+    `valorização imóveis ${location} tendência preços`,
+    `preço m² ${typeLabel} ${location} histórico valorização`,
+    `mercado imobiliário ${location} alta queda preços`,
+    `investimento imobiliário ${location} liquidez demanda`,
+  ]
+
+  const results = await Promise.all(queries.map((q) => serperSearch(q, 5)))
+  return mergeSerperResults(results, 12)
+}

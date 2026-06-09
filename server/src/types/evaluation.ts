@@ -1,4 +1,9 @@
 import type { BuildingAge } from '../constants/building-age.js'
+import type {
+  FloodRiskAnalysis,
+  MarketAppreciationAnalysis,
+  NeighborhoodAnalysis,
+} from './advanced-analysis.js'
 
 export type EvaluationCriteriaInput = {
   cep?: string
@@ -123,6 +128,9 @@ type EvaluationAIBase = {
   aiInsights: string[]
   marketAnalysis: MarketAnalysis
   masterPlanAnalysis: MasterPlanAnalysis
+  neighborhoodAnalysis: NeighborhoodAnalysis
+  floodRiskAnalysis: FloodRiskAnalysis
+  marketAppreciationAnalysis: MarketAppreciationAnalysis
 }
 
 export type EvaluationAIDraftResponse = EvaluationAIBase & {

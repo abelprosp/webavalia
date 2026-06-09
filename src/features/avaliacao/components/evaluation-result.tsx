@@ -39,6 +39,7 @@ import {
   type EvaluationResult,
 } from '../data/evaluation-engine'
 import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
+import { AdvancedAnalysisPanel } from './advanced-analysis-panel'
 import { Nbr14653Panel } from './nbr-14653-panel'
 
 type EvaluationResultPanelProps = {
@@ -287,6 +288,19 @@ export function EvaluationResultPanel({
           </div>
         </div>
 
+        {(result.neighborhoodAnalysis ||
+          result.floodRiskAnalysis ||
+          result.marketAppreciationAnalysis) && (
+          <>
+            <Separator />
+            <AdvancedAnalysisPanel
+              neighborhood={result.neighborhoodAnalysis}
+              flood={result.floodRiskAnalysis}
+              appreciation={result.marketAppreciationAnalysis}
+            />
+          </>
+        )}
+
         {result.nbr14653 && (
           <>
             <Separator />
@@ -365,10 +379,19 @@ export function EvaluationResultPanel({
         </div>
 
         {result.sources && (
-          <p className='flex items-center gap-1 text-xs text-muted-foreground'>
-            <MapPin className='size-3' />
-            Fontes: {result.sources.marketResultsCount} resultados de mercado,{' '}
-            {result.sources.masterPlanResultsCount} do plano diretor
+          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground'>
+            <MapPin className='size-3 shrink-0' />
+            Fontes: {result.sources.marketResultsCount} mercado,{' '}
+            {result.sources.masterPlanResultsCount} plano diretor
+            {result.sources.neighborhoodResultsCount != null && (
+              <>, {result.sources.neighborhoodResultsCount} bairro</>
+            )}
+            {result.sources.floodResultsCount != null && (
+              <>, {result.sources.floodResultsCount} enchentes</>
+            )}
+            {result.sources.appreciationResultsCount != null && (
+              <>, {result.sources.appreciationResultsCount} valorização</>
+            )}
           </p>
         )}
       </CardContent>

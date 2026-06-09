@@ -232,10 +232,14 @@ export function Avaliacao() {
     setEvaluatedProperty(null)
     setEvaluationId(null)
     setFeedbackSubmitted(false)
-    setEvaluatingStep('Pesquisando o mercado local...')
+    setEvaluatingStep(
+      'Pesquisando mercado, bairro, enchentes e valorização...'
+    )
 
     try {
-      setEvaluatingStep('Gerando análise completa...')
+      setEvaluatingStep(
+        'Gerando análise avançada com IA (NBR 14653)...'
+      )
       const {
         evaluation,
         evaluationId: newEvaluationId,

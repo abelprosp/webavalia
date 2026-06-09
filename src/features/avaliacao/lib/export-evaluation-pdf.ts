@@ -259,6 +259,77 @@ export async function exportEvaluationPdf({
   )
   y = addParagraph(doc, result.masterPlanAnalysis.summary, y)
 
+  if (result.neighborhoodAnalysis) {
+    const n = result.neighborhoodAnalysis
+    y = addSectionTitle(doc, 'Pesquisa avançada do bairro', y)
+    y = addParagraph(doc, n.overview, y)
+    if (n.infrastructure.length > 0) {
+      y = addParagraph(doc, 'Infraestrutura:', y, { bold: true })
+      y = addBulletList(doc, n.infrastructure, y)
+    }
+    if (n.services.length > 0) {
+      y = addParagraph(doc, 'Serviços:', y, { bold: true })
+      y = addBulletList(doc, n.services, y)
+    }
+    if (n.mobility.length > 0) {
+      y = addParagraph(doc, 'Mobilidade:', y, { bold: true })
+      y = addBulletList(doc, n.mobility, y)
+    }
+    y = addParagraph(doc, `Segurança percebida: ${n.safetyPerception}`, y)
+    y = addParagraph(doc, `Qualidade de vida: ${n.qualityOfLife}`, y)
+    if (n.highlights.length > 0) {
+      y = addParagraph(doc, 'Destaques:', y, { bold: true })
+      y = addBulletList(doc, n.highlights, y)
+    }
+    if (n.concerns.length > 0) {
+      y = addParagraph(doc, 'Pontos de atenção:', y, { bold: true })
+      y = addBulletList(doc, n.concerns, y)
+    }
+    y = addParagraph(doc, n.summary, y)
+  }
+
+  if (result.floodRiskAnalysis) {
+    const f = result.floodRiskAnalysis
+    y = addSectionTitle(doc, 'Histórico de enchentes e risco hídrico', y)
+    y = addParagraph(doc, `Risco: ${f.riskLevelLabel}`, y, { bold: true })
+    if (f.historicalEvents.length > 0) {
+      y = addParagraph(doc, 'Eventos históricos:', y, { bold: true })
+      y = addBulletList(doc, f.historicalEvents, y)
+    }
+    if (f.affectedAreas.length > 0) {
+      y = addParagraph(doc, 'Áreas afetadas:', y, { bold: true })
+      y = addBulletList(doc, f.affectedAreas, y)
+    }
+    if (f.mitigationMeasures.length > 0) {
+      y = addParagraph(doc, 'Medidas de mitigação:', y, { bold: true })
+      y = addBulletList(doc, f.mitigationMeasures, y)
+    }
+    y = addParagraph(doc, `Impacto no valor: ${f.impactOnValue}`, y)
+    y = addParagraph(doc, f.summary, y)
+  }
+
+  if (result.marketAppreciationAnalysis) {
+    const a = result.marketAppreciationAnalysis
+    y = addSectionTitle(doc, 'Valorização e tendência de mercado', y)
+    y = addParagraph(doc, `Tendência: ${a.trendLabel}`, y, { bold: true })
+    if (a.annualGrowthEstimatePercent != null) {
+      y = addParagraph(
+        doc,
+        `Crescimento estimado: ${a.annualGrowthEstimatePercent > 0 ? '+' : ''}${a.annualGrowthEstimatePercent}% ao ano`,
+        y
+      )
+    }
+    y = addParagraph(doc, a.historicalContext, y)
+    y = addParagraph(doc, `Demanda: ${a.demandLevel}`, y)
+    y = addParagraph(doc, `Liquidez: ${a.liquidity}`, y)
+    if (a.priceTrendFactors.length > 0) {
+      y = addParagraph(doc, 'Fatores de tendência:', y, { bold: true })
+      y = addBulletList(doc, a.priceTrendFactors, y)
+    }
+    y = addParagraph(doc, `Projeção: ${a.projectionSummary}`, y)
+    y = addParagraph(doc, a.summary, y)
+  }
+
   if (result.nbr14653) {
     const nbr = result.nbr14653
     y = addSectionTitle(doc, 'Metodologia ABNT NBR 14653', y)

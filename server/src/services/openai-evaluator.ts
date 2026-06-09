@@ -55,6 +55,37 @@ const aiResponseSchema = z.object({
     developmentPotential: z.string(),
     summary: z.string(),
   }),
+  neighborhoodAnalysis: z.object({
+    overview: z.string(),
+    infrastructure: z.array(z.string()),
+    services: z.array(z.string()),
+    mobility: z.array(z.string()),
+    safetyPerception: z.string(),
+    qualityOfLife: z.string(),
+    highlights: z.array(z.string()),
+    concerns: z.array(z.string()),
+    summary: z.string(),
+  }),
+  floodRiskAnalysis: z.object({
+    riskLevel: z.enum(['baixo', 'moderado', 'alto', 'indeterminado']),
+    riskLevelLabel: z.string(),
+    historicalEvents: z.array(z.string()),
+    affectedAreas: z.array(z.string()),
+    mitigationMeasures: z.array(z.string()),
+    impactOnValue: z.string(),
+    summary: z.string(),
+  }),
+  marketAppreciationAnalysis: z.object({
+    trend: z.enum(['valorizacao', 'estavel', 'desvalorizacao', 'indeterminado']),
+    trendLabel: z.string(),
+    annualGrowthEstimatePercent: z.number().nullable(),
+    historicalContext: z.string(),
+    demandLevel: z.string(),
+    liquidity: z.string(),
+    priceTrendFactors: z.array(z.string()),
+    projectionSummary: z.string(),
+    summary: z.string(),
+  }),
   nbr14653: z.object({
     purpose: z.string(),
     primaryMethod: z.object({
@@ -194,11 +225,25 @@ function buildImageContent(photos: PhotoInput[]) {
   }))
 }
 
+type EvaluationSearchResults = {
+  marketResults: SerperResult[]
+  masterPlanResults: SerperResult[]
+  neighborhoodResults: SerperResult[]
+  floodResults: SerperResult[]
+  appreciationResults: SerperResult[]
+}
+
 export async function evaluateWithOpenAI(
   input: EvaluationRequest,
-  marketResults: SerperResult[],
-  masterPlanResults: SerperResult[]
+  searchResults: EvaluationSearchResults
 ): Promise<EvaluationAIDraftResponse> {
+  const {
+    marketResults,
+    masterPlanResults,
+    neighborhoodResults,
+    floodResults,
+    appreciationResults,
+  } = searchResults
   if (!config.openaiApiKey) {
     throw new Error(
       'OPENAI_API_KEY não configurada. Adicione a chave no arquivo server/.env'
@@ -230,21 +275,28 @@ Dados do imóvel:
 
   const feedbackLearning = await buildFeedbackLearningPrompt()
 
-  const systemPrompt = `Você é um avaliador imobiliário especialista no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
+  const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
+
+AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
+1. Integre TODAS as características informadas (tipo, área, terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão, valor pedido e observações) na homogeneização e no score final.
+2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
+3. Histórico de enchentes: identifique eventos, áreas afetadas, risco (baixo/moderado/alto/indeterminado) e impacto no valor — use resultados Serper; se não houver dados, declare indeterminado e explique limitação.
+4. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
+5. O score (0-100) e criteriaScores devem refletir risco de enchente, perfil do bairro e tendência de valorização, além das características físicas do imóvel.
+6. Inclua em aiInsights conclusões acionáveis sobre risco hídrico, valorização e diferenciais do imóvel.
 
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado do imóvel avaliando.
 2. Método principal: Comparativo Direto de Dados de Mercado (preferencial conforme norma).
 3. Selecione de 3 a 6 imóveis comparáveis reais da pesquisa Serper.
-4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,50 e 1,50) para: localização, área, conservação, padrão, idade, layout, vagas, condomínio, vista e mercado.
-5. Calcule o valor unitário homogeneizado de cada comparável: (preço ÷ área) × produto dos fatores.
+4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,50 e 1,50) para: localização, área, terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades (incl. calefação, placas solares, móveis) e mercado.
+5. Calcule o valor unitário homogeneizado de cada comparável: (preço ÷ área) × produto dos fatores. Some valor de móveis alto padrão ao valor final se informado.
 6. Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0).
-7. Valor final = média unitária homogeneizada × área do imóvel avaliando.
-8. Métodos complementares (renda ou evolutivo): inclua somente se aplicável, com justificativa técnica.
-9. Registre memória de cálculo passo a passo e limitações da amostra.
+7. Ajuste o valor final considerando risco de enchente e tendência de valorização do bairro quando relevante.
+8. Registre memória de cálculo passo a passo e limitações da amostra.
 
 Analise também o Plano Diretor/zoneamento urbano.
-Estime pontuações de critérios (1 a 5). Considere padrão, acabamento, mobília, condomínio, vista e amenidades.
+Estime pontuações de critérios (1 a 5) ponderando localização (inclui bairro e risco hídrico), infraestrutura, conservação, layout, mercado (inclui valorização) e documentação.
 Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutura:
 {
   "estimatedValue": number,
@@ -271,6 +323,37 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
     "allowedUses": ["string"],
     "restrictions": ["string"],
     "developmentPotential": "string",
+    "summary": "string"
+  },
+  "neighborhoodAnalysis": {
+    "overview": "string",
+    "infrastructure": ["string"],
+    "services": ["string — escolas, saúde, comércio"],
+    "mobility": ["string — transporte, vias, acessos"],
+    "safetyPerception": "string",
+    "qualityOfLife": "string",
+    "highlights": ["string"],
+    "concerns": ["string"],
+    "summary": "string"
+  },
+  "floodRiskAnalysis": {
+    "riskLevel": "baixo" | "moderado" | "alto" | "indeterminado",
+    "riskLevelLabel": "string",
+    "historicalEvents": ["string — enchentes/alagamentos documentados"],
+    "affectedAreas": ["string"],
+    "mitigationMeasures": ["string"],
+    "impactOnValue": "string",
+    "summary": "string"
+  },
+  "marketAppreciationAnalysis": {
+    "trend": "valorizacao" | "estavel" | "desvalorizacao" | "indeterminado",
+    "trendLabel": "string",
+    "annualGrowthEstimatePercent": number | null,
+    "historicalContext": "string",
+    "demandLevel": "string",
+    "liquidity": "string",
+    "priceTrendFactors": ["string"],
+    "projectionSummary": "string",
     "summary": "string"
   },
   "nbr14653": {
@@ -327,9 +410,18 @@ ${formatSerperResults(marketResults)}
 --- PLANO DIRETOR / ZONEAMENTO (via Serper) ---
 ${formatSerperResults(masterPlanResults)}
 
+--- PESQUISA AVANÇADA DO BAIRRO (via Serper) ---
+${formatSerperResults(neighborhoodResults)}
+
+--- HISTÓRICO DE ENCHENTES E RISCO HÍDRICO (via Serper) ---
+${formatSerperResults(floodResults)}
+
+--- VALORIZAÇÃO E TENDÊNCIA DE MERCADO (via Serper) ---
+${formatSerperResults(appreciationResults)}
+
 ${input.photos?.length ? `Foram enviadas ${input.photos.length} foto(s) do imóvel para análise visual.` : 'Nenhuma foto enviada.'}
 
-Gere a avaliação completa.`
+Gere a avaliação avançada completa, integrando bairro, enchentes, valorização e todas as características do imóvel.`
 
   const userContent: Array<
     | { type: 'text'; text: string }

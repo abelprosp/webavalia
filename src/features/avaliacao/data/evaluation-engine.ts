@@ -98,6 +98,40 @@ export type MasterPlanAnalysis = {
   summary: string
 }
 
+export type NeighborhoodAnalysis = {
+  overview: string
+  infrastructure: string[]
+  services: string[]
+  mobility: string[]
+  safetyPerception: string
+  qualityOfLife: string
+  highlights: string[]
+  concerns: string[]
+  summary: string
+}
+
+export type FloodRiskAnalysis = {
+  riskLevel: 'baixo' | 'moderado' | 'alto' | 'indeterminado'
+  riskLevelLabel: string
+  historicalEvents: string[]
+  affectedAreas: string[]
+  mitigationMeasures: string[]
+  impactOnValue: string
+  summary: string
+}
+
+export type MarketAppreciationAnalysis = {
+  trend: 'valorizacao' | 'estavel' | 'desvalorizacao' | 'indeterminado'
+  trendLabel: string
+  annualGrowthEstimatePercent: number | null
+  historicalContext: string
+  demandLevel: string
+  liquidity: string
+  priceTrendFactors: string[]
+  projectionSummary: string
+  summary: string
+}
+
 export type NbrHomogenizationFactor = {
   id: string
   label: string
@@ -158,6 +192,9 @@ export type EvaluationResult = {
   aiInsights: string[]
   marketAnalysis: MarketAnalysis
   masterPlanAnalysis: MasterPlanAnalysis
+  neighborhoodAnalysis?: NeighborhoodAnalysis
+  floodRiskAnalysis?: FloodRiskAnalysis
+  marketAppreciationAnalysis?: MarketAppreciationAnalysis
   nbr14653?: Nbr14653Analysis
   photoPreviews: string[]
   photoCount: number
@@ -165,6 +202,9 @@ export type EvaluationResult = {
   sources?: {
     marketResultsCount: number
     masterPlanResultsCount: number
+    neighborhoodResultsCount?: number
+    floodResultsCount?: number
+    appreciationResultsCount?: number
   }
 }
 
