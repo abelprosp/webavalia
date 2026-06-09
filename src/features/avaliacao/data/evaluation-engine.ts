@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { buildingAgeOptions } from './criteria'
+import { buildingAgeOptions, HIGH_END_FURNITURE_AMENITY } from './criteria'
 
 const buildingAgeValues = buildingAgeOptions.map((option) => option.value) as [
   (typeof buildingAgeOptions)[number]['value'],
@@ -31,8 +31,23 @@ export const evaluationFormSchema = z.object({
     .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
     .optional(),
   amenities: z.array(z.string()),
+  highEndFurnitureValue: z
+    .number()
+    .min(1, 'Informe o valor estimado dos móveis')
+    .optional(),
   askingPrice: z.number().optional(),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (
+    data.amenities.includes(HIGH_END_FURNITURE_AMENITY) &&
+    data.highEndFurnitureValue == null
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['highEndFurnitureValue'],
+      message: 'Informe o valor estimado de todos os móveis juntos.',
+    })
+  }
 })
 
 export type EvaluationFormValues = z.infer<typeof evaluationFormSchema>

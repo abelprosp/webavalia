@@ -183,6 +183,9 @@ export async function exportEvaluationPdf({
       ? `Vista: ${getViewTypeLabel(property.viewType)}`
       : 'Vista: não informada',
     `Diferenciais: ${formatAmenities(property.amenities)}`,
+    property.highEndFurnitureValue
+      ? `Móveis alto padrão (valor estimado): ${formatCurrency(property.highEndFurnitureValue)}`
+      : null,
     property.askingPrice
       ? `Valor pedido: ${formatCurrency(property.askingPrice)}`
       : 'Valor pedido: não informado',

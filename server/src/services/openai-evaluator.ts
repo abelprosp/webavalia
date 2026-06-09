@@ -174,6 +174,9 @@ const AMENITY_LABELS: Record<string, string> = {
   'garagem-coberta': 'Garagem coberta',
   hidromassagem: 'Hidromassagem / spa',
   'piso-importado': 'Piso de alto padrão',
+  calefacao: 'Calefação',
+  'placas-solares': 'Placas solares',
+  'moveis-alto-padrao': 'Móveis alto padrão',
 }
 
 function formatAmenities(amenities: string[] | undefined) {
@@ -220,6 +223,7 @@ Dados do imóvel:
 - Condomínio: ${CONDOMINIUM_LEVEL_LABELS[input.condominiumLevel] ?? input.condominiumLevel}
 - Vista: ${input.viewType ? (VIEW_TYPE_LABELS[input.viewType] ?? input.viewType) : 'não informada'}
 - Diferenciais: ${formatAmenities(input.amenities)}
+- Valor estimado dos móveis alto padrão: ${input.highEndFurnitureValue ? `R$ ${input.highEndFurnitureValue.toLocaleString('pt-BR')}` : 'não informado'}
 - Valor pedido: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
 - Observações: ${input.notes || 'nenhuma'}
 `

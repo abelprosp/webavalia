@@ -74,26 +74,14 @@ export const landOnlyPropertyTypes = [
   'area-industrial',
 ] as const
 
-export const propertiesWithLot = [
-  'casa',
-  'casa-condominio',
-  'sobrado',
-  'chacara',
-  'sitio',
-  'fazenda',
-  'edicula',
-  'barracao',
-  'misto',
-  'galpao',
-  'galpao-industrial',
-] as const
-
 export function isLandOnlyPropertyType(type: string) {
   return (landOnlyPropertyTypes as readonly string[]).includes(type)
 }
 
 export function showsLotAreaField(type: string) {
-  return (propertiesWithLot as readonly string[]).includes(type)
+  if (type === 'apartamento') return false
+  if (isLandOnlyPropertyType(type)) return false
+  return true
 }
 
 export function getBuildingAgeLabel(value: string) {
@@ -143,6 +131,8 @@ export const viewTypes = [
   { label: 'Vista para lago / represa', value: 'lago' },
 ] as const
 
+export const HIGH_END_FURNITURE_AMENITY = 'moveis-alto-padrao' as const
+
 export const propertyAmenities = [
   { label: 'Ar condicionado', value: 'ar-condicionado' },
   { label: 'Piscina', value: 'piscina' },
@@ -162,6 +152,9 @@ export const propertyAmenities = [
   { label: 'Garagem coberta', value: 'garagem-coberta' },
   { label: 'Hidromassagem / spa', value: 'hidromassagem' },
   { label: 'Piso de alto padrão', value: 'piso-importado' },
+  { label: 'Calefação', value: 'calefacao' },
+  { label: 'Placas solares', value: 'placas-solares' },
+  { label: 'Móveis alto padrão', value: HIGH_END_FURNITURE_AMENITY },
 ] as const
 
 function findLabel<T extends readonly { label: string; value: string }[]>(

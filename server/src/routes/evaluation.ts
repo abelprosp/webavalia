@@ -53,9 +53,21 @@ const evaluationSchema = z.object({
     .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
     .optional(),
   amenities: z.array(z.string()).default([]),
+  highEndFurnitureValue: z.number().min(1).optional(),
   askingPrice: z.number().optional(),
   notes: z.string().optional(),
   photos: z.array(photoSchema).max(5).optional(),
+}).superRefine((data, ctx) => {
+  if (
+    data.amenities.includes('moveis-alto-padrao') &&
+    data.highEndFurnitureValue == null
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['highEndFurnitureValue'],
+      message: 'Informe o valor estimado de todos os móveis juntos.',
+    })
+  }
 })
 
 const feedbackSchema = z.object({

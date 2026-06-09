@@ -18,6 +18,7 @@ export type EvaluationCriteriaInput = {
   condominiumLevel: 'nao-aplica' | 'padrao' | 'alto-padrao' | 'clube'
   viewType?: 'nenhuma' | 'cidade' | 'mar' | 'montanha' | 'parque' | 'lago'
   amenities?: string[]
+  highEndFurnitureValue?: number
   askingPrice?: number
   notes?: string
 }

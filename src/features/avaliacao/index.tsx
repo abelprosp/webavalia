@@ -45,6 +45,7 @@ import {
   finishLevels,
   furnishingOptions,
   isLandOnlyPropertyType,
+  HIGH_END_FURNITURE_AMENITY,
   propertyAmenities,
   propertyTypeGroups,
   showsLotAreaField,
@@ -89,6 +90,7 @@ const defaultValues: EvaluationFormValues = {
   condominiumLevel: 'nao-aplica',
   viewType: undefined,
   amenities: [],
+  highEndFurnitureValue: undefined,
   askingPrice: undefined,
   notes: '',
 }
@@ -127,6 +129,10 @@ export function Avaliacao() {
   })
 
   const propertyType = form.watch('propertyType')
+  const selectedAmenities = form.watch('amenities')
+  const hasHighEndFurniture = selectedAmenities?.includes(
+    HIGH_END_FURNITURE_AMENITY
+  )
   const showLotArea = showsLotAreaField(propertyType)
   const isLandOnly = isLandOnlyPropertyType(propertyType)
   const areaLabel = isLandOnly
@@ -795,6 +801,15 @@ export function Avaliacao() {
                                             (value) => value !== amenity.value
                                           )
                                     )
+                                    if (
+                                      !checked &&
+                                      amenity.value === HIGH_END_FURNITURE_AMENITY
+                                    ) {
+                                      form.setValue(
+                                        'highEndFurnitureValue',
+                                        undefined
+                                      )
+                                    }
                                   }}
                                 />
                               </FormControl>
@@ -807,6 +822,39 @@ export function Avaliacao() {
                       ))}
                     </div>
                   </div>
+
+                  {hasHighEndFurniture && (
+                    <FormField
+                      control={form.control}
+                      name='highEndFurnitureValue'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Valor estimado dos móveis (todos juntos)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              placeholder='Ex: 85000'
+                              value={field.value ?? ''}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Soma estimada de todos os móveis alto padrão do
+                            imóvel
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </CardContent>
               </Card>
 
