@@ -9,6 +9,8 @@ import {
   BookmarkPlus,
   Droplets,
   MapPinned,
+  Sparkles,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCrmStore } from '@/stores/crm-store'
@@ -17,7 +19,6 @@ import {
   SaveToCrmDialog,
 } from '@/features/crm/components/save-to-crm-dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   getFinishLevelLabel,
   getFurnishingLabel,
@@ -30,7 +31,7 @@ import {
 } from '../data/evaluation-engine'
 import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
 import { Nbr14653Panel } from './nbr-14653-panel'
-import { BentoCard, FluxBadge } from './bento-card'
+import { BentoCard, FluxBadge, MetricIcon } from './bento-card'
 
 type EvaluationResultPanelProps = {
   result: EvaluationResult
@@ -58,6 +59,16 @@ function getCriterionScore(result: EvaluationResult, id: string) {
   return result.criteriaScores.find((c) => c.id === id)?.score ?? 3
 }
 
+function compactCurrency(value: number) {
+  if (value >= 1_000_000) {
+    return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')}M`
+  }
+  if (value >= 1_000) {
+    return `R$ ${Math.round(value / 1_000)}k`
+  }
+  return formatCurrency(value)
+}
+
 function ValueBreakdownCircles({
   total,
   location,
@@ -75,27 +86,27 @@ function ValueBreakdownCircles({
   const mktVal = total - locVal - conVal
 
   return (
-    <div className='relative mx-auto my-4 flex h-36 w-full max-w-[220px] items-center justify-center'>
+    <div className='relative mx-auto my-5 flex h-[148px] w-full max-w-[240px] items-center justify-center'>
       <div
-        className='absolute left-1/2 top-1/2 flex size-24 -translate-x-[65%] -translate-y-1/2 flex-col items-center justify-center rounded-full bg-flux-lavender/80 text-flux-dark'
+        className='absolute left-1/2 top-1/2 flex size-[108px] -translate-x-[62%] -translate-y-1/2 flex-col items-center justify-center rounded-full bg-flux-lavender/90 text-flux-dark shadow-sm'
         style={{ zIndex: 1 }}
       >
-        <span className='text-[10px] font-medium opacity-70'>Localização</span>
-        <span className='text-xs font-bold'>{formatCurrency(locVal)}</span>
+        <span className='text-[10px] font-medium opacity-60'>Localização</span>
+        <span className='text-sm font-bold'>{compactCurrency(locVal)}</span>
       </div>
       <div
-        className='absolute left-1/2 top-1/2 flex size-20 -translate-x-[20%] -translate-y-[55%] flex-col items-center justify-center rounded-full bg-flux-dark text-white'
+        className='absolute left-1/2 top-1/2 flex size-[88px] -translate-x-[18%] -translate-y-[58%] flex-col items-center justify-center rounded-full bg-flux-dark text-white shadow-md'
         style={{ zIndex: 2 }}
       >
-        <span className='text-[10px] font-medium opacity-70'>Construção</span>
-        <span className='text-xs font-bold'>{formatCurrency(conVal)}</span>
+        <span className='text-[10px] font-medium opacity-60'>Construção</span>
+        <span className='text-xs font-bold'>{compactCurrency(conVal)}</span>
       </div>
       <div
-        className='absolute left-1/2 top-1/2 flex size-16 -translate-x-[10%] -translate-y-[15%] flex-col items-center justify-center rounded-full bg-flux-lime text-flux-dark'
+        className='absolute left-1/2 top-1/2 flex size-[68px] -translate-x-[5%] -translate-y-[12%] flex-col items-center justify-center rounded-full bg-flux-lime text-flux-dark shadow-sm'
         style={{ zIndex: 3 }}
       >
-        <span className='text-[9px] font-medium opacity-70'>Mercado</span>
-        <span className='text-[10px] font-bold'>{formatCurrency(mktVal)}</span>
+        <span className='text-[9px] font-medium opacity-60'>Mercado</span>
+        <span className='text-[11px] font-bold'>{compactCurrency(mktVal)}</span>
       </div>
     </div>
   )
@@ -103,11 +114,11 @@ function ValueBreakdownCircles({
 
 function DotMatrix({ filled, total = 25 }: { filled: number; total?: number }) {
   return (
-    <div className='grid grid-cols-5 gap-1.5'>
+    <div className='grid grid-cols-5 gap-[5px]'>
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
-          className={`size-2.5 rounded-full ${
+          className={`size-[9px] rounded-full transition-colors ${
             i < filled ? 'bg-flux-lavender' : 'bg-muted'
           }`}
         />
@@ -116,31 +127,26 @@ function DotMatrix({ filled, total = 25 }: { filled: number; total?: number }) {
   )
 }
 
-function CriteriaBars({
+const BAR_COLORS = ['bg-flux-lavender', 'bg-flux-dark', 'bg-flux-lime'] as const
+
+function HeroCriteriaBars({
   criteria,
-  dark = false,
 }: {
   criteria: EvaluationResult['criteriaScores']
-  dark?: boolean
 }) {
-  const colors = ['bg-flux-lavender', 'bg-flux-dark', 'bg-flux-lime']
   return (
-    <div className='space-y-2.5'>
+    <div className='mt-auto space-y-2.5 pt-2'>
       {criteria.slice(0, 3).map((c, i) => (
         <div key={c.id}>
-          <div className='mb-1 flex justify-between text-xs'>
-            <span className={dark ? 'text-white/70' : 'text-muted-foreground'}>
-              {c.label}
-            </span>
-            <span className={dark ? 'font-medium text-white' : 'font-medium'}>
+          <div className='mb-1 flex justify-between text-[11px]'>
+            <span className='text-muted-foreground'>{c.label}</span>
+            <span className='font-semibold'>
               {Math.round((c.score / 5) * 100)}%
             </span>
           </div>
-          <div
-            className={`h-2 overflow-hidden rounded-full ${dark ? 'bg-white/10' : 'bg-muted'}`}
-          >
+          <div className='h-[7px] overflow-hidden rounded-full bg-muted/80'>
             <div
-              className={`h-full rounded-full ${colors[i % colors.length]}`}
+              className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
               style={{ width: `${(c.score / 5) * 100}%` }}
             />
           </div>
@@ -150,50 +156,60 @@ function CriteriaBars({
   )
 }
 
-function AppreciationBars({ factors }: { factors: string[] }) {
+function AppreciationBars() {
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul']
-  const heights = [40, 55, 45, 60, 50, 70, 85]
+  const heights = [38, 52, 44, 58, 48, 66, 82]
   return (
-    <div className='mt-auto flex items-end justify-between gap-1 pt-4'>
+    <div className='mt-auto flex items-end justify-between gap-0.5 pt-5'>
       {months.map((month, i) => {
         const isActive = i === months.length - 1
         return (
-          <div key={month} className='flex flex-1 flex-col items-center gap-1'>
+          <div key={month} className='flex flex-1 flex-col items-center gap-1.5'>
             <div
-              className='flex w-full items-end justify-center gap-0.5'
-              style={{ height: 64 }}
+              className='flex w-full items-end justify-center gap-[3px]'
+              style={{ height: 56 }}
             >
               {isActive ? (
                 <>
                   <div
-                    className='w-2 rounded-t-full bg-flux-lime'
+                    className='w-[7px] rounded-t-full bg-flux-lime'
                     style={{ height: `${heights[i]}%` }}
                   />
                   <div
-                    className='w-2 rounded-t-full bg-flux-lavender'
-                    style={{ height: `${heights[i] * 0.7}%` }}
+                    className='w-[7px] rounded-t-full bg-flux-lavender'
+                    style={{ height: `${heights[i] * 0.72}%` }}
                   />
                 </>
               ) : (
                 <div
-                  className='w-full rounded-t-md bg-white/10'
+                  className='w-full max-w-[14px] rounded-t-[4px] bg-white/[0.08]'
                   style={{
                     height: `${heights[i]}%`,
                     backgroundImage:
-                      'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
+                      'repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)',
                   }}
                 />
               )}
             </div>
-            <span className='text-[10px] text-white/40'>{month}</span>
+            <span className='text-[9px] font-medium text-white/30'>{month}</span>
           </div>
         )
       })}
-      {factors.length > 0 && (
-        <p className='sr-only'>Fatores: {factors.join(', ')}</p>
-      )}
     </div>
   )
+}
+
+function getFloodRiskColor(level: string) {
+  switch (level) {
+    case 'baixo':
+      return 'bg-emerald-100 text-emerald-600'
+    case 'moderado':
+      return 'bg-amber-100 text-amber-600'
+    case 'alto':
+      return 'bg-red-100 text-red-500'
+    default:
+      return 'bg-muted text-muted-foreground'
+  }
 }
 
 export function EvaluationResultPanel({
@@ -210,7 +226,6 @@ export function EvaluationResultPanel({
   const conditionScore = getCriterionScore(result, 'condition')
   const marketScore = getCriterionScore(result, 'market')
   const neighborhoodDots = Math.round((locationScore / 5) * 25)
-
   const growthPct = result.marketAppreciationAnalysis?.annualGrowthEstimatePercent
 
   async function handleExportPdf() {
@@ -238,17 +253,25 @@ export function EvaluationResultPanel({
 
   return (
     <>
-      <div className='space-y-4'>
+      <div className='space-y-5'>
         {/* Header */}
         <div className='flex flex-wrap items-end justify-between gap-4'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
+            <div className='mb-1 flex items-center gap-2'>
+              <Sparkles className='size-4 text-flux-dark' />
+              <span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+                Resultado
+              </span>
+            </div>
+            <h2 className='text-[1.65rem] font-bold tracking-tight'>
               Visão da avaliação
             </h2>
-            <p className='text-sm text-muted-foreground'>
-              {property.address} ·{' '}
+            <p className='mt-0.5 max-w-lg text-sm text-muted-foreground'>
+              {property.address}
+            </p>
+            <p className='text-xs text-muted-foreground/70'>
               {result.evaluatedAt.toLocaleString('pt-BR', {
-                dateStyle: 'short',
+                dateStyle: 'long',
                 timeStyle: 'short',
               })}
             </p>
@@ -257,52 +280,48 @@ export function EvaluationResultPanel({
             <Button
               variant='outline'
               size='sm'
-              className='rounded-full'
+              className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
               onClick={() => setSaveDialogOpen(true)}
             >
-              <BookmarkPlus className='size-4' />
+              <BookmarkPlus className='size-3.5' />
               Salvar no CRM
             </Button>
             <Button
               variant='outline'
               size='sm'
-              className='rounded-full'
+              className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
               onClick={handleExportPdf}
               disabled={isExporting}
             >
               {isExporting ? (
-                <Loader2 className='size-4 animate-spin' />
+                <Loader2 className='size-3.5 animate-spin' />
               ) : (
-                <FileDown className='size-4' />
+                <FileDown className='size-3.5' />
               )}
               Exportar PDF
             </Button>
-            <FluxBadge>{result.scoreLabel}</FluxBadge>
+            <FluxBadge className='h-9 px-4 text-sm'>{result.scoreLabel}</FluxBadge>
           </div>
         </div>
 
-        {/* Bento Grid */}
-        <div className='grid auto-rows-min grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
-          {/* Hero — Valor estimado */}
+        {/* Row 1 — Hero + métricas */}
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           <BentoCard
             title='Valor estimado'
-            subtitle='Determinação de mercado (NBR 14653)'
-            className='md:col-span-1 xl:col-span-1 xl:row-span-2'
+            subtitle='Determinação de mercado · NBR 14653'
+            className='min-h-[420px] sm:col-span-2 lg:col-span-1 lg:row-span-2'
           >
             <div className='flex items-start justify-between gap-2'>
               <div>
-                <p className='text-3xl font-bold tracking-tight'>
+                <p className='text-[2rem] font-bold leading-none tracking-tight'>
                   {formatCurrency(result.estimatedValue)}
                 </p>
-                <p className='mt-1 text-sm text-muted-foreground'>
+                <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
                   {formatCurrency(result.valuePerSqm)}/m²
                 </p>
               </div>
               {growthPct != null && (
-                <FluxBadge>
-                  {growthPct > 0 ? '+' : ''}
-                  {growthPct}%
-                </FluxBadge>
+                <FluxBadge>+{growthPct}%</FluxBadge>
               )}
             </div>
 
@@ -313,177 +332,179 @@ export function EvaluationResultPanel({
               market={marketScore}
             />
 
-            <CriteriaBars criteria={result.criteriaScores} />
+            <HeroCriteriaBars criteria={result.criteriaScores} />
 
             {propertyHighlights.length > 0 && (
-              <div className='mt-4 flex flex-wrap gap-1.5'>
+              <div className='mt-4 flex flex-wrap gap-1.5 border-t border-black/[0.04] pt-4'>
                 {propertyHighlights.map((h) => (
-                  <Badge key={h} variant='secondary' className='rounded-full text-xs'>
+                  <span
+                    key={h}
+                    className='rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground'
+                  >
                     {h}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             )}
           </BentoCard>
 
-          {/* Mercado */}
           <BentoCard title='Mercado local' subtitle='Comparáveis e faixa de preços'>
-            <div className='flex items-end justify-between'>
+            <div className='flex items-start justify-between gap-3'>
               <div>
-                <p className='text-2xl font-bold'>
+                <p className='text-2xl font-bold tracking-tight'>
                   {marketAnalysis.averagePricePerSqm != null
                     ? formatCurrency(marketAnalysis.averagePricePerSqm)
                     : '—'}
                 </p>
-                <p className='text-xs text-muted-foreground'>média / m²</p>
-              </div>
-              <div className='text-right'>
-                <p className='text-lg font-semibold text-muted-foreground'>
-                  {marketAnalysis.comparables.length}
+                <p className='mt-0.5 text-[11px] text-muted-foreground'>média / m²</p>
+                <p className='mt-2 text-[11px] font-semibold text-muted-foreground'>
+                  {marketAnalysis.comparables.length} comparáveis
                 </p>
-                <p className='text-xs text-muted-foreground'>comparáveis</p>
               </div>
+              <MetricIcon className='bg-flux-lavender/25'>
+                <Building2 className='size-5 text-flux-dark/70' />
+              </MetricIcon>
             </div>
             {marketAnalysis.priceRange && (
-              <p className='mt-3 text-xs text-muted-foreground'>
-                Faixa: {formatCurrency(marketAnalysis.priceRange.min)} –{' '}
-                {formatCurrency(marketAnalysis.priceRange.max)}
+              <p className='mt-3 text-[11px] text-muted-foreground'>
+                Faixa:{' '}
+                <span className='font-medium text-foreground'>
+                  {formatCurrency(marketAnalysis.priceRange.min)} –{' '}
+                  {formatCurrency(marketAnalysis.priceRange.max)}
+                </span>
               </p>
             )}
-            <p className='mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground'>
+            <p className='mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground'>
               {marketAnalysis.summary}
             </p>
           </BentoCard>
 
-          {/* Zoneamento */}
           <BentoCard title='Zoneamento' subtitle='Plano Diretor'>
-            <div className='flex items-end justify-between'>
-              <div>
-                <p className='text-lg font-bold leading-tight'>
-                  {masterPlanAnalysis.zoning.slice(0, 40)}
-                  {masterPlanAnalysis.zoning.length > 40 ? '…' : ''}
+            <div className='flex items-start justify-between gap-3'>
+              <div className='min-w-0'>
+                <p className='text-lg font-bold leading-tight tracking-tight'>
+                  {masterPlanAnalysis.zoning.split(/[,;]/)[0]?.trim() ||
+                    masterPlanAnalysis.zoning.slice(0, 30)}
                 </p>
-                <p className='mt-1 text-xs text-muted-foreground'>
-                  {masterPlanAnalysis.allowedUses.length} usos permitidos
+                <p className='mt-1 text-[11px] text-muted-foreground'>
+                  {masterPlanAnalysis.allowedUses.length} uso(s) permitido(s)
+                </p>
+                <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
+                  {masterPlanAnalysis.developmentPotential}
                 </p>
               </div>
-              <Landmark className='size-8 text-flux-lavender opacity-60' />
+              <MetricIcon className='bg-flux-lavender/25'>
+                <Landmark className='size-5 text-flux-dark/70' />
+              </MetricIcon>
             </div>
-            <p className='mt-3 line-clamp-2 text-xs text-muted-foreground'>
-              {masterPlanAnalysis.developmentPotential}
-            </p>
           </BentoCard>
 
-          {/* Enchentes */}
           {result.floodRiskAnalysis && (
             <BentoCard title='Risco hídrico' subtitle='Histórico de enchentes'>
-              <div className='flex items-end justify-between'>
+              <div className='flex items-start justify-between gap-3'>
                 <div>
-                  <p className='text-2xl font-bold capitalize'>
+                  <p className='text-2xl font-bold capitalize tracking-tight'>
                     {result.floodRiskAnalysis.riskLevelLabel}
                   </p>
-                  <p className='text-xs text-muted-foreground'>
-                    {result.floodRiskAnalysis.historicalEvents.length} evento(s)
+                  <p className='mt-0.5 text-[11px] text-muted-foreground'>
+                    {result.floodRiskAnalysis.historicalEvents.length} evento(s) registrado(s)
                   </p>
                 </div>
-                <Droplets className='size-8 text-blue-400 opacity-60' />
+                <MetricIcon className={getFloodRiskColor(result.floodRiskAnalysis.riskLevel)}>
+                  <Droplets className='size-5' />
+                </MetricIcon>
               </div>
-              <p className='mt-2 line-clamp-2 text-xs text-muted-foreground'>
+              <p className='mt-3 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground'>
                 {result.floodRiskAnalysis.summary}
               </p>
             </BentoCard>
           )}
 
-          {/* Score do bairro */}
           <BentoCard title='Score do bairro' subtitle='Localização e infraestrutura'>
-            <div className='flex items-start justify-between'>
-              <div>
-                <p className='text-3xl font-bold'>
-                  {Math.round((locationScore / 5) * 100)}%
-                </p>
-                <FluxBadge className='mt-1'>+{locationScore * 4}%</FluxBadge>
-              </div>
-            </div>
-            <div className='mt-4'>
+            <p className='text-[2rem] font-bold leading-none tracking-tight'>
+              {Math.round((locationScore / 5) * 100)}%
+            </p>
+            <FluxBadge className='mt-2'>+{locationScore * 4}%</FluxBadge>
+            <div className='mt-auto pt-5'>
               <DotMatrix filled={neighborhoodDots} />
             </div>
           </BentoCard>
 
-          {/* Valorização */}
           {result.marketAppreciationAnalysis && (
             <BentoCard title='Valorização' subtitle='Tendência de mercado'>
-              <div className='flex items-end justify-between'>
+              <div className='flex items-start justify-between gap-3'>
                 <div>
-                  <p className='text-xl font-bold'>
+                  <p className='text-xl font-bold tracking-tight'>
                     {result.marketAppreciationAnalysis.trendLabel}
                   </p>
                   {result.marketAppreciationAnalysis.annualGrowthEstimatePercent != null && (
-                    <FluxBadge className='mt-1'>
-                      {result.marketAppreciationAnalysis.annualGrowthEstimatePercent > 0
-                        ? '+'
-                        : ''}
-                      {result.marketAppreciationAnalysis.annualGrowthEstimatePercent}%/ano
+                    <FluxBadge className='mt-2'>
+                      +{result.marketAppreciationAnalysis.annualGrowthEstimatePercent}%/ano
                     </FluxBadge>
                   )}
+                  <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
+                    {result.marketAppreciationAnalysis.liquidity}
+                  </p>
                 </div>
-                <TrendingUp className='size-8 text-flux-lime opacity-80' />
+                <MetricIcon className='bg-flux-lime/30'>
+                  <TrendingUp className='size-5 text-flux-dark/70' />
+                </MetricIcon>
               </div>
-              <p className='mt-2 line-clamp-2 text-xs text-muted-foreground'>
-                {result.marketAppreciationAnalysis.liquidity}
-              </p>
             </BentoCard>
           )}
+        </div>
 
-          {/* Bairro — dark card (Sleep Analysis style) */}
+        {/* Row 2 — Bairro dark + critérios + comparáveis + insights */}
+        <div className='grid grid-cols-1 gap-4 lg:grid-cols-4'>
           {result.neighborhoodAnalysis && (
             <BentoCard
               variant='dark'
               title='Pesquisa avançada do bairro'
-              subtitle={result.neighborhoodAnalysis.qualityOfLife.slice(0, 60)}
-              className='md:col-span-2 xl:col-span-2'
+              subtitle={result.neighborhoodAnalysis.qualityOfLife.slice(0, 55)}
+              className='min-h-[280px] lg:col-span-2'
+              showMenu
             >
               <div className='grid gap-4 sm:grid-cols-2'>
                 <div>
-                  <p className='text-xs text-white/50'>Segurança percebida</p>
-                  <p className='text-lg font-semibold'>
-                    {result.neighborhoodAnalysis.safetyPerception.slice(0, 50)}
+                  <p className='text-[10px] font-semibold uppercase tracking-wider text-white/40'>
+                    Segurança percebida
+                  </p>
+                  <p className='mt-1 text-base font-semibold leading-snug'>
+                    {result.neighborhoodAnalysis.safetyPerception.split(/[.,]/)[0]}
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs text-white/50'>Demanda / liquidez</p>
-                  <p className='text-lg font-semibold'>
-                    {result.marketAppreciationAnalysis?.demandLevel?.slice(0, 50) ??
-                      'Alta demanda regional'}
+                  <p className='text-[10px] font-semibold uppercase tracking-wider text-white/40'>
+                    Demanda / liquidez
+                  </p>
+                  <p className='mt-1 text-base font-semibold leading-snug'>
+                    {result.marketAppreciationAnalysis?.demandLevel?.split(/[.,]/)[0] ??
+                      'Alta demanda'}
                   </p>
                 </div>
               </div>
-              <p className='mt-2 line-clamp-2 text-sm text-white/70'>
+              <p className='mt-3 line-clamp-2 text-[13px] leading-relaxed text-white/60'>
                 {result.neighborhoodAnalysis.overview}
               </p>
-              <AppreciationBars
-                factors={
-                  result.marketAppreciationAnalysis?.priceTrendFactors ?? []
-                }
-              />
+              <AppreciationBars />
             </BentoCard>
           )}
 
-          {/* Critérios completos */}
           <BentoCard
             title='Pontuação por critério'
             subtitle={`Score geral ${result.score}/100`}
-            className='md:col-span-1 xl:col-span-1'
+            className='lg:col-span-1'
           >
             <div className='space-y-3'>
-              {result.criteriaScores.map((criterion) => (
-                <div key={criterion.id} className='space-y-1'>
-                  <div className='flex justify-between text-xs'>
+              {result.criteriaScores.map((criterion, i) => (
+                <div key={criterion.id}>
+                  <div className='mb-1 flex justify-between text-[11px]'>
                     <span className='text-muted-foreground'>{criterion.label}</span>
-                    <span className='font-semibold'>{criterion.score}/5</span>
+                    <span className='font-bold'>{criterion.score}/5</span>
                   </div>
-                  <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
+                  <div className='h-[6px] overflow-hidden rounded-full bg-muted/80'>
                     <div
-                      className='h-full rounded-full bg-flux-lime'
+                      className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
                       style={{ width: `${(criterion.score / 5) * 100}%` }}
                     />
                   </div>
@@ -492,24 +513,28 @@ export function EvaluationResultPanel({
             </div>
           </BentoCard>
 
-          {/* Comparáveis */}
           {marketAnalysis.comparables.length > 0 && (
             <BentoCard
               title='Imóveis comparáveis'
               subtitle={`${marketAnalysis.comparables.length} referências de mercado`}
-              className='md:col-span-2 xl:col-span-2'
+              className='lg:col-span-2'
+              showMenu
             >
-              <div className='max-h-48 space-y-2 overflow-y-auto pr-1'>
+              <div className='space-y-2'>
                 {marketAnalysis.comparables.map((item, i) => (
                   <div
                     key={i}
-                    className='flex items-start justify-between gap-2 rounded-2xl bg-muted/40 p-3 text-sm'
+                    className='group flex items-start justify-between gap-3 rounded-2xl border border-black/[0.04] bg-muted/25 p-3.5 transition-colors hover:bg-muted/50'
                   >
                     <div className='min-w-0'>
-                      <p className='truncate font-medium'>{item.title}</p>
-                      <p className='font-semibold text-flux-dark'>{item.price}</p>
+                      <p className='truncate text-[13px] font-medium leading-snug'>
+                        {item.title}
+                      </p>
+                      <p className='mt-0.5 text-base font-bold text-flux-dark'>
+                        {item.price}
+                      </p>
                       {item.area && (
-                        <p className='text-xs text-muted-foreground'>{item.area}</p>
+                        <p className='text-[11px] text-muted-foreground'>{item.area}</p>
                       )}
                     </div>
                     {item.link && (
@@ -517,9 +542,9 @@ export function EvaluationResultPanel({
                         href={item.link}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='shrink-0 text-muted-foreground hover:text-foreground'
+                        className='shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-background hover:text-foreground'
                       >
-                        <ExternalLink className='size-4' />
+                        <ExternalLink className='size-3.5' />
                       </a>
                     )}
                   </div>
@@ -528,36 +553,38 @@ export function EvaluationResultPanel({
             </BentoCard>
           )}
 
-          {/* Insights */}
           <BentoCard
             title='Insights da IA'
             subtitle={`${result.aiInsights.length} conclusões`}
-            className='md:col-span-2 xl:col-span-2'
+            className='lg:col-span-2'
+            showMenu
           >
             <ul className='space-y-2'>
               {result.aiInsights.map((insight, i) => (
                 <li
                   key={i}
-                  className='rounded-2xl bg-muted/40 px-3 py-2 text-sm leading-relaxed'
+                  className='rounded-2xl bg-muted/35 px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground/85'
                 >
                   {insight}
                 </li>
               ))}
             </ul>
           </BentoCard>
+        </div>
 
-          {/* Fotos */}
+        {/* Row 3 — Fotos + análise avançada + plano diretor */}
+        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
           {result.photoCount > 0 && (
             <BentoCard
-              title={`Fotos analisadas`}
+              title='Fotos analisadas'
               subtitle={`${result.photoCount} imagem(ns)`}
-              className='md:col-span-1'
+              showMenu
             >
               <div className='grid grid-cols-2 gap-2'>
                 {result.photoPreviews.slice(0, 4).map((url, i) => (
                   <div
                     key={url}
-                    className='aspect-square overflow-hidden rounded-2xl bg-muted'
+                    className='aspect-square overflow-hidden rounded-2xl bg-muted ring-1 ring-black/[0.04]'
                   >
                     <img
                       src={url}
@@ -570,43 +597,45 @@ export function EvaluationResultPanel({
             </BentoCard>
           )}
 
-          {/* Detalhes avançados — enchentes + valorização expandidos */}
-          {(result.floodRiskAnalysis || result.marketAppreciationAnalysis) && (
+          {(result.floodRiskAnalysis ||
+            result.marketAppreciationAnalysis ||
+            result.neighborhoodAnalysis) && (
             <BentoCard
               title='Análise avançada'
               subtitle='Enchentes, valorização e bairro'
-              className='md:col-span-2 xl:col-span-2'
+              className='md:col-span-1 lg:col-span-1'
+              showMenu
             >
-              <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='space-y-2'>
                 {result.floodRiskAnalysis && (
-                  <div className='rounded-2xl bg-muted/30 p-3'>
-                    <p className='mb-1 flex items-center gap-1.5 text-xs font-semibold'>
-                      <Droplets className='size-3.5' />
+                  <div className='rounded-2xl bg-muted/35 p-3.5'>
+                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
+                      <Droplets className='size-3.5 text-blue-500' />
                       Risco hídrico
                     </p>
-                    <p className='text-sm leading-relaxed text-muted-foreground'>
+                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
                       {result.floodRiskAnalysis.impactOnValue}
                     </p>
                   </div>
                 )}
                 {result.neighborhoodAnalysis && (
-                  <div className='rounded-2xl bg-muted/30 p-3'>
-                    <p className='mb-1 flex items-center gap-1.5 text-xs font-semibold'>
-                      <MapPinned className='size-3.5' />
+                  <div className='rounded-2xl bg-muted/35 p-3.5'>
+                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
+                      <MapPinned className='size-3.5 text-flux-lavender' />
                       Bairro
                     </p>
-                    <p className='text-sm leading-relaxed text-muted-foreground'>
+                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
                       {result.neighborhoodAnalysis.summary}
                     </p>
                   </div>
                 )}
                 {result.marketAppreciationAnalysis && (
-                  <div className='rounded-2xl bg-muted/30 p-3 sm:col-span-2'>
-                    <p className='mb-1 flex items-center gap-1.5 text-xs font-semibold'>
-                      <TrendingUp className='size-3.5' />
+                  <div className='rounded-2xl bg-muted/35 p-3.5'>
+                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
+                      <TrendingUp className='size-3.5 text-flux-dark' />
                       Projeção de valorização
                     </p>
-                    <p className='text-sm leading-relaxed text-muted-foreground'>
+                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
                       {result.marketAppreciationAnalysis.projectionSummary}
                     </p>
                   </div>
@@ -615,65 +644,74 @@ export function EvaluationResultPanel({
             </BentoCard>
           )}
 
-          {/* Zoneamento detalhado */}
           <BentoCard
             title='Plano Diretor'
             subtitle='Usos e restrições'
-            className='md:col-span-2'
+            className='md:col-span-1 lg:col-span-1'
+            showMenu
           >
-            <div className='grid gap-3 sm:grid-cols-2 text-sm'>
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div>
-                <p className='text-xs font-medium text-muted-foreground'>Usos permitidos</p>
-                <ul className='mt-1 list-inside list-disc space-y-0.5 text-xs'>
+                <p className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground'>
+                  Usos permitidos
+                </p>
+                <ul className='mt-1.5 space-y-0.5'>
                   {(masterPlanAnalysis.allowedUses.length > 0
-                    ? masterPlanAnalysis.allowedUses.slice(0, 4)
+                    ? masterPlanAnalysis.allowedUses.slice(0, 3)
                     : ['Não identificado']
                   ).map((use, i) => (
-                    <li key={i}>{use}</li>
+                    <li key={i} className='text-[12px] text-foreground/80'>
+                      · {use}
+                    </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <p className='text-xs font-medium text-muted-foreground'>Restrições</p>
-                <ul className='mt-1 list-inside list-disc space-y-0.5 text-xs'>
+                <p className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground'>
+                  Restrições
+                </p>
+                <ul className='mt-1.5 space-y-0.5'>
                   {(masterPlanAnalysis.restrictions.length > 0
-                    ? masterPlanAnalysis.restrictions.slice(0, 4)
+                    ? masterPlanAnalysis.restrictions.slice(0, 3)
                     : ['Nenhuma identificada']
                   ).map((r, i) => (
-                    <li key={i}>{r}</li>
+                    <li key={i} className='text-[12px] text-foreground/80'>
+                      · {r}
+                    </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <p className='mt-3 border-t pt-3 text-xs leading-relaxed text-muted-foreground'>
+            <p className='mt-4 border-t border-black/[0.04] pt-3 text-[11px] leading-relaxed text-muted-foreground'>
               {masterPlanAnalysis.summary}
             </p>
           </BentoCard>
         </div>
 
-        {/* NBR 14653 */}
+        {/* NBR 14653 — full width */}
         {result.nbr14653 && (
-          <div className='mt-2'>
-            <Nbr14653Panel nbr={result.nbr14653} />
-          </div>
+          <Nbr14653Panel nbr={result.nbr14653} className='col-span-full' />
         )}
 
         {/* Fontes */}
         {result.sources && (
-          <p className='flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground'>
-            <MapPin className='size-3 shrink-0' />
-            Fontes: {result.sources.marketResultsCount} mercado ·{' '}
-            {result.sources.masterPlanResultsCount} plano diretor
-            {result.sources.neighborhoodResultsCount != null && (
-              <> · {result.sources.neighborhoodResultsCount} bairro</>
-            )}
-            {result.sources.floodResultsCount != null && (
-              <> · {result.sources.floodResultsCount} enchentes</>
-            )}
-            {result.sources.appreciationResultsCount != null && (
-              <> · {result.sources.appreciationResultsCount} valorização</>
-            )}
-          </p>
+          <div className='flex flex-wrap items-center gap-2 rounded-2xl bg-muted/30 px-4 py-2.5'>
+            <MapPin className='size-3.5 shrink-0 text-muted-foreground' />
+            <p className='text-[11px] text-muted-foreground'>
+              <span className='font-medium text-foreground/70'>Fontes consultadas:</span>{' '}
+              {result.sources.marketResultsCount} mercado ·{' '}
+              {result.sources.masterPlanResultsCount} plano diretor
+              {result.sources.neighborhoodResultsCount != null && (
+                <> · {result.sources.neighborhoodResultsCount} bairro</>
+              )}
+              {result.sources.floodResultsCount != null && (
+                <> · {result.sources.floodResultsCount} enchentes</>
+              )}
+              {result.sources.appreciationResultsCount != null && (
+                <> · {result.sources.appreciationResultsCount} valorização</>
+              )}
+            </p>
+          </div>
         )}
       </div>
 

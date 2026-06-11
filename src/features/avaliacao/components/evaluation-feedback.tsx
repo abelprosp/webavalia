@@ -84,16 +84,15 @@ export function EvaluationFeedbackPanel({
   }
 
   return (
-    <Card className='rounded-[1.75rem] border border-dashed border-flux-lavender/40 bg-card shadow-sm'>
+    <Card className='rounded-[1.75rem] border border-dashed border-flux-lavender/30 bg-card shadow-sm'>
       <CardHeader>
         <CardTitle className='flex items-center gap-2 text-lg'>
-          <Sparkles className='size-5 text-primary' />
+          <Sparkles className='size-5 text-flux-dark' />
           Modo experimental — ajude a IA a aprender
         </CardTitle>
         <CardDescription>
-          Esta avaliação ficou boa ou ruim? Explique o porquê para que a IA
-          corrija erros e repita acertos nas próximas análises. Você ganha +1
-          avaliação bônus ao enviar feedback.
+          Esta avaliação ficou boa ou ruim? Explique o porquê para calibrar os
+          próximos resultados. Você ganha +1 avaliação bônus ao enviar feedback.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
@@ -102,8 +101,9 @@ export function EvaluationFeedbackPanel({
             type='button'
             variant={rating === 'good' ? 'default' : 'outline'}
             className={cn(
-              'h-auto flex-col gap-2 py-4',
-              rating === 'good' && 'ring-2 ring-primary ring-offset-2'
+              'h-auto flex-col gap-2 rounded-2xl py-4',
+              rating === 'good' &&
+                'bg-flux-lime text-flux-dark hover:bg-flux-lime/90 ring-2 ring-flux-lime ring-offset-2'
             )}
             onClick={() => setRating('good')}
           >
@@ -114,8 +114,9 @@ export function EvaluationFeedbackPanel({
             type='button'
             variant={rating === 'bad' ? 'default' : 'outline'}
             className={cn(
-              'h-auto flex-col gap-2 py-4',
-              rating === 'bad' && 'ring-2 ring-destructive ring-offset-2'
+              'h-auto flex-col gap-2 rounded-2xl py-4',
+              rating === 'bad' &&
+                'ring-2 ring-destructive ring-offset-2'
             )}
             onClick={() => setRating('bad')}
           >
@@ -147,7 +148,7 @@ export function EvaluationFeedbackPanel({
 
         <Button
           type='button'
-          className='w-full'
+          className='w-full rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
           onClick={handleSubmit}
           disabled={submitting}
         >

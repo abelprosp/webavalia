@@ -7,6 +7,7 @@ import type {
 } from '../types/evaluation.js'
 import type { SerperResult } from './serper.js'
 import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
+import { isHighStandardProperty } from './nbr-14653-service.js'
 import { getBuildingAgeLabel } from '../constants/building-age.js'
 
 const aiResponseSchema = z.object({
@@ -274,6 +275,7 @@ Dados do imóvel:
 `
 
   const feedbackLearning = await buildFeedbackLearningPrompt()
+  const useMedian = isHighStandardProperty(input)
 
   const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
 
@@ -292,7 +294,11 @@ METODOLOGIA OBRIGATÓRIA (NBR 14653):
 4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,85 e 1,15 por fator) para: localização, área, terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades e mercado. O produto combinado dos fatores de cada comparável deve ficar entre 0,75 e 1,25.
 5. ATENÇÃO A PREÇOS: anúncios frequentemente informam valor POR M² (ex.: R$ 8.500/m²). Não divida novamente pela área nesses casos. declaredPrice deve refletir o preço total do anúncio; unitPriceSqm e homogenizedUnitPriceSqm devem estar em R$/m² coerentes com a região (tipicamente acima de R$ 1.500/m² em cidades médias/grandes).
 6. Calcule o valor unitário homogeneizado de cada comparável. Some valor de móveis alto padrão ao valor final se informado.
-7. Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área do imóvel (+ móveis se houver).
+7. ${
+    useMedian
+      ? 'IMÓVEL DE ALTO PADRÃO: use MEDIANA (não média) dos valores unitários homogeneizados — mais realista em segmentos com dispersão de preços. O campo marketAnalysis.averagePricePerSqm deve ser a mediana R$/m² dos comparáveis do mesmo padrão. nbr14653.calculationMemory.homogenizedAveragePriceSqm = mediana unitária. Valor final = mediana × área (+ móveis).'
+      : 'Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área do imóvel (+ móveis se houver).'
+  }
 8. Calibração: se houver valor pedido, o estimatedValue deve ficar em faixa plausível (em geral entre 75% e 115% do valor pedido, salvo evidência forte em contrário). Não subestime sistematicamente.
 9. Risco de enchente: desconto máximo de 5% (baixo), 10% (moderado) ou 15% (alto com histórico documentado) — nunca mais que isso sem evidência excepcional.
 10. Registre memória de cálculo passo a passo e limitações da amostra.

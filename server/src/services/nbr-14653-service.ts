@@ -16,6 +16,47 @@ import type {
 const MIN_PLAUSIBLE_UNIT_PRICE_SQM = 1_500
 const FACTOR_PRODUCT_MIN = 0.75
 const FACTOR_PRODUCT_MAX = 1.25
+const HIGH_STANDARD_LEVELS = new Set(['alto-padrao', 'luxo'])
+
+export function isHighStandardProperty(input: EvaluationRequest) {
+  return (
+    HIGH_STANDARD_LEVELS.has(input.standardLevel) ||
+    HIGH_STANDARD_LEVELS.has(input.finishLevel) ||
+    input.condominiumLevel === 'alto-padrao' ||
+    input.condominiumLevel === 'clube'
+  )
+}
+
+function median(values: number[]) {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2
+  }
+  return sorted[mid]
+}
+
+function computeAggregateUnitPrice(
+  unitPrices: { value: number; weight: number }[],
+  useMedian: boolean,
+  fallback: number | null
+) {
+  if (unitPrices.length === 0) return fallback
+
+  if (useMedian) {
+    const med = median(unitPrices.map((item) => item.value))
+    return med != null ? med : fallback
+  }
+
+  const totalWeight = unitPrices.reduce((sum, item) => sum + item.weight, 0)
+  if (totalWeight <= 0) return fallback
+
+  return (
+    unitPrices.reduce((sum, item) => sum + item.value * item.weight, 0) /
+    totalWeight
+  )
+}
 
 function parseAreaSqm(area?: string | null) {
   if (!area) return null
@@ -162,12 +203,13 @@ export function buildNbr14653Analysis(
 ): Nbr14653Analysis {
   const aiNbr = aiResult.nbr14653
   const comparables = aiNbr?.homogenizedComparables ?? []
+  const useMedian = isHighStandardProperty(input)
   const marketAvgPerSqm = aiResult.marketAnalysis.averagePricePerSqm
   const grade = inferSpecificationGrade(
     Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)
   )
 
-  const weightedValues = comparables
+  const unitPrices = comparables
     .map((item) => {
       const unitPrice = resolveComparableUnitPrice(item, marketAvgPerSqm)
       if (unitPrice == null || unitPrice < MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
@@ -177,11 +219,15 @@ export function buildNbr14653Analysis(
     })
     .filter((item): item is { value: number; weight: number } => item != null)
 
-  const totalWeight = weightedValues.reduce((sum, item) => sum + item.weight, 0)
-  const homogenizedAverage =
-    totalWeight > 0
-      ? weightedValues.reduce((sum, item) => sum + item.value * item.weight, 0) /
-        totalWeight
+  const homogenizedAverage = computeAggregateUnitPrice(
+    unitPrices,
+    useMedian,
+    marketAvgPerSqm
+  )
+
+  const marketReferencePerSqm =
+    unitPrices.length > 0 && useMedian
+      ? median(unitPrices.map((item) => item.value))
       : marketAvgPerSqm
 
   const rawCalculatedValue =
@@ -202,18 +248,22 @@ export function buildNbr14653Analysis(
     area: input.area,
     askingPrice: input.askingPrice,
     highEndFurnitureValue: input.highEndFurnitureValue,
-    marketAvgPerSqm,
+    marketAvgPerSqm: marketReferencePerSqm,
   })
 
   const calculatedValue = calibrated.finalValue
   const calculatedValuePerSqm = calibrated.valuePerSqm
 
+  const aggregateLabel = useMedian ? 'mediana' : 'média ponderada'
+
   const steps = [
     '1. Definição do objetivo: determinação do valor de mercado (NBR 14653-1).',
     `2. Seleção de amostra: ${Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)} elemento(s) comparável(is) de mercado.`,
-    '3. Tratamento técnico: aplicação de fatores de homogeneização aos atributos diferenciais (localização, área, conservação, padrão, idade, layout e mercado).',
+    useMedian
+      ? '3. Tratamento técnico: homogeneização dos comparáveis e agregação por mediana (imóvel de alto padrão — reduz distorção por outliers).'
+      : '3. Tratamento técnico: aplicação de fatores de homogeneização aos atributos diferenciais (localização, área, conservação, padrão, idade, layout e mercado).',
     homogenizedAverage != null
-      ? `4. Valor unitário homogeneizado médio: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
+      ? `4. Valor unitário homogeneizado (${aggregateLabel}): ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
       : '4. Valor unitário estimado com base na amostra e atributos do imóvel avaliando.',
     input.highEndFurnitureValue
       ? `5. Acréscimo de móveis alto padrão: ${input.highEndFurnitureValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
@@ -223,11 +273,14 @@ export function buildNbr14653Analysis(
 
   const limitations = [
     ...(aiNbr?.limitations ?? []),
+    useMedian
+      ? 'Imóvel de alto padrão: valor unitário obtido pela mediana dos comparáveis homogeneizados, mais robusta que a média em amostras com dispersão elevada.'
+      : null,
     marketResultsCount < 5
       ? 'Amostra de mercado limitada às fontes digitais disponíveis na data da avaliação.'
       : 'Amostra obtida por pesquisa de mercado em fontes digitais — recomenda-se vistoria presencial para laudo formal.',
     'Fatores de homogeneização estimados com base em inferência técnica e não em vistoria in loco.',
-  ]
+  ].filter((item): item is string => item != null)
 
   return {
     standard: NBR_14653_STANDARD,
