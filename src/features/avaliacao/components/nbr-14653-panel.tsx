@@ -15,10 +15,10 @@ type Nbr14653PanelProps = {
 
 export function Nbr14653Panel({ nbr }: Nbr14653PanelProps) {
   return (
-    <Card className='border-emerald-200/60 bg-emerald-50/30 dark:border-emerald-900/40 dark:bg-emerald-950/20'>
+    <Card className='rounded-[1.75rem] border-0 bg-card shadow-sm'>
       <CardHeader>
         <CardTitle className='flex items-center gap-2 text-base'>
-          <Scale className='size-5 text-emerald-700 dark:text-emerald-400' />
+          <Scale className='size-5 text-flux-dark' />
           Metodologia ABNT NBR 14653
         </CardTitle>
         <CardDescription>

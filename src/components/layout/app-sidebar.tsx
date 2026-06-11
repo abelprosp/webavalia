@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+import { Sparkles } from 'lucide-react'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -35,6 +37,23 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter>
+        <div className='mx-2 mb-2 overflow-hidden rounded-2xl bg-flux-lime p-4 group-data-[collapsible=icon]:hidden'>
+          <div className='flex items-start justify-between gap-2'>
+            <div>
+              <p className='text-sm font-bold text-flux-dark'>Plano Pro</p>
+              <p className='mt-0.5 text-xs text-flux-dark/70'>
+                Avaliações ilimitadas e leads premium
+              </p>
+            </div>
+            <Sparkles className='size-5 shrink-0 text-flux-dark/60' />
+          </div>
+          <Link
+            to='/settings/credits'
+            className='mt-3 flex w-full items-center justify-center rounded-full bg-flux-dark px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90'
+          >
+            Ver planos
+          </Link>
+        </div>
         <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />

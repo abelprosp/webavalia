@@ -318,10 +318,11 @@ export function Avaliacao() {
           />
         )}
 
-        <div className='grid gap-6 lg:grid-cols-2'>
+        <div className='flex flex-col gap-6'>
+          <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              <Card>
+              <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
                     <Home className='size-5' />
@@ -675,7 +676,7 @@ export function Avaliacao() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
                     <Gem className='size-5' />
@@ -922,7 +923,7 @@ export function Avaliacao() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
                     <Camera className='size-5' />
@@ -941,7 +942,7 @@ export function Avaliacao() {
               <Button
                 type='submit'
                 size='lg'
-                className='w-full'
+                className='w-full rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
                 disabled={isEvaluating || trialRemaining === 0}
               >
                 {isEvaluating ? (
@@ -959,25 +960,11 @@ export function Avaliacao() {
             </form>
           </Form>
 
-          <div className='space-y-6'>
-            {result && evaluatedProperty ? (
-              <>
-                <EvaluationResultPanel
-                  result={result}
-                  property={evaluatedProperty}
-                />
-                {feedbackModeEnabled && evaluationId && !feedbackSubmitted && (
-                  <EvaluationFeedbackPanel
-                    evaluationId={evaluationId}
-                    onSubmitted={() => setFeedbackSubmitted(true)}
-                  />
-                )}
-              </>
-            ) : (
-              <Card className='flex min-h-100 flex-col items-center justify-center border-dashed'>
+          {!result && (
+              <Card className='flex min-h-100 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-muted-foreground/20 bg-card shadow-sm'>
                 <CardContent className='flex flex-col items-center gap-4 py-12 text-center'>
-                  <div className='flex size-16 items-center justify-center rounded-full bg-primary/10'>
-                    <Sparkles className='size-8 text-primary' />
+                  <div className='flex size-16 items-center justify-center rounded-full bg-flux-lime/30'>
+                    <Sparkles className='size-8 text-flux-dark' />
                   </div>
                   <div>
                     <h3 className='text-lg font-semibold'>
@@ -991,8 +978,23 @@ export function Avaliacao() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+          )}
           </div>
+
+          {result && evaluatedProperty && (
+            <div className='space-y-6'>
+              <EvaluationResultPanel
+                result={result}
+                property={evaluatedProperty}
+              />
+              {feedbackModeEnabled && evaluationId && !feedbackSubmitted && (
+                <EvaluationFeedbackPanel
+                  evaluationId={evaluationId}
+                  onSubmitted={() => setFeedbackSubmitted(true)}
+                />
+              )}
+            </div>
+          )}
         </div>
       </Main>
     </>

@@ -59,7 +59,11 @@ export function NavGroup({ title, items }: NavGroupProps) {
 }
 
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className='rounded-full px-1 py-0 text-xs'>{children}</Badge>
+  return (
+    <Badge className='rounded-full bg-sidebar-primary px-1.5 py-0 text-[10px] font-semibold text-sidebar-primary-foreground'>
+      {children}
+    </Badge>
+  )
 }
 
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
@@ -70,6 +74,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         asChild
         isActive={checkIsActive(href, item)}
         tooltip={item.title}
+        className='rounded-full data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[active=true]:shadow-sm'
       >
         <Link to={item.url} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon />}

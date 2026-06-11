@@ -84,7 +84,7 @@ export function EvaluationFeedbackPanel({
   }
 
   return (
-    <Card className='border-dashed border-primary/40'>
+    <Card className='rounded-[1.75rem] border border-dashed border-flux-lavender/40 bg-card shadow-sm'>
       <CardHeader>
         <CardTitle className='flex items-center gap-2 text-lg'>
           <Sparkles className='size-5 text-primary' />

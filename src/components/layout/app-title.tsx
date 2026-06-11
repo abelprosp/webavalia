@@ -34,7 +34,7 @@ export function AppTitle() {
                 <>
                   <AvaliaLogo size='sm' />
                   <div className='grid flex-1 text-start leading-tight'>
-                    <span className='truncate text-xs text-muted-foreground'>
+                    <span className='truncate text-xs text-sidebar-foreground/60'>
                       Avaliador com IA
                     </span>
                   </div>
