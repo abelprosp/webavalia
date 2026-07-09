@@ -6,6 +6,7 @@ import { USER_SELECT_FIELDS, type UserRow } from '../services/user-service.js'
 import {
   createEvaluationPlanCheckout,
   createLeadCreditsPixOrder,
+  getPaymentDiagnostics,
   getPublicPricing,
   syncLeadCreditsPixOrder,
 } from '../services/payment-service.js'
@@ -16,6 +17,10 @@ const router = Router()
 
 router.get('/pricing', (_req, res) => {
   res.json(getPublicPricing())
+})
+
+router.get('/diagnostics', (_req, res) => {
+  res.json(getPaymentDiagnostics())
 })
 
 router.use(requireAuth, paymentRateLimiter)

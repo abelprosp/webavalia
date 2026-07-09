@@ -6,6 +6,7 @@ import {
   createPixCharge,
   ensureEvaluationPlanId,
   getChargeNotification,
+  getEfiDiagnostics,
   getPixCharge,
   getPublicEfiConfig,
   isEfiChargePaid,
@@ -59,6 +60,10 @@ export function getPublicPricing() {
     },
     efi: getPublicEfiConfig(),
   }
+}
+
+export function getPaymentDiagnostics() {
+  return getEfiDiagnostics()
 }
 
 async function getUserForPayment(userId: string) {

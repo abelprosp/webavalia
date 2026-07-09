@@ -16,33 +16,72 @@ function resolveCorsOrigin() {
   return 'http://localhost:5173'
 }
 
+type ResolvedCertificate = {
+  /** Caminho do arquivo OU conteúdo base64 (quando certificateBase64=true) */
+  value: string
+  certificateBase64: boolean
+  source: 'env-base64' | 'file' | 'missing'
+  resolvedPath?: string
+}
+
 /**
- * Resolve o caminho do certificado .p12.
- * Aceita caminho relativo à raiz do projeto ou ao server/, ou valor base64.
+ * Resolve o certificado .p12.
+ * Se for um arquivo, lê e converte para base64 (mais confiável em deploy).
  */
-function resolveEfiCertificate(raw: string, asBase64: boolean) {
-  if (!raw) return ''
-  if (asBase64) return raw
-  if (path.isAbsolute(raw) && fs.existsSync(raw)) return raw
+function resolveEfiCertificate(
+  raw: string,
+  asBase64: boolean
+): ResolvedCertificate {
+  if (!raw) {
+    return { value: '', certificateBase64: false, source: 'missing' }
+  }
+
+  if (asBase64) {
+    return { value: raw, certificateBase64: true, source: 'env-base64' }
+  }
 
   const candidates = [
+    path.isAbsolute(raw) ? raw : null,
     path.resolve(projectRoot, raw),
     path.resolve(serverRoot, raw),
     path.resolve(process.cwd(), raw),
     path.resolve(projectRoot, 'certs', path.basename(raw)),
     path.resolve(serverRoot, 'certs', path.basename(raw)),
-  ]
+  ].filter((value): value is string => Boolean(value))
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
+    if (!fs.existsSync(candidate)) continue
+    try {
+      const base64 = fs.readFileSync(candidate).toString('base64')
+      return {
+        value: base64,
+        certificateBase64: true,
+        source: 'file',
+        resolvedPath: candidate,
+      }
+    } catch (error) {
+      console.error(`[efi] Falha ao ler certificado em ${candidate}:`, error)
+    }
   }
 
-  // Mantém o valor original para a mensagem de erro do SDK ficar clara
-  return path.resolve(projectRoot, raw)
+  return {
+    value: '',
+    certificateBase64: false,
+    source: 'missing',
+    resolvedPath: path.resolve(projectRoot, raw),
+  }
 }
 
-const efiCertificateRaw = process.env.EFI_CERTIFICATE ?? ''
-const efiCertificateBase64 = process.env.EFI_CERTIFICATE_BASE64 === 'true'
+const efiCertificateRaw =
+  process.env.EFI_CERTIFICATE ??
+  // Fallback: certificado versionado no repositório
+  './certs/producao-927103-Avaliimobe.p12'
+const efiCertificateRequestedBase64 =
+  process.env.EFI_CERTIFICATE_BASE64 === 'true'
+const efiCertificate = resolveEfiCertificate(
+  efiCertificateRaw,
+  efiCertificateRequestedBase64
+)
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),
@@ -63,9 +102,11 @@ export const config = {
     // true = homologação | false = produção (padrão: sandbox se omitido)
     // Certificado de produção exige EFI_SANDBOX=false
     sandbox: process.env.EFI_SANDBOX !== 'false',
-    /** Caminho absoluto do .p12 ou conteúdo base64 */
-    certificate: resolveEfiCertificate(efiCertificateRaw, efiCertificateBase64),
-    certificateBase64: efiCertificateBase64,
+    /** Conteúdo base64 do .p12 ou caminho (legado) */
+    certificate: efiCertificate.value,
+    certificateBase64: efiCertificate.certificateBase64,
+    certificateSource: efiCertificate.source,
+    certificatePath: efiCertificate.resolvedPath ?? '',
     pixKey: process.env.EFI_PIX_KEY ?? '',
     // Só para checkout transparente (cartão) — não é necessário para Pix
     payeeCode: process.env.EFI_PAYEE_CODE ?? '',
@@ -126,17 +167,13 @@ if (config.isProduction) {
     console.warn(
       `[efi] Pix indisponível — faltam: ${missingPix.join(', ')}. Configure no painel da Efí (API > Aplicações + Certificado + Chave Pix).`
     )
-  } else if (
-    !config.efi.certificateBase64 &&
-    config.efi.certificate &&
-    !fs.existsSync(config.efi.certificate)
-  ) {
+  } else if (config.efi.certificateSource === 'missing') {
     console.warn(
-      `[efi] Certificado não encontrado em: ${config.efi.certificate}`
+      `[efi] Certificado não encontrado. Defina EFI_CERTIFICATE=./certs/producao-927103-Avaliimobe.p12 ou o base64 com EFI_CERTIFICATE_BASE64=true`
     )
   } else {
     console.log(
-      `[efi] Pix ok — sandbox=${config.efi.sandbox} cert=${config.efi.certificateBase64 ? '(base64)' : config.efi.certificate}`
+      `[efi] Pix ok — sandbox=${config.efi.sandbox} source=${config.efi.certificateSource}${config.efi.certificatePath ? ` path=${config.efi.certificatePath}` : ''}`
     )
   }
   if (!config.efi.payeeCode) {

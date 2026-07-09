@@ -31,9 +31,9 @@ function assertEfiCredentials() {
 
 function assertPixConfigured() {
   assertEfiCredentials()
-  if (!config.efi.certificate) {
+  if (!config.efi.certificate || config.efi.certificateSource === 'missing') {
     throw new Error(
-      'PIX indisponível. Configure EFI_CERTIFICATE (ex.: ./certs/efi-certificado.p12) no server/.env'
+      'PIX indisponível. Certificado Efí não encontrado. Configure EFI_CERTIFICATE=./certs/producao-927103-Avaliimobe.p12 (ou base64 com EFI_CERTIFICATE_BASE64=true).'
     )
   }
   if (!config.efi.pixKey) {
@@ -370,5 +370,30 @@ export function getPublicEfiConfig() {
   return {
     payeeCode: config.efi.payeeCode,
     environment: config.efi.sandbox ? ('sandbox' as const) : ('production' as const),
+    pixReady: Boolean(
+      config.efi.clientId &&
+        config.efi.clientSecret &&
+        config.efi.pixKey &&
+        config.efi.certificate &&
+        config.efi.certificateSource !== 'missing'
+    ),
+    certificateSource: config.efi.certificateSource,
+    cardReady: Boolean(config.efi.payeeCode),
+  }
+}
+
+export function getEfiDiagnostics() {
+  return {
+    sandbox: config.efi.sandbox,
+    hasClientId: Boolean(config.efi.clientId),
+    hasClientSecret: Boolean(config.efi.clientSecret),
+    hasPixKey: Boolean(config.efi.pixKey),
+    hasPayeeCode: Boolean(config.efi.payeeCode),
+    certificateSource: config.efi.certificateSource,
+    certificatePath: config.efi.certificatePath || null,
+    certificateLoaded: Boolean(
+      config.efi.certificate && config.efi.certificateSource !== 'missing'
+    ),
+    notificationUrl: config.efi.notificationUrl || null,
   }
 }

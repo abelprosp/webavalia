@@ -19,6 +19,9 @@ export type PaymentPricing = {
   efi: {
     payeeCode: string
     environment: 'sandbox' | 'production'
+    pixReady: boolean
+    certificateSource: 'env-base64' | 'file' | 'missing'
+    cardReady: boolean
   }
 }
 
