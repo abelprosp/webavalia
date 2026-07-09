@@ -8,6 +8,7 @@ import {
   createLeadCreditsPixOrder,
   getPaymentDiagnostics,
   getPublicPricing,
+  pingPaymentProvider,
   syncLeadCreditsPixOrder,
 } from '../services/payment-service.js'
 import { paymentRateLimiter } from '../middleware/rate-limit.js'
@@ -21,6 +22,23 @@ router.get('/pricing', (_req, res) => {
 
 router.get('/diagnostics', (_req, res) => {
   res.json(getPaymentDiagnostics())
+})
+
+router.get('/diagnostics/pix', async (_req, res) => {
+  try {
+    const result = await pingPaymentProvider()
+    return res.status(result.ok ? 200 : 502).json({
+      ...getPaymentDiagnostics(),
+      ping: result,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Falha ao testar API Pix.'
+    return res.status(502).json({
+      ...getPaymentDiagnostics(),
+      ping: { ok: false, error: message },
+    })
+  }
 })
 
 router.use(requireAuth, paymentRateLimiter)

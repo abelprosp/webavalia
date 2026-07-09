@@ -9,6 +9,7 @@ import {
   getEfiDiagnostics,
   getPixCharge,
   getPublicEfiConfig,
+  pingEfiPixApi,
   isEfiChargePaid,
   isPixChargePaid,
   type EfiBillingAddress,
@@ -64,6 +65,10 @@ export function getPublicPricing() {
 
 export function getPaymentDiagnostics() {
   return getEfiDiagnostics()
+}
+
+export async function pingPaymentProvider() {
+  return pingEfiPixApi()
 }
 
 async function getUserForPayment(userId: string) {

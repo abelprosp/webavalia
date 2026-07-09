@@ -74,24 +74,37 @@ function formatEfiError(error: unknown): string {
     return 'Erro na API Efí Bank.'
   }
 
-  const err = error as {
-    error_description?: string
-    errorDescription?: string
-    mensagem?: string
-    message?: string
-    error?: string
-    nome?: string
-  }
+  const err = error as Record<string, unknown>
+  const violacoes = Array.isArray(err.violacoes)
+    ? err.violacoes
+        .map((item) => {
+          if (!item || typeof item !== 'object') return String(item)
+          const v = item as Record<string, unknown>
+          return [v.razao, v.propriedade, v.valor].filter(Boolean).join(' — ')
+        })
+        .filter(Boolean)
+        .join('; ')
+    : ''
 
-  return (
-    err.error_description ??
-    err.errorDescription ??
-    err.mensagem ??
-    err.message ??
-    err.error ??
-    err.nome ??
-    'Erro na API Efí Bank.'
-  )
+  const parts = [
+    err.error_description,
+    err.errorDescription,
+    err.detail,
+    err.mensagem,
+    err.message,
+    err.title,
+    err.error,
+    err.nome,
+    violacoes,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+
+  if (parts.length > 0) return parts[0] + (violacoes && parts[0] !== violacoes ? `: ${violacoes}` : '')
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return 'Erro na API Efí Bank.'
+  }
 }
 
 async function withEfi<T>(fn: (efi: EfiClient) => Promise<T>): Promise<T> {
@@ -268,31 +281,47 @@ export async function createPixCharge(input: {
 
   const digits = input.cpfCnpj.replace(/\D/g, '')
   const value = (input.amountCents / 100).toFixed(2)
+  const pixKey = config.efi.pixKey.trim()
+  const payerName = input.payerName.trim().slice(0, 200) || 'Cliente Avalia'
+
+  // Body mínimo compatível com a API Pix Bacen/Efí
+  const body: Record<string, unknown> = {
+    calendario: { expiracao: 3600 },
+    valor: { original: value },
+    chave: pixKey,
+    solicitacaoPagador: input.description.slice(0, 140),
+  }
+
+  if (digits.length === 11 || digits.length === 14) {
+    body.devedor = {
+      nome: payerName,
+      ...(digits.length === 14 ? { cnpj: digits } : { cpf: digits }),
+    }
+  }
 
   const charge = (await withEfi((efi) =>
-    efi.pixCreateImmediateCharge(
-      {},
-      {
-        calendario: { expiracao: 3600 },
-        devedor: {
-          nome: input.payerName,
-          ...(digits.length === 14 ? { cnpj: digits } : { cpf: digits }),
-        },
-        valor: { original: value },
-        chave: config.efi.pixKey,
-        solicitacaoPagador: input.description.slice(0, 140),
-        infoAdicionais: [
-          { nome: 'Pedido', valor: input.orderId.slice(0, 50) },
-          { nome: 'Produto', valor: 'Creditos de leads' },
-        ],
-      }
-    )
+    efi.pixCreateImmediateCharge({}, body)
   )) as {
     txid: string
     status: string
     calendario: { expiracao: number }
     loc: { id: number }
     pixCopiaECola?: string
+  }
+
+  if (!charge?.loc?.id) {
+    // Algumas respostas já trazem pixCopiaECola sem precisar do QR separado
+    if (charge?.pixCopiaECola) {
+      return {
+        txid: charge.txid,
+        status: charge.status,
+        brCode: charge.pixCopiaECola,
+        brCodeBase64: '',
+        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+        locationId: 0,
+      }
+    }
+    throw new Error('Cobrança Pix criada sem location/QR Code na resposta da Efí.')
   }
 
   const qr = (await withEfi((efi) =>
@@ -314,6 +343,44 @@ export async function createPixCharge(input: {
     expiresAt,
     locationId: charge.loc.id,
   }
+}
+
+/** Testa autenticação + certificado na API Pix sem criar cobrança. */
+export async function pingEfiPixApi() {
+  assertPixConfigured()
+
+  const now = new Date()
+  const inicio = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+  const fim = now.toISOString()
+
+  try {
+    const result = (await withEfi((efi) =>
+      efi.pixListCharges({ inicio, fim })
+    )) as {
+      parametros?: unknown
+      cobs?: unknown[]
+    }
+
+    return {
+      ok: true as const,
+      sandbox: config.efi.sandbox,
+      pixKeyPreview: maskPixKey(config.efi.pixKey),
+      chargesFound: Array.isArray(result.cobs) ? result.cobs.length : 0,
+    }
+  } catch (error) {
+    return {
+      ok: false as const,
+      sandbox: config.efi.sandbox,
+      pixKeyPreview: maskPixKey(config.efi.pixKey),
+      error: formatEfiError(error),
+    }
+  }
+}
+
+function maskPixKey(key: string) {
+  const value = key.trim()
+  if (value.length <= 8) return '***'
+  return `${value.slice(0, 4)}…${value.slice(-4)}`
 }
 
 export type EfiPixDetail = {

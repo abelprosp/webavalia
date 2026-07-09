@@ -37,7 +37,11 @@ function resolveEfiCertificate(
   }
 
   if (asBase64) {
-    return { value: raw, certificateBase64: true, source: 'env-base64' }
+    return {
+      value: raw.replace(/\s+/g, ''),
+      certificateBase64: true,
+      source: 'env-base64',
+    }
   }
 
   const candidates = [
@@ -52,7 +56,7 @@ function resolveEfiCertificate(
   for (const candidate of candidates) {
     if (!fs.existsSync(candidate)) continue
     try {
-      const base64 = fs.readFileSync(candidate).toString('base64')
+      const base64 = fs.readFileSync(candidate).toString('base64').replace(/\s+/g, '')
       return {
         value: base64,
         certificateBase64: true,
