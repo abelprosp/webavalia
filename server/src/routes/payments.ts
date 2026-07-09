@@ -87,6 +87,7 @@ router.post('/credits/pix', requireBrokerAccount, async (req: AuthRequest, res) 
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erro ao gerar cobrança PIX.'
+    console.error('[payments/credits/pix]', message, error)
     return res.status(502).json({ message })
   }
 })

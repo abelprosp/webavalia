@@ -68,6 +68,8 @@ function getEfiClient(): EfiClient {
 }
 
 function formatEfiError(error: unknown): string {
+  if (typeof error === 'string' && error.trim()) return error
+
   if (!error || typeof error !== 'object') {
     return 'Erro na API Efí Bank.'
   }
@@ -96,7 +98,9 @@ async function withEfi<T>(fn: (efi: EfiClient) => Promise<T>): Promise<T> {
   try {
     return await fn(getEfiClient())
   } catch (error) {
-    throw new Error(formatEfiError(error))
+    const message = formatEfiError(error)
+    console.error('[efi]', message, error)
+    throw new Error(message)
   }
 }
 
