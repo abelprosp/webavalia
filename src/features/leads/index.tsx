@@ -93,8 +93,8 @@ export function Leads() {
     }
   }, [leads])
 
-  function handleUnlockSuccess(lead: LeadItem, leadCredits: number) {
-    syncCreditsFromUser(leadCredits)
+  function handleUnlockSuccess(lead: LeadItem, credits: number) {
+    syncCreditsFromUser(credits)
     setLeads((current) =>
       current.map((item) => (item.id === lead.id ? lead : item))
     )

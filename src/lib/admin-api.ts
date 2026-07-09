@@ -101,19 +101,19 @@ export async function adjustUserCredits(
   amount: number,
   description?: string
 ) {
-  const { data } = await api.post<{ leadCredits: number }>(
-    `/admin/users/${id}/credits`,
-    { amount, description }
-  )
-  return data.leadCredits
+  const { data } = await api.post<{
+    credits?: number
+    leadCredits: number
+  }>(`/admin/users/${id}/credits`, { amount, description })
+  return data.credits ?? data.leadCredits
 }
 
 export async function adjustUserTrialEvaluations(id: string, remaining: number) {
-  const { data } = await api.post<{ trialEvaluationsRemaining: number }>(
-    `/admin/users/${id}/trial-evaluations`,
-    { remaining }
-  )
-  return data.trialEvaluationsRemaining
+  const { data } = await api.post<{
+    credits?: number
+    trialEvaluationsRemaining: number
+  }>(`/admin/users/${id}/trial-evaluations`, { remaining })
+  return data.credits ?? data.trialEvaluationsRemaining
 }
 
 export async function fetchAdminPlans() {

@@ -69,6 +69,7 @@ export function UserAuthForm({
           leadCredits: 0,
           trialEvaluationsRemaining: 3,
           trialEvaluationsTotal: 3,
+          credits: 3,
         }
 
         // Set user and access token

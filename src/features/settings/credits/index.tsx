@@ -47,10 +47,7 @@ export function CreditsSettings() {
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
   const setUser = useAuthStore((s) => s.auth.setUser)
-  const trialRemaining = useAuthStore(
-    (s) => s.auth.user?.trialEvaluationsRemaining
-  )
-  const trialTotal = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 3)
+  const signupBonus = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 3)
   const user = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(user)
 
@@ -89,7 +86,7 @@ export function CreditsSettings() {
     try {
       const user = await fetchMe()
       setUser(user)
-      setCredits(user.leadCredits)
+      setCredits(user.credits ?? user.leadCredits ?? 0)
     } catch {
       // silencioso
     }
@@ -143,27 +140,26 @@ export function CreditsSettings() {
       title='Créditos'
       desc={
         isBroker
-          ? 'Compre créditos para desbloquear leads e assine o plano de avaliações com IA.'
-          : 'Assine o plano de avaliações com IA para continuar avaliando imóveis.'
+          ? 'Um único saldo de créditos para avaliar imóveis com IA e desbloquear leads.'
+          : 'Um único saldo de créditos para avaliar imóveis com IA.'
       }
     >
       <div className='space-y-6'>
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
-              <Sparkles className='size-5' />
-              Avaliações com IA
+              <Coins className='size-5' />
+              Seu saldo
             </CardTitle>
             <CardDescription>
-              Cada conta recebe {trialTotal} avaliações grátis ao se cadastrar
+              Cada conta recebe {signupBonus} créditos ao se cadastrar. 1 crédito
+              = 1 avaliação IA{isBroker ? ' ou 1 desbloqueio de lead' : ''}.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='text-4xl font-bold text-primary'>
-              {trialRemaining ?? '—'}
-            </div>
+            <div className='text-4xl font-bold text-primary'>{credits}</div>
             <p className='mt-1 text-sm text-muted-foreground'>
-              avaliações restantes
+              créditos disponíveis
             </p>
           </CardContent>
         </Card>
@@ -201,11 +197,11 @@ export function CreditsSettings() {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Sparkles className='size-5' />
-              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 40 avaliações IA'}
+              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 40 créditos'}
             </CardTitle>
             <CardDescription>
               {pricing?.evaluationPlan.description ??
-                '40 créditos mensais de avaliação com IA'}
+                '40 créditos mensais para avaliações IA e leads'}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -215,21 +211,17 @@ export function CreditsSettings() {
                 / mês
               </span>
             </div>
-            <p className='text-sm text-muted-foreground'>
-              Checkout transparente via Efí Bank — cartão de crédito na própria
-              página, sem redirecionamento
-            </p>
             <TransparentCheckoutForm
               cpfCnpj={cpfCnpj}
               pricing={pricing}
               onSuccess={async (result) => {
                 if (result.status === 'paid' || result.status === 'approved') {
                   toast.success(
-                    'Assinatura confirmada! Suas avaliações já estão disponíveis.'
+                    'Assinatura confirmada! Seus créditos já estão disponíveis.'
                   )
                 } else {
                   toast.success(
-                    'Assinatura iniciada. As avaliações serão liberadas assim que o pagamento for confirmado.'
+                    'Assinatura iniciada. Os créditos serão liberados assim que o pagamento for confirmado.'
                   )
                 }
                 await refreshUser()
@@ -239,78 +231,58 @@ export function CreditsSettings() {
         </Card>
 
         {isBroker && (
-          <>
-            <Card>
-              <CardHeader>
-                <CardTitle className='flex items-center gap-2'>
-                  <Coins className='size-5' />
-                  Saldo de créditos (leads)
-                </CardTitle>
-                <CardDescription>
-                  Cada lead captado pelo WhatsApp custa 1 crédito para desbloquear
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className='text-4xl font-bold text-primary'>{credits}</div>
-                <p className='mt-1 text-sm text-muted-foreground'>
-                  créditos disponíveis
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {pricing?.leadCreditPack.label ?? '1 crédito de lead'}
-                </CardTitle>
-                <CardDescription>
-                  {pricing?.leadCreditPack.priceLabel ?? 'R$ 7,99'} por crédito —
-                  pagamento somente via PIX
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className='flex items-center gap-4'>
-                  <Button
-                    variant='outline'
-                    size='icon'
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className='size-4' />
-                  </Button>
-                  <span className='min-w-24 text-center text-lg font-medium'>
-                    {quantity} {quantity === 1 ? 'crédito' : 'créditos'}
-                  </span>
-                  <Button
-                    variant='outline'
-                    size='icon'
-                    onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                    disabled={quantity >= 20}
-                  >
-                    <Plus className='size-4' />
-                  </Button>
-                </div>
-
-                <div className='rounded-lg bg-muted/50 p-4 text-sm'>
-                  <p>
-                    <strong>{leadCreditsTotal} crédito(s)</strong> —{' '}
-                    {(leadPriceTotal / 100).toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </p>
-                </div>
-
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {pricing?.leadCreditPack.label ?? 'Pacote avulso de créditos'}
+              </CardTitle>
+              <CardDescription>
+                {pricing?.leadCreditPack.priceLabel ?? 'R$ 7,99'} por crédito —
+                pagamento via PIX. Também entram no saldo unificado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex items-center gap-4'>
                 <Button
-                  className='w-full'
-                  onClick={handleBuyLeadCredits}
-                  disabled={loadingPix}
+                  variant='outline'
+                  size='icon'
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
                 >
-                  {loadingPix ? 'Gerando PIX…' : 'Pagar com PIX'}
+                  <Minus className='size-4' />
                 </Button>
-              </CardContent>
-            </Card>
-          </>
+                <span className='min-w-24 text-center text-lg font-medium'>
+                  {quantity} {quantity === 1 ? 'crédito' : 'créditos'}
+                </span>
+                <Button
+                  variant='outline'
+                  size='icon'
+                  onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                  disabled={quantity >= 20}
+                >
+                  <Plus className='size-4' />
+                </Button>
+              </div>
+
+              <div className='rounded-lg bg-muted/50 p-4 text-sm'>
+                <p>
+                  <strong>{leadCreditsTotal} crédito(s)</strong> —{' '}
+                  {(leadPriceTotal / 100).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </p>
+              </div>
+
+              <Button
+                className='w-full'
+                onClick={handleBuyLeadCredits}
+                disabled={loadingPix}
+              >
+                {loadingPix ? 'Gerando PIX…' : 'Pagar com PIX'}
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         <Card>
@@ -318,26 +290,22 @@ export function CreditsSettings() {
             <CardTitle>Como funcionam os créditos?</CardTitle>
           </CardHeader>
           <CardContent className='space-y-3 text-sm text-muted-foreground'>
-            {isBroker ? (
-              <>
-                <p>
-                  O WhatsApp da Avalia captura leads de pessoas interessadas em
-                  imóveis e os disponibiliza na plataforma de forma anonimizada.
-                </p>
-                <p>
-                  Para visualizar nome, telefone e e-mail de um lead, o corretor
-                  utiliza 1 crédito para desbloqueá-lo.
-                </p>
-              </>
-            ) : (
+            <p>
+              Você tem um único saldo de créditos. Cada avaliação com IA consome
+              1 crédito
+              {isBroker
+                ? ' e cada desbloqueio de lead também consome 1 crédito.'
+                : '.'}
+            </p>
+            {isBroker && (
               <p>
-                Contas de pessoa física podem avaliar imóveis com IA e assinar o
-                plano mensal de avaliações.
+                O WhatsApp da Avalia captura leads interessados em imóveis. Para
+                ver nome, telefone e e-mail, use 1 crédito.
               </p>
             )}
             <p>
-              As avaliações com IA consomem créditos de avaliação. Assine o plano
-              mensal para receber 40 avaliações por mês.
+              Compre pacotes avulsos via PIX ou assine o plano mensal para
+              receber créditos automaticamente.
             </p>
           </CardContent>
         </Card>

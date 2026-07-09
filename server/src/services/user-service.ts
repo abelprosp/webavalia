@@ -11,8 +11,7 @@ export type UserRow = {
   document: string | null
   company_name: string | null
   trade_name: string | null
-  lead_credits: number
-  trial_evaluations_remaining: number
+  credits: number
   evaluations_used: number
   session_version: number
   email_verified: boolean
@@ -21,10 +20,7 @@ export type UserRow = {
 }
 
 export async function mapUserResponse(row: UserRow) {
-  const trialEvaluationsTotal = await getSetting<number>(
-    'trial_evaluations_total',
-    3
-  )
+  const signupBonus = await getSetting<number>('trial_evaluations_total', 3)
 
   return {
     id: row.id,
@@ -37,9 +33,11 @@ export async function mapUserResponse(row: UserRow) {
     companyName: row.company_name,
     tradeName: row.trade_name,
     emailVerified: row.email_verified,
-    leadCredits: row.lead_credits,
-    trialEvaluationsRemaining: row.trial_evaluations_remaining,
-    trialEvaluationsTotal,
+    credits: row.credits,
+    // Aliases de compatibilidade (mesmo saldo unificado)
+    leadCredits: row.credits,
+    trialEvaluationsRemaining: row.credits,
+    trialEvaluationsTotal: signupBonus,
     evaluationsUsed: row.evaluations_used,
     createdAt:
       row.created_at instanceof Date
@@ -50,6 +48,6 @@ export async function mapUserResponse(row: UserRow) {
 
 export const USER_SELECT_FIELDS = `
   id, name, email, role, status, account_type, document, company_name,
-  trade_name, email_verified, lead_credits, trial_evaluations_remaining,
-  evaluations_used, session_version, created_at, updated_at
+  trade_name, email_verified, credits, evaluations_used, session_version,
+  created_at, updated_at
 `

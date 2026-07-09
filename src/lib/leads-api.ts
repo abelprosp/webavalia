@@ -27,10 +27,14 @@ export async function fetchLeads() {
 export async function unlockLead(leadId: string) {
   const { data } = await api.post<{
     lead: LeadItem
+    credits: number
     leadCredits: number
     alreadyUnlocked: boolean
   }>(`/leads/${leadId}/unlock`)
-  return data
+  return {
+    ...data,
+    credits: data.credits ?? data.leadCredits,
+  }
 }
 
 export async function updateLeadStatus(

@@ -15,7 +15,8 @@ const sampleUser = {
   email: 'user@example.com',
   role: 'corretor',
   accountType: 'pf' as const,
-  leadCredits: 0,
+  credits: 3,
+  leadCredits: 3,
   trialEvaluationsRemaining: 3,
   trialEvaluationsTotal: 3,
 }

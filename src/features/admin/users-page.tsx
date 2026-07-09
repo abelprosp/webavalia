@@ -105,15 +105,29 @@ export function AdminUsersPage() {
     setSaving(true)
     try {
       const amount = Number(creditAmount)
-      const leadCredits = await adjustUserCredits(
+      const credits = await adjustUserCredits(
         selected.id,
         amount,
         'Ajuste manual pelo admin'
       )
       setUsers((prev) =>
-        prev.map((u) => (u.id === selected.id ? { ...u, leadCredits } : u))
+        prev.map((u) =>
+          u.id === selected.id
+            ? {
+                ...u,
+                credits,
+                leadCredits: credits,
+                trialEvaluationsRemaining: credits,
+              }
+            : u
+        )
       )
-      setSelected({ ...selected, leadCredits })
+      setSelected({
+        ...selected,
+        credits,
+        leadCredits: credits,
+        trialEvaluationsRemaining: credits,
+      })
       toast.success('Créditos atualizados.')
     } catch {
       toast.error('Erro ao ajustar créditos.')
@@ -122,24 +136,33 @@ export function AdminUsersPage() {
     }
   }
 
-  async function handleAdjustTrial() {
+  async function handleSetCredits() {
     if (!selected) return
     setSaving(true)
     try {
       const remaining = Number(trialAmount)
-      const trialEvaluationsRemaining = await adjustUserTrialEvaluations(
-        selected.id,
-        remaining
-      )
+      const credits = await adjustUserTrialEvaluations(selected.id, remaining)
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === selected.id ? { ...u, trialEvaluationsRemaining } : u
+          u.id === selected.id
+            ? {
+                ...u,
+                credits,
+                leadCredits: credits,
+                trialEvaluationsRemaining: credits,
+              }
+            : u
         )
       )
-      setSelected({ ...selected, trialEvaluationsRemaining })
-      toast.success('Avaliações trial atualizadas.')
+      setSelected({
+        ...selected,
+        credits,
+        leadCredits: credits,
+        trialEvaluationsRemaining: credits,
+      })
+      toast.success('Saldo de créditos definido.')
     } catch {
-      toast.error('Erro ao ajustar avaliações.')
+      toast.error('Erro ao definir créditos.')
     } finally {
       setSaving(false)
     }
@@ -208,7 +231,6 @@ export function AdminUsersPage() {
                   <TableHead>Papel</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Créditos</TableHead>
-                  <TableHead>Avaliações</TableHead>
                   <TableHead className='text-right'>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -236,9 +258,8 @@ export function AdminUsersPage() {
                         {user.status === 'active' ? 'Ativo' : 'Suspenso'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{user.leadCredits}</TableCell>
                     <TableCell>
-                      {user.trialEvaluationsRemaining}/{user.trialEvaluationsTotal}
+                      {user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining}
                     </TableCell>
                     <TableCell className='text-right'>
                       <Button
@@ -247,7 +268,13 @@ export function AdminUsersPage() {
                         onClick={() => {
                           setSelected(user)
                           setCreditAmount('10')
-                          setTrialAmount(String(user.trialEvaluationsRemaining))
+                          setTrialAmount(
+                            String(
+                              user.credits ??
+                                user.leadCredits ??
+                                user.trialEvaluationsRemaining
+                            )
+                          )
                         }}
                       >
                         Gerenciar
@@ -306,7 +333,7 @@ export function AdminUsersPage() {
               </div>
 
               <div className='space-y-2'>
-                <Label>Ajustar créditos de leads (+/-)</Label>
+                <Label>Ajustar créditos (+/-)</Label>
                 <div className='flex gap-2'>
                   <Input
                     type='number'
@@ -318,12 +345,16 @@ export function AdminUsersPage() {
                   </Button>
                 </div>
                 <p className='text-xs text-muted-foreground'>
-                  Saldo atual: {selected.leadCredits} créditos
+                  Saldo atual:{' '}
+                  {selected.credits ??
+                    selected.leadCredits ??
+                    selected.trialEvaluationsRemaining}{' '}
+                  créditos (avaliações e leads)
                 </p>
               </div>
 
               <div className='space-y-2'>
-                <Label>Definir avaliações trial restantes</Label>
+                <Label>Definir saldo absoluto</Label>
                 <div className='flex gap-2'>
                   <Input
                     type='number'
@@ -331,7 +362,7 @@ export function AdminUsersPage() {
                     value={trialAmount}
                     onChange={(e) => setTrialAmount(e.target.value)}
                   />
-                  <Button onClick={handleAdjustTrial} disabled={saving}>
+                  <Button onClick={handleSetCredits} disabled={saving}>
                     Aplicar
                   </Button>
                 </div>

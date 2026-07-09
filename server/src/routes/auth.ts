@@ -227,15 +227,15 @@ router.post(
       'default_lead_credits',
       0
     )
-    const leadCredits = accountType === 'pf' ? 0 : defaultLeadCredits
+    const initialCredits =
+      trialTotal + (accountType === 'pf' ? 0 : defaultLeadCredits)
 
     const result = await pool.query<UserRow>(
       `INSERT INTO users (
          name, email, password_hash, role, account_type, document,
-         company_name, trade_name, trial_evaluations_remaining, lead_credits,
-         email_verified
+         company_name, trade_name, credits, email_verified
        )
-       VALUES ($1, $2, $3, 'corretor', $4, $5, $6, $7, $8, $9, false)
+       VALUES ($1, $2, $3, 'corretor', $4, $5, $6, $7, $8, false)
        RETURNING ${USER_SELECT_FIELDS}`,
       [
         name,
@@ -245,8 +245,7 @@ router.post(
         documentCheck.digits,
         accountType === 'pj' ? companyName?.trim() ?? null : null,
         accountType === 'pj' ? tradeName?.trim() || null : null,
-        trialTotal,
-        leadCredits,
+        initialCredits,
       ]
     )
 

@@ -14,6 +14,7 @@ export type AnalyzePropertyResponse = {
   evaluation: EvaluationResult
   evaluationId: string | null
   feedbackModeEnabled: boolean
+  credits: number
   trialEvaluationsRemaining: number
   gamification?: GamificationPayload
 }
@@ -66,12 +67,15 @@ export async function analyzeProperty(
     evaluation: EvaluationResult
     evaluationId: string | null
     feedbackModeEnabled: boolean
+    credits?: number
     trialEvaluationsRemaining: number
     gamification?: GamificationPayload
   }>('/evaluation/analyze', {
     ...values,
     photos: photoPayloads.length > 0 ? photoPayloads : undefined,
   })
+
+  const credits = data.credits ?? data.trialEvaluationsRemaining
 
   return {
     evaluation: {
@@ -81,7 +85,8 @@ export async function analyzeProperty(
     },
     evaluationId: data.evaluationId,
     feedbackModeEnabled: data.feedbackModeEnabled,
-    trialEvaluationsRemaining: data.trialEvaluationsRemaining,
+    credits,
+    trialEvaluationsRemaining: credits,
     gamification: data.gamification,
   }
 }

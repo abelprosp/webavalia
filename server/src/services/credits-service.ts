@@ -1,6 +1,16 @@
 import { pool } from '../db/pool.js'
 
-export async function adjustLeadCredits(input: {
+export async function getCredits(userId: string) {
+  const result = await pool.query<{ credits: number }>(
+    'SELECT credits FROM users WHERE id = $1',
+    [userId]
+  )
+  if (!result.rowCount) throw new Error('Usuário não encontrado.')
+  return result.rows[0].credits
+}
+
+/** Ajuste relativo (+/-). Usado por admin, compras e recompensas. */
+export async function adjustCredits(input: {
   userId: string
   amount: number
   type: string
@@ -12,12 +22,12 @@ export async function adjustLeadCredits(input: {
   try {
     await client.query('BEGIN')
 
-    const updated = await client.query<{ lead_credits: number }>(
+    const updated = await client.query<{ credits: number }>(
       `UPDATE users
-       SET lead_credits = GREATEST(lead_credits + $2, 0),
+       SET credits = GREATEST(credits + $2, 0),
            updated_at = NOW()
        WHERE id = $1
-       RETURNING lead_credits`,
+       RETURNING credits`,
       [input.userId, input.amount]
     )
 
@@ -38,7 +48,7 @@ export async function adjustLeadCredits(input: {
     )
 
     await client.query('COMMIT')
-    return updated.rows[0].lead_credits
+    return updated.rows[0].credits
   } catch (error) {
     await client.query('ROLLBACK')
     throw error
@@ -47,18 +57,19 @@ export async function adjustLeadCredits(input: {
   }
 }
 
-export async function setTrialEvaluations(
+/** Define o saldo absoluto (admin). */
+export async function setCredits(
   userId: string,
-  remaining: number,
+  amount: number,
   adminId?: string
 ) {
-  const updated = await pool.query<{ trial_evaluations_remaining: number }>(
+  const updated = await pool.query<{ credits: number }>(
     `UPDATE users
-     SET trial_evaluations_remaining = GREATEST($2, 0),
+     SET credits = GREATEST($2, 0),
          updated_at = NOW()
      WHERE id = $1
-     RETURNING trial_evaluations_remaining`,
-    [userId, remaining]
+     RETURNING credits`,
+    [userId, amount]
   )
 
   if (!updated.rowCount) {
@@ -67,53 +78,62 @@ export async function setTrialEvaluations(
 
   await pool.query(
     `INSERT INTO credit_transactions (user_id, amount, type, description, created_by)
-     VALUES ($1, $2, 'trial_adjustment', $3, $4)`,
+     VALUES ($1, $2, 'admin_adjustment', $3, $4)`,
     [
       userId,
-      remaining,
-      `Ajuste de avaliações trial para ${remaining}`,
+      amount,
+      `Ajuste de créditos para ${amount}`,
       adminId ?? null,
     ]
   )
 
-  return updated.rows[0].trial_evaluations_remaining
+  return updated.rows[0].credits
 }
 
+export async function addCredits(
+  userId: string,
+  amount: number,
+  type: string,
+  description?: string
+) {
+  return adjustCredits({
+    userId,
+    amount,
+    type,
+    description: description ?? `Adição de ${amount} crédito(s)`,
+  })
+}
+
+/** @deprecated Use adjustCredits */
+export async function adjustLeadCredits(input: {
+  userId: string
+  amount: number
+  type: string
+  description?: string
+  createdBy?: string
+}) {
+  return adjustCredits(input)
+}
+
+/** @deprecated Use setCredits */
+export async function setTrialEvaluations(
+  userId: string,
+  remaining: number,
+  adminId?: string
+) {
+  return setCredits(userId, remaining, adminId)
+}
+
+/** @deprecated Use addCredits */
 export async function addTrialEvaluations(
   userId: string,
   amount: number,
   description?: string
 ) {
-  const client = await pool.connect()
-
-  try {
-    await client.query('BEGIN')
-
-    const updated = await client.query<{ trial_evaluations_remaining: number }>(
-      `UPDATE users
-       SET trial_evaluations_remaining = trial_evaluations_remaining + $2,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING trial_evaluations_remaining`,
-      [userId, amount]
-    )
-
-    if (!updated.rowCount) {
-      throw new Error('Usuário não encontrado.')
-    }
-
-    await client.query(
-      `INSERT INTO credit_transactions (user_id, amount, type, description)
-       VALUES ($1, $2, 'evaluation_purchase', $3)`,
-      [userId, amount, description ?? `Compra de ${amount} avaliações IA`]
-    )
-
-    await client.query('COMMIT')
-    return updated.rows[0].trial_evaluations_remaining
-  } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
-  } finally {
-    client.release()
-  }
+  return addCredits(
+    userId,
+    amount,
+    'purchase',
+    description ?? `Compra de ${amount} crédito(s)`
+  )
 }

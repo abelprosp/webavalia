@@ -14,7 +14,11 @@ export type AuthUser = {
   companyName?: string | null
   tradeName?: string | null
   emailVerified?: boolean
+  /** Saldo unificado (avaliações IA + desbloqueio de leads) */
+  credits?: number
+  /** @deprecated Use credits */
   leadCredits: number
+  /** @deprecated Use credits */
   trialEvaluationsRemaining: number
   trialEvaluationsTotal: number
 }

@@ -20,7 +20,7 @@ type UnlockLeadDialogProps = {
   lead: LeadItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: (lead: LeadItem, leadCredits: number) => void
+  onSuccess: (lead: LeadItem, credits: number) => void
 }
 
 export function UnlockLeadDialog({
@@ -42,7 +42,7 @@ export function UnlockLeadDialog({
     setLoading(true)
     try {
       const result = await unlockLead(lead.id)
-      onSuccess(result.lead, result.leadCredits)
+      onSuccess(result.lead, result.credits)
     } catch (error) {
       const message =
         error instanceof AxiosError

@@ -1,16 +1,23 @@
 import { pool } from '../db/pool.js'
-import { TRIAL_EVALUATIONS_TOTAL } from '../utils/password-policy.js'
 
-export class TrialExhaustedError extends Error {
+export class CreditsExhaustedError extends Error {
   constructor() {
-    super('Suas 3 avaliações grátis de teste foram utilizadas.')
+    super('Você não tem créditos suficientes. Compre créditos para continuar.')
+    this.name = 'CreditsExhaustedError'
+  }
+}
+
+/** @deprecated Use CreditsExhaustedError */
+export class TrialExhaustedError extends CreditsExhaustedError {
+  constructor() {
+    super()
     this.name = 'TrialExhaustedError'
   }
 }
 
-export async function getTrialEvaluationsRemaining(userId: string) {
-  const result = await pool.query<{ trial_evaluations_remaining: number }>(
-    'SELECT trial_evaluations_remaining FROM users WHERE id = $1',
+export async function getCreditsRemaining(userId: string) {
+  const result = await pool.query<{ credits: number }>(
+    'SELECT credits FROM users WHERE id = $1',
     [userId]
   )
 
@@ -18,17 +25,22 @@ export async function getTrialEvaluationsRemaining(userId: string) {
     throw new Error('Usuário não encontrado.')
   }
 
-  return result.rows[0].trial_evaluations_remaining
+  return result.rows[0].credits
 }
 
-export async function reserveTrialEvaluation(userId: string) {
+/** @deprecated Use getCreditsRemaining */
+export async function getTrialEvaluationsRemaining(userId: string) {
+  return getCreditsRemaining(userId)
+}
+
+export async function reserveCreditForEvaluation(userId: string) {
   const client = await pool.connect()
 
   try {
     await client.query('BEGIN')
 
-    const locked = await client.query<{ trial_evaluations_remaining: number }>(
-      'SELECT trial_evaluations_remaining FROM users WHERE id = $1 FOR UPDATE',
+    const locked = await client.query<{ credits: number }>(
+      'SELECT credits FROM users WHERE id = $1 FOR UPDATE',
       [userId]
     )
 
@@ -36,23 +48,28 @@ export async function reserveTrialEvaluation(userId: string) {
       throw new Error('Usuário não encontrado.')
     }
 
-    const remaining = locked.rows[0].trial_evaluations_remaining
-    if (remaining <= 0) {
-      throw new TrialExhaustedError()
+    if (locked.rows[0].credits <= 0) {
+      throw new CreditsExhaustedError()
     }
 
-    const updated = await client.query<{ trial_evaluations_remaining: number }>(
+    const updated = await client.query<{ credits: number }>(
       `UPDATE users
-       SET trial_evaluations_remaining = trial_evaluations_remaining - 1,
+       SET credits = credits - 1,
            evaluations_used = evaluations_used + 1,
            updated_at = NOW()
        WHERE id = $1
-       RETURNING trial_evaluations_remaining`,
+       RETURNING credits`,
+      [userId]
+    )
+
+    await client.query(
+      `INSERT INTO credit_transactions (user_id, amount, type, description)
+       VALUES ($1, -1, 'evaluation', 'Avaliação de imóvel com IA')`,
       [userId]
     )
 
     await client.query('COMMIT')
-    return updated.rows[0].trial_evaluations_remaining
+    return updated.rows[0].credits
   } catch (error) {
     await client.query('ROLLBACK')
     throw error
@@ -61,13 +78,29 @@ export async function reserveTrialEvaluation(userId: string) {
   }
 }
 
-export async function refundTrialEvaluation(userId: string) {
+/** @deprecated Use reserveCreditForEvaluation */
+export async function reserveTrialEvaluation(userId: string) {
+  return reserveCreditForEvaluation(userId)
+}
+
+export async function refundCreditForEvaluation(userId: string) {
   await pool.query(
     `UPDATE users
-     SET trial_evaluations_remaining = LEAST(trial_evaluations_remaining + 1, $2),
+     SET credits = credits + 1,
          evaluations_used = GREATEST(evaluations_used - 1, 0),
          updated_at = NOW()
      WHERE id = $1`,
-    [userId, TRIAL_EVALUATIONS_TOTAL]
+    [userId]
   )
+
+  await pool.query(
+    `INSERT INTO credit_transactions (user_id, amount, type, description)
+     VALUES ($1, 1, 'evaluation_refund', 'Estorno de avaliação com falha')`,
+    [userId]
+  )
+}
+
+/** @deprecated Use refundCreditForEvaluation */
+export async function refundTrialEvaluation(userId: string) {
+  return refundCreditForEvaluation(userId)
 }

@@ -174,21 +174,22 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
     )
 
     if (existingUnlock.rowCount) {
+      const balance = await client.query<{ credits: number }>(
+        'SELECT credits FROM users WHERE id = $1',
+        [userId]
+      )
+      const credits = balance.rows[0]?.credits ?? 0
       await client.query('COMMIT')
       return {
         lead: mapLeadForUser(leadResult.rows[0], true),
-        leadCredits: (
-          await pool.query<{ lead_credits: number }>(
-            'SELECT lead_credits FROM users WHERE id = $1',
-            [userId]
-          )
-        ).rows[0]?.lead_credits ?? 0,
+        credits,
+        leadCredits: credits,
         alreadyUnlocked: true,
       }
     }
 
-    const userResult = await client.query<{ lead_credits: number }>(
-      'SELECT lead_credits FROM users WHERE id = $1 FOR UPDATE',
+    const userResult = await client.query<{ credits: number }>(
+      'SELECT credits FROM users WHERE id = $1 FOR UPDATE',
       [userId]
     )
 
@@ -196,7 +197,7 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
       throw new Error('Usuário não encontrado.')
     }
 
-    if (userResult.rows[0].lead_credits < LEAD_UNLOCK_COST) {
+    if (userResult.rows[0].credits < LEAD_UNLOCK_COST) {
       throw new Error('Créditos insuficientes.')
     }
 
@@ -206,12 +207,12 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
       [leadId, userId, LEAD_UNLOCK_COST]
     )
 
-    const updatedCredits = await client.query<{ lead_credits: number }>(
+    const updatedCredits = await client.query<{ credits: number }>(
       `UPDATE users
-       SET lead_credits = GREATEST(lead_credits - $2, 0),
+       SET credits = GREATEST(credits - $2, 0),
            updated_at = NOW()
        WHERE id = $1
-       RETURNING lead_credits`,
+       RETURNING credits`,
       [userId, LEAD_UNLOCK_COST]
     )
 
@@ -225,7 +226,8 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
 
     return {
       lead: mapLeadForUser(leadResult.rows[0], true),
-      leadCredits: updatedCredits.rows[0]?.lead_credits ?? 0,
+      credits: updatedCredits.rows[0]?.credits ?? 0,
+      leadCredits: updatedCredits.rows[0]?.credits ?? 0,
       alreadyUnlocked: false,
     }
   } catch (error) {

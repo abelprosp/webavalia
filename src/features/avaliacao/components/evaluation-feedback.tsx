@@ -30,9 +30,7 @@ export function EvaluationFeedbackPanel({
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [rewardMessage, setRewardMessage] = useState<string | null>(null)
-  const updateTrialRemaining = useAuthStore(
-    (s) => s.auth.updateTrialEvaluationsRemaining
-  )
+  const updateCredits = useAuthStore((s) => s.auth.updateCredits)
 
   async function handleSubmit() {
     if (!rating) {
@@ -54,7 +52,7 @@ export function EvaluationFeedbackPanel({
       })
 
       if (result.reward?.trialEvaluationsRemaining != null) {
-        updateTrialRemaining(result.reward.trialEvaluationsRemaining)
+        updateCredits(result.reward.trialEvaluationsRemaining)
       }
 
       showGamificationUpdates(result.gamification)

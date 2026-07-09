@@ -110,6 +110,7 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     if (error instanceof TrialExhaustedError) {
       return res.status(403).json({
         message: error.message,
+        credits: 0,
         trialEvaluationsRemaining: 0,
       })
     }
@@ -128,16 +129,20 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
 
     const gamification = await processEvaluationGamification(userId)
 
+    const credits =
+      gamification.trialEvaluationsRemaining ?? trialEvaluationsRemaining
+
     return res.json({
       evaluation: result,
       evaluationId,
       feedbackModeEnabled,
-      trialEvaluationsRemaining:
-        gamification.trialEvaluationsRemaining ?? trialEvaluationsRemaining,
+      credits,
+      trialEvaluationsRemaining: credits,
       gamification: {
         level: gamification.level,
         monthlyGoalCompleted: gamification.monthlyGoalCompleted,
         achievementTrialReward: gamification.achievementTrialReward,
+        credits: gamification.trialEvaluationsRemaining,
         trialEvaluationsRemaining: gamification.trialEvaluationsRemaining,
         newAchievements: gamification.newAchievements.map(mapAchievementForResponse),
       },

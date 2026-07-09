@@ -152,7 +152,7 @@ function SignUpForm() {
       if (result.user) {
         auth.setUser(result.user)
         toast.success(
-          `Conta criada! Você tem ${result.user.trialEvaluationsRemaining} avaliações grátis.`
+          `Conta criada! Você tem ${result.user.credits ?? result.user.trialEvaluationsRemaining} créditos para começar.`
         )
         navigate({ to: '/', replace: true })
       }

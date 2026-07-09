@@ -67,6 +67,7 @@ import {
 import { isDraftWorthy } from './lib/evaluation-draft'
 import { useEvaluationsStore } from '@/stores/evaluations-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
 import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
@@ -87,12 +88,8 @@ export function Avaliacao() {
   const [evaluatingStep, setEvaluatingStep] = useState('')
   const [photos, setPhotos] = useState<EvaluationPhoto[]>([])
   const recordEvaluation = useEvaluationsStore((s) => s.recordEvaluation)
-  const trialRemaining = useAuthStore(
-    (s) => s.auth.user?.trialEvaluationsRemaining
-  )
-  const updateTrialRemaining = useAuthStore(
-    (s) => s.auth.updateTrialEvaluationsRemaining
-  )
+  const credits = useCreditsStore((s) => s.credits)
+  const updateCredits = useAuthStore((s) => s.auth.updateCredits)
   const userId = useAuthStore((s) => s.auth.user?.id)
   const saveDraft = useEvaluationDraftStore((s) => s.saveDraft)
   const getDraftForUser = useEvaluationDraftStore((s) => s.getDraftForUser)
@@ -220,9 +217,9 @@ export function Avaliacao() {
   }
 
   async function onSubmit(values: EvaluationFormValues) {
-    if (trialRemaining != null && trialRemaining <= 0) {
+    if (credits <= 0) {
       toast.error(
-        'Suas 3 avaliações grátis de teste foram utilizadas. Entre em contato para continuar.'
+        'Você não tem créditos suficientes. Compre créditos em Configurações → Créditos.'
       )
       return
     }
@@ -245,13 +242,14 @@ export function Avaliacao() {
         evaluationId: newEvaluationId,
         feedbackModeEnabled: modeEnabled,
         trialEvaluationsRemaining,
+        credits: responseCredits,
         gamification,
       } = await analyzeProperty(values, photos)
       setResult(evaluation)
       setEvaluatedProperty(values)
       setEvaluationId(newEvaluationId)
       setFeedbackModeEnabled(modeEnabled)
-      updateTrialRemaining(trialEvaluationsRemaining)
+      updateCredits(responseCredits ?? trialEvaluationsRemaining)
       recordEvaluation()
       showGamificationUpdates(gamification)
       if (userId) {
@@ -262,7 +260,7 @@ export function Avaliacao() {
       toast.success('Avaliação concluída com sucesso!')
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
-        updateTrialRemaining(0)
+        updateCredits(0)
       }
       const message =
         error instanceof AxiosError
@@ -291,22 +289,21 @@ export function Avaliacao() {
           <p className='text-muted-foreground'>
             Obtenha uma estimativa de valor com análise completa do imóvel e do
             mercado local.
-            {trialRemaining != null && (
+            {credits != null && (
               <>
                 {' '}
                 Você tem{' '}
                 <strong>
-                  {trialRemaining} avaliação{trialRemaining === 1 ? '' : 'ões'}{' '}
-                  grátis
+                  {credits} crédito{credits === 1 ? '' : 's'}
                 </strong>{' '}
-                restante{trialRemaining === 1 ? '' : 's'}.
+                disponível{credits === 1 ? '' : 'eis'}.
               </>
             )}
           </p>
-          {trialRemaining === 0 && (
+          {credits === 0 && (
             <p className='mt-2 text-sm text-destructive'>
-              Suas avaliações grátis de teste acabaram. Entre em contato para
-              continuar usando a plataforma.
+              Você não tem créditos. Compre em Configurações → Créditos para
+              continuar avaliando.
             </p>
           )}
         </div>
@@ -943,7 +940,7 @@ export function Avaliacao() {
                 type='submit'
                 size='lg'
                 className='w-full rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                disabled={isEvaluating || trialRemaining === 0}
+                disabled={isEvaluating || credits === 0}
               >
                 {isEvaluating ? (
                   <>

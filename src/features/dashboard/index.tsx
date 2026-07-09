@@ -33,7 +33,6 @@ export function Dashboard() {
   const user = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(user)
   const credits = useCreditsStore((s) => s.credits)
-  const trialRemaining = user?.trialEvaluationsRemaining
   const unlockedCount = useLeadsStore((s) => s.unlockedIds.length)
   const localEvaluationsTotal = useEvaluationsStore((s) => s.total)
   const localMonthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
@@ -98,7 +97,7 @@ export function Dashboard() {
                 <CardContent>
                   <div className='text-2xl font-bold'>{credits}</div>
                   <p className='text-xs text-muted-foreground'>
-                    Para desbloquear leads
+                    Para avaliações IA e leads
                   </p>
                 </CardContent>
               </Card>
@@ -135,14 +134,14 @@ export function Dashboard() {
             <Card>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                 <CardTitle className='text-sm font-medium'>
-                  Avaliações disponíveis
+                  Créditos disponíveis
                 </CardTitle>
-                <Sparkles className='size-4 text-muted-foreground' />
+                <Coins className='size-4 text-muted-foreground' />
               </CardHeader>
               <CardContent>
-                <div className='text-2xl font-bold'>{trialRemaining ?? '—'}</div>
+                <div className='text-2xl font-bold'>{credits}</div>
                 <p className='text-xs text-muted-foreground'>
-                  créditos de avaliação com IA
+                  Para avaliações com IA
                 </p>
               </CardContent>
             </Card>

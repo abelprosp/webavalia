@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const LEAD_UNLOCK_COST = 1
+const CREDIT_COST = 1
 
 type CreditsStore = {
   credits: number
@@ -9,6 +9,7 @@ type CreditsStore = {
   addCredits: (amount: number) => void
   consumeCredits: (amount: number) => boolean
   getLeadUnlockCost: () => number
+  getEvaluationCost: () => number
 }
 
 export const useCreditsStore = create<CreditsStore>()(
@@ -24,12 +25,14 @@ export const useCreditsStore = create<CreditsStore>()(
         }
         return false
       },
-      getLeadUnlockCost: () => LEAD_UNLOCK_COST,
+      getLeadUnlockCost: () => CREDIT_COST,
+      getEvaluationCost: () => CREDIT_COST,
     }),
     { name: 'avalia-credits' }
   )
 )
 
-export function syncCreditsFromUser(leadCredits: number) {
-  useCreditsStore.getState().setCredits(leadCredits)
+/** Sincroniza o saldo unificado a partir do usuário autenticado. */
+export function syncCreditsFromUser(credits: number) {
+  useCreditsStore.getState().setCredits(credits)
 }

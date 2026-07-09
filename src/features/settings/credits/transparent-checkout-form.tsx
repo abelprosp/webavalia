@@ -356,11 +356,6 @@ export function TransparentCheckoutForm({
           `Assinar por ${pricing?.evaluationPlan.priceLabel ?? 'R$ 97,00'}/mês`
         )}
       </Button>
-
-      <p className='text-xs text-muted-foreground'>
-        Pagamento processado de forma segura pela Efí Bank. Os dados do cartão
-        não passam pelo nosso servidor.
-      </p>
     </form>
   )
 }

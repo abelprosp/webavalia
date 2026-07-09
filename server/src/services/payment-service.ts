@@ -269,7 +269,7 @@ export async function fulfillOrder(orderId: string) {
       const credits = PRICING.leadCreditPack.credits * order.packs
       await client.query(
         `UPDATE users
-         SET lead_credits = lead_credits + $2, updated_at = NOW()
+         SET credits = credits + $2, updated_at = NOW()
          WHERE id = $1`,
         [order.user_id, credits]
       )
@@ -279,24 +279,24 @@ export async function fulfillOrder(orderId: string) {
         [
           order.user_id,
           credits,
-          `Compra PIX — ${credits} crédito(s) de leads`,
+          `Compra PIX — ${credits} crédito(s)`,
         ]
       )
     } else if (order.type === 'evaluation_plan') {
+      const credits = PRICING.evaluationPlan.trialEvaluations
       await client.query(
         `UPDATE users
-         SET trial_evaluations_remaining = trial_evaluations_remaining + $2,
-             updated_at = NOW()
+         SET credits = credits + $2, updated_at = NOW()
          WHERE id = $1`,
-        [order.user_id, PRICING.evaluationPlan.trialEvaluations]
+        [order.user_id, credits]
       )
       await client.query(
         `INSERT INTO credit_transactions (user_id, amount, type, description)
-         VALUES ($1, $2, 'evaluation_purchase', $3)`,
+         VALUES ($1, $2, 'purchase', $3)`,
         [
           order.user_id,
-          PRICING.evaluationPlan.trialEvaluations,
-          `Plano mensal — ${PRICING.evaluationPlan.trialEvaluations} avaliações IA`,
+          credits,
+          `Plano mensal — ${credits} crédito(s)`,
         ]
       )
     }
@@ -342,7 +342,7 @@ export async function fulfillSubscriptionRenewal(input: {
   await addTrialEvaluations(
     user.id,
     PRICING.evaluationPlan.trialEvaluations,
-    `Renovação mensal — ${PRICING.evaluationPlan.trialEvaluations} avaliações IA`
+    `Renovação mensal — ${PRICING.evaluationPlan.trialEvaluations} crédito(s)`
   )
 
   return { fulfilled: true, userId: user.id }

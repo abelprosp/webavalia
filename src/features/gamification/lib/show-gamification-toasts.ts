@@ -20,9 +20,7 @@ export function showGamificationUpdates(payload: GamificationPayload | undefined
   if (!payload) return
 
   if (payload.trialEvaluationsRemaining != null) {
-    useAuthStore
-      .getState()
-      .auth.updateTrialEvaluationsRemaining(payload.trialEvaluationsRemaining)
+    useAuthStore.getState().auth.updateCredits(payload.trialEvaluationsRemaining)
   }
 
   if (payload.newAchievements.length > 0) {

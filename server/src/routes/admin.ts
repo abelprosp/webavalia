@@ -74,7 +74,7 @@ router.get('/stats', async (_req, res) => {
       COUNT(*) FILTER (WHERE account_type = 'pf')::text AS total_pf_users,
       COUNT(*) FILTER (WHERE account_type = 'pj')::text AS total_pj_users,
       COALESCE(SUM(evaluations_used), 0)::text AS total_evaluations_used,
-      COALESCE(SUM(lead_credits), 0)::text AS total_lead_credits
+      COALESCE(SUM(credits), 0)::text AS total_lead_credits
     FROM users
   `)
 
@@ -210,7 +210,7 @@ router.post('/users/:id/credits', async (req: AuthRequest, res) => {
   }
 
   try {
-    const leadCredits = await adjustLeadCredits({
+    const credits = await adjustLeadCredits({
       userId: getParamId(req.params.id),
       amount: parsed.data.amount,
       type: 'admin_adjustment',
@@ -218,7 +218,11 @@ router.post('/users/:id/credits', async (req: AuthRequest, res) => {
       createdBy: req.user!.id,
     })
 
-    return res.json({ leadCredits })
+    return res.json({
+      credits,
+      leadCredits: credits,
+      trialEvaluationsRemaining: credits,
+    })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erro ao ajustar créditos.'
@@ -240,16 +244,20 @@ router.post('/users/:id/trial-evaluations', async (req: AuthRequest, res) => {
   }
 
   try {
-    const trialEvaluationsRemaining = await setTrialEvaluations(
+    const credits = await setTrialEvaluations(
       getParamId(req.params.id),
       parsed.data.remaining,
       req.user!.id
     )
 
-    return res.json({ trialEvaluationsRemaining })
+    return res.json({
+      credits,
+      trialEvaluationsRemaining: credits,
+      leadCredits: credits,
+    })
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : 'Erro ao ajustar avaliações.'
+      error instanceof Error ? error.message : 'Erro ao ajustar créditos.'
     return res.status(400).json({ message })
   }
 })

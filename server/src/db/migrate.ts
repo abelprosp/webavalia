@@ -49,6 +49,17 @@ async function migrate() {
       ADD COLUMN IF NOT EXISTS efi_subscription_id VARCHAR(255);
 
     ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS credits INT NOT NULL DEFAULT 0;
+
+    -- Unifica saldos antigos (leads + avaliações) em credits
+    UPDATE users
+    SET credits = GREATEST(
+      COALESCE(lead_credits, 0) + COALESCE(trial_evaluations_remaining, 0),
+      credits
+    )
+    WHERE COALESCE(lead_credits, 0) + COALESCE(trial_evaluations_remaining, 0) > credits;
+
+    ALTER TABLE users
       ADD COLUMN IF NOT EXISTS account_type VARCHAR(2) NOT NULL DEFAULT 'pj';
 
     ALTER TABLE users
@@ -328,8 +339,8 @@ async function migrate() {
     if (!existingAdmin.rowCount) {
       const passwordHash = await hashPassword(adminPassword)
       await pool.query(
-        `INSERT INTO users (name, email, password_hash, role, lead_credits, trial_evaluations_remaining, email_verified)
-         VALUES ($1, $2, $3, 'admin', 999, 999, true)`,
+        `INSERT INTO users (name, email, password_hash, role, credits, email_verified)
+         VALUES ($1, $2, $3, 'admin', 999, true)`,
         [adminName, adminEmail, passwordHash]
       )
       console.log(`Usuário admin criado: ${adminEmail}`)
