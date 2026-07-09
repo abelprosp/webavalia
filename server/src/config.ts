@@ -75,18 +75,18 @@ if (
   )
 }
 
-if (config.isProduction && !config.efi.clientId) {
-  throw new Error('EFI_CLIENT_ID ausente. Obrigatório em produção.')
-}
-
-if (config.isProduction && !config.efi.clientSecret) {
-  throw new Error('EFI_CLIENT_SECRET ausente. Obrigatório em produção.')
-}
-
-if (config.isProduction && !config.efi.payeeCode) {
-  throw new Error('EFI_PAYEE_CODE ausente. Obrigatório em produção.')
-}
-
 if (config.isProduction && !process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL ausente em produção.')
+}
+
+if (config.isProduction) {
+  const missingEfi: string[] = []
+  if (!config.efi.clientId) missingEfi.push('EFI_CLIENT_ID')
+  if (!config.efi.clientSecret) missingEfi.push('EFI_CLIENT_SECRET')
+  if (!config.efi.payeeCode) missingEfi.push('EFI_PAYEE_CODE')
+  if (missingEfi.length > 0) {
+    console.warn(
+      `[efi] Credenciais ausentes (${missingEfi.join(', ')}). Pagamentos ficarão indisponíveis até configurar.`
+    )
+  }
 }
