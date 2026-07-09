@@ -1,7 +1,8 @@
-import { Coins, Minus, Plus, Sparkles } from 'lucide-react'
+import { CheckCircle2, Coins, Minus, Plus, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -19,6 +20,7 @@ import { formatDocumentForAccountType } from '@/lib/document'
 import { useCreditsStore } from '@/stores/credits-store'
 import { fetchMe } from '@/lib/auth-api'
 import {
+  cancelPlanSubscription,
   createLeadCreditsPix,
   fetchPaymentPricing,
   type PaymentPricing,
@@ -58,6 +60,9 @@ export function CreditsSettings() {
   const [loadingPix, setLoadingPix] = useState(false)
   const [pixPayment, setPixPayment] = useState<PixPaymentResponse | null>(null)
   const [pixDialogOpen, setPixDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const hasActiveSubscription = Boolean(user?.hasActiveSubscription)
 
   useEffect(() => {
     fetchPaymentPricing()
@@ -127,6 +132,20 @@ export function CreditsSettings() {
       toast.error(getApiErrorMessage(error, 'Erro ao gerar cobrança PIX.'))
     } finally {
       setLoadingPix(false)
+    }
+  }
+
+  async function handleCancelSubscription() {
+    setCancelling(true)
+    try {
+      await cancelPlanSubscription()
+      toast.success('Assinatura cancelada. Não haverá novas cobranças.')
+      setCancelDialogOpen(false)
+      await refreshUser()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Erro ao cancelar assinatura.'))
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -211,22 +230,46 @@ export function CreditsSettings() {
                 / mês
               </span>
             </div>
-            <TransparentCheckoutForm
-              cpfCnpj={cpfCnpj}
-              pricing={pricing}
-              onSuccess={async (result) => {
-                if (result.status === 'paid' || result.status === 'approved') {
-                  toast.success(
-                    'Assinatura confirmada! Seus créditos já estão disponíveis.'
-                  )
-                } else {
-                  toast.success(
-                    'Assinatura iniciada. Os créditos serão liberados assim que o pagamento for confirmado.'
-                  )
-                }
-                await refreshUser()
-              }}
-            />
+            {hasActiveSubscription ? (
+              <div className='space-y-4'>
+                <div className='flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/40'>
+                  <CheckCircle2 className='mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400' />
+                  <div>
+                    <p className='font-medium text-emerald-900 dark:text-emerald-100'>
+                      Assinatura ativa
+                    </p>
+                    <p className='mt-1 text-emerald-800/80 dark:text-emerald-200/80'>
+                      Você recebe 40 créditos todo mês. Os créditos já
+                      creditados permanecem na conta após o cancelamento.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant='outline'
+                  className='text-destructive hover:bg-destructive/10 hover:text-destructive'
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  Cancelar assinatura
+                </Button>
+              </div>
+            ) : (
+              <TransparentCheckoutForm
+                cpfCnpj={cpfCnpj}
+                pricing={pricing}
+                onSuccess={async (result) => {
+                  if (result.status === 'paid' || result.status === 'approved') {
+                    toast.success(
+                      'Assinatura confirmada! Seus créditos já estão disponíveis.'
+                    )
+                  } else {
+                    toast.success(
+                      'Assinatura iniciada. Os créditos serão liberados assim que o pagamento for confirmado.'
+                    )
+                  }
+                  await refreshUser()
+                }}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -315,6 +358,18 @@ export function CreditsSettings() {
           onOpenChange={setPixDialogOpen}
           payment={pixPayment}
           onPaid={refreshUser}
+        />
+
+        <ConfirmDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          title='Cancelar assinatura'
+          desc='Tem certeza? A renovação mensal será interrompida e não haverá novas cobranças. Os créditos já creditados permanecem na sua conta.'
+          confirmText='Cancelar assinatura'
+          cancelBtnText='Manter assinatura'
+          destructive
+          isLoading={cancelling}
+          handleConfirm={() => void handleCancelSubscription()}
         />
       </div>
     </ContentSection>

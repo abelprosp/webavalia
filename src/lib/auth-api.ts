@@ -21,6 +21,7 @@ export type AuthUser = {
   /** @deprecated Use credits */
   trialEvaluationsRemaining: number
   trialEvaluationsTotal: number
+  hasActiveSubscription?: boolean
 }
 
 type AuthResponse = {

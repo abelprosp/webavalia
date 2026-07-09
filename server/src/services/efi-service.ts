@@ -261,6 +261,12 @@ export async function createCardSubscription(input: {
   ) as Promise<EfiSubscriptionResult>
 }
 
+export async function cancelCardSubscription(subscriptionId: number) {
+  return withEfi((efi) =>
+    efi.cancelSubscription({ id: subscriptionId })
+  ) as Promise<{ code: number }>
+}
+
 export type EfiPixChargeResult = {
   txid: string
   status: string

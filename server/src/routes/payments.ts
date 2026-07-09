@@ -4,6 +4,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { pool } from '../db/pool.js'
 import { USER_SELECT_FIELDS, type UserRow } from '../services/user-service.js'
 import {
+  cancelEvaluationPlanSubscription,
   createEvaluationPlanCheckout,
   createLeadCreditsPixOrder,
   getPaymentDiagnostics,
@@ -167,6 +168,18 @@ router.post('/plan/checkout', async (req: AuthRequest, res) => {
     const message =
       error instanceof Error ? error.message : 'Erro ao processar pagamento.'
     return res.status(502).json({ message })
+  }
+})
+
+router.post('/plan/cancel', async (req: AuthRequest, res) => {
+  try {
+    const result = await cancelEvaluationPlanSubscription(req.user!.id)
+    return res.json(result)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Erro ao cancelar assinatura.'
+    const status = /não possui|não encontrado/i.test(message) ? 400 : 502
+    return res.status(status).json({ message })
   }
 })
 

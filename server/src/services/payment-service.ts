@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { pool } from '../db/pool.js'
 import { PRICING } from '../constants/pricing.js'
 import {
+  cancelCardSubscription,
   createCardSubscription,
   createPixCharge,
   ensureEvaluationPlanId,
@@ -148,7 +149,7 @@ export async function createEvaluationPlanCheckout(input: {
 
   if (user.efi_subscription_id) {
     throw new Error(
-      'Você já possui uma assinatura ativa. Entre em contato se precisar de ajuda.'
+      'Você já possui uma assinatura ativa. Cancele a atual antes de assinar novamente.'
     )
   }
 
@@ -238,6 +239,43 @@ export async function createEvaluationPlanCheckout(input: {
     subscriptionId,
     chargeId,
   }
+}
+
+export async function cancelEvaluationPlanSubscription(userId: string) {
+  const user = await getUserForPayment(userId)
+  if (!user) throw new Error('Usuário não encontrado.')
+
+  if (!user.efi_subscription_id) {
+    throw new Error('Você não possui uma assinatura ativa.')
+  }
+
+  const subscriptionId = Number(user.efi_subscription_id)
+  if (!Number.isFinite(subscriptionId)) {
+    throw new Error('Assinatura inválida. Entre em contato com o suporte.')
+  }
+
+  try {
+    await cancelCardSubscription(subscriptionId)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error)
+    // Já cancelada na Efí — limpa o vínculo local mesmo assim
+    if (!/cancelad|canceled|cancelled|já|already/i.test(message)) {
+      throw error instanceof Error
+        ? error
+        : new Error('Não foi possível cancelar a assinatura.')
+    }
+  }
+
+  await pool.query(
+    `UPDATE users
+     SET efi_subscription_id = NULL,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [userId]
+  )
+
+  return { cancelled: true as const, subscriptionId: String(subscriptionId) }
 }
 
 export async function fulfillOrder(orderId: string) {

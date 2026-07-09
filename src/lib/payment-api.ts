@@ -91,3 +91,10 @@ export async function createPlanCheckout(input: PlanCheckoutInput) {
   )
   return data
 }
+
+export async function cancelPlanSubscription() {
+  const { data } = await api.post<{ cancelled: boolean; subscriptionId: string }>(
+    '/payments/plan/cancel'
+  )
+  return data
+}

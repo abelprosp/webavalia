@@ -15,6 +15,7 @@ export type UserRow = {
   evaluations_used: number
   session_version: number
   email_verified: boolean
+  efi_subscription_id: string | null
   created_at: Date | string
   updated_at?: Date | string
 }
@@ -39,6 +40,7 @@ export async function mapUserResponse(row: UserRow) {
     trialEvaluationsRemaining: row.credits,
     trialEvaluationsTotal: signupBonus,
     evaluationsUsed: row.evaluations_used,
+    hasActiveSubscription: Boolean(row.efi_subscription_id),
     createdAt:
       row.created_at instanceof Date
         ? row.created_at.toISOString()
@@ -49,5 +51,5 @@ export async function mapUserResponse(row: UserRow) {
 export const USER_SELECT_FIELDS = `
   id, name, email, role, status, account_type, document, company_name,
   trade_name, email_verified, credits, evaluations_used, session_version,
-  created_at, updated_at
+  efi_subscription_id, created_at, updated_at
 `
