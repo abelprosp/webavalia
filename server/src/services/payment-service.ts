@@ -114,9 +114,13 @@ export async function createLeadCreditsPixOrder(input: {
   await pool.query(
     `UPDATE payment_orders
      SET abacate_id = $1,
-         metadata = jsonb_build_object('provider', 'efi', 'txid', $1::text)
-     WHERE id = $2`,
-    [pix.txid, orderId]
+         metadata = $2::jsonb
+     WHERE id = $3`,
+    [
+      pix.txid,
+      JSON.stringify({ provider: 'efi', txid: pix.txid }),
+      orderId,
+    ]
   )
 
   return {
