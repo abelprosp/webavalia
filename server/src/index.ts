@@ -13,7 +13,11 @@ import gamificationRoutes from './routes/gamification.js'
 import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
 import leadsRoutes from './routes/leads.js'
-import { asaasWebhookHandler } from './routes/payment-webhook.js'
+import blogRoutes from './routes/blog.js'
+import {
+  efiChargesWebhookHandler,
+  efiPixWebhookHandler,
+} from './routes/payment-webhook.js'
 import {
   whatsappLeadsWebhookHandler,
   whatsappMetaWebhookHandler,
@@ -32,14 +36,25 @@ app.use(
       ? {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: [
+              "'self'",
+              'https://cdn.jsdelivr.net',
+              'https://*.sejaefi.com.br',
+              'https://*.gerencianet.com.br',
+            ],
             styleSrc: [
               "'self'",
               "'unsafe-inline'",
               'https://fonts.googleapis.com',
             ],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-            connectSrc: ["'self'"],
+            connectSrc: [
+              "'self'",
+              'https://*.sejaefi.com.br',
+              'https://*.gerencianet.com.br',
+              'https://cobrancas.api.efipay.com.br',
+              'https://cobrancas-h.api.efipay.com.br',
+            ],
             fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
@@ -73,10 +88,17 @@ app.use(
 )
 
 app.post(
-  '/api/payments/webhooks/asaas',
+  '/api/payments/webhooks/efi',
+  webhookRateLimiter,
+  express.urlencoded({ extended: true, limit: '256kb' }),
+  express.json({ limit: '256kb' }),
+  efiChargesWebhookHandler
+)
+app.post(
+  '/api/payments/webhooks/efi/pix',
   webhookRateLimiter,
   express.json({ limit: '256kb' }),
-  asaasWebhookHandler
+  efiPixWebhookHandler
 )
 
 app.get('/api/webhooks/whatsapp', whatsappVerifyHandler)
@@ -119,6 +141,7 @@ app.use('/api/gamification', gamificationRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/leads', leadsRoutes)
+app.use('/api/blog', blogRoutes)
 
 if (config.isProduction) {
   const frontendDist = path.join(__dirname, '../../dist')

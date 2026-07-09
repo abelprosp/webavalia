@@ -1,40 +1,28 @@
 import type { Request, Response } from 'express'
-import { handleAsaasWebhookPayload } from '../services/payment-service.js'
-import { verifyAsaasWebhookToken } from '../services/asaas-service.js'
+import {
+  handleEfiNotificationToken,
+  handlePixWebhookPayload,
+} from '../services/payment-service.js'
 
-export async function asaasWebhookHandler(req: Request, res: Response) {
+/**
+ * Webhook da API Cobranças (cartão/assinatura).
+ * A Efí envia POST com `notification` (token); consultamos o detalhe via API.
+ */
+export async function efiChargesWebhookHandler(req: Request, res: Response) {
   const token =
-    req.header('asaas-access-token') ??
-    (typeof req.query.access_token === 'string'
-      ? req.query.access_token
+    (typeof req.body?.notification === 'string'
+      ? req.body.notification
+      : undefined) ??
+    (typeof req.query.notification === 'string'
+      ? req.query.notification
       : undefined)
 
-  if (!verifyAsaasWebhookToken(token)) {
-    return res.status(401).json({ message: 'Webhook não autorizado.' })
-  }
-
-  const payload = req.body as {
-    id?: string
-    event?: string
-    payment?: {
-      id: string
-      status: string
-      externalReference?: string | null
-      subscription?: string | null
-      value?: number
-    }
-  }
-
-  if (!payload.id || !payload.event) {
-    return res.status(400).json({ message: 'Evento incompleto.' })
+  if (!token) {
+    return res.status(400).json({ message: 'Token de notificação ausente.' })
   }
 
   try {
-    const result = await handleAsaasWebhookPayload({
-      id: payload.id,
-      event: payload.event,
-      payment: payload.payment,
-    })
+    const result = await handleEfiNotificationToken(token)
 
     if (result.reason === 'duplicate') {
       return res.status(200).json({ ok: true, duplicate: true })
@@ -42,7 +30,25 @@ export async function asaasWebhookHandler(req: Request, res: Response) {
 
     return res.status(200).json({ ok: true, ...result })
   } catch (error) {
-    console.error('Erro no webhook Asaas:', error)
+    console.error('Erro no webhook Efí Cobranças:', error)
     return res.status(500).json({ message: 'Erro ao processar webhook.' })
+  }
+}
+
+/**
+ * Webhook da API Pix.
+ * A Efí envia POST para {url}/pix com o payload de Pix recebidos.
+ */
+export async function efiPixWebhookHandler(req: Request, res: Response) {
+  try {
+    const result = await handlePixWebhookPayload(
+      req.body as {
+        pix?: Array<{ txid?: string; valor?: string; endToEndId?: string }>
+      }
+    )
+    return res.status(200).json({ ok: true, ...result })
+  } catch (error) {
+    console.error('Erro no webhook Efí Pix:', error)
+    return res.status(500).json({ message: 'Erro ao processar webhook Pix.' })
   }
 }

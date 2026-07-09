@@ -46,6 +46,9 @@ async function migrate() {
       ADD COLUMN IF NOT EXISTS asaas_subscription_id VARCHAR(255);
 
     ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS efi_subscription_id VARCHAR(255);
+
+    ALTER TABLE users
       ADD COLUMN IF NOT EXISTS account_type VARCHAR(2) NOT NULL DEFAULT 'pj';
 
     ALTER TABLE users
@@ -172,6 +175,25 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS evaluation_feedback_rating_idx
       ON evaluation_feedback (rating, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      slug VARCHAR(255) UNIQUE NOT NULL,
+      title VARCHAR(500) NOT NULL,
+      excerpt TEXT,
+      content TEXT NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+      author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      published_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS blog_posts_status_published_idx
+      ON blog_posts (status, published_at DESC);
+
+    CREATE INDEX IF NOT EXISTS blog_posts_slug_idx
+      ON blog_posts (slug);
 
     CREATE TABLE IF NOT EXISTS user_achievements (
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

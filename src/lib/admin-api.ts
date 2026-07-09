@@ -51,6 +51,20 @@ export type CreditTransaction = {
   adminName: string | null
 }
 
+export type AdminBlogPost = {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  content: string
+  status: 'draft' | 'published'
+  authorId: string | null
+  authorName: string | null
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export async function fetchAdminStats() {
   const { data } = await api.get<{ stats: AdminStats }>('/admin/stats')
   return data.stats
@@ -153,4 +167,41 @@ export async function fetchAdminTransactions(limit = 50) {
 export async function fetchPublicPlans() {
   const { data } = await api.get<{ plans: AdminPlan[] }>('/plans')
   return data.plans
+}
+
+export async function fetchAdminBlogPosts() {
+  const { data } = await api.get<{ posts: AdminBlogPost[] }>('/admin/blog')
+  return data.posts
+}
+
+export async function createAdminBlogPost(payload: {
+  title: string
+  excerpt?: string | null
+  content: string
+  status: 'draft' | 'published'
+  slug?: string
+}) {
+  const { data } = await api.post<{ post: AdminBlogPost }>('/admin/blog', payload)
+  return data.post
+}
+
+export async function updateAdminBlogPost(
+  id: string,
+  payload: Partial<{
+    title: string
+    excerpt: string | null
+    content: string
+    status: 'draft' | 'published'
+    slug: string
+  }>
+) {
+  const { data } = await api.patch<{ post: AdminBlogPost }>(
+    `/admin/blog/${id}`,
+    payload
+  )
+  return data.post
+}
+
+export async function deleteAdminBlogPost(id: string) {
+  await api.delete(`/admin/blog/${id}`)
 }

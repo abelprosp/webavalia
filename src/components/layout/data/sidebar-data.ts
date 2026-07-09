@@ -14,6 +14,7 @@ import {
   Shield,
   CreditCard,
   Settings2,
+  Newspaper,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
@@ -133,6 +134,11 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
           title: 'Planos',
           url: '/admin/plans',
           icon: CreditCard,
+        },
+        {
+          title: 'Blog',
+          url: '/admin/blog',
+          icon: Newspaper,
         },
         {
           title: 'Config. plataforma',

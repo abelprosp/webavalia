@@ -22,11 +22,25 @@ export const config = {
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
   serperApiKey: process.env.SERPER_API_KEY ?? '',
   isProduction: process.env.NODE_ENV === 'production',
-  asaas: {
-    apiKey: process.env.ASAAS_API_KEY ?? '',
-    webhookToken: process.env.ASAAS_WEBHOOK_TOKEN ?? '',
-    environment:
-      process.env.ASAAS_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'production',
+  efi: {
+    clientId: process.env.EFI_CLIENT_ID ?? '',
+    clientSecret: process.env.EFI_CLIENT_SECRET ?? '',
+    sandbox: process.env.EFI_SANDBOX !== 'false',
+    /** Identificador de conta (payee_code) — usado no checkout transparente no frontend */
+    payeeCode: process.env.EFI_PAYEE_CODE ?? '',
+    /** Caminho do .p12 ou conteúdo base64 do certificado (obrigatório para API Pix) */
+    certificate: process.env.EFI_CERTIFICATE ?? '',
+    certificateBase64: process.env.EFI_CERTIFICATE_BASE64 === 'true',
+    pixKey: process.env.EFI_PIX_KEY ?? '',
+    planId: process.env.EFI_PLAN_ID
+      ? Number(process.env.EFI_PLAN_ID)
+      : undefined,
+    notificationUrl:
+      process.env.EFI_NOTIFICATION_URL ??
+      (process.env.APP_URL
+        ? `${process.env.APP_URL.replace(/\/$/, '')}/api/payments/webhooks/efi`
+        : ''),
+    validateMtls: process.env.EFI_VALIDATE_MTLS === 'true',
   },
   appUrl: process.env.APP_URL ?? resolveCorsOrigin(),
   smtp: {
@@ -61,12 +75,16 @@ if (
   )
 }
 
-if (config.isProduction && !config.asaas.webhookToken) {
-  throw new Error('ASAAS_WEBHOOK_TOKEN ausente. Obrigatório em produção.')
+if (config.isProduction && !config.efi.clientId) {
+  throw new Error('EFI_CLIENT_ID ausente. Obrigatório em produção.')
 }
 
-if (config.isProduction && !config.asaas.apiKey) {
-  throw new Error('ASAAS_API_KEY ausente. Obrigatório em produção.')
+if (config.isProduction && !config.efi.clientSecret) {
+  throw new Error('EFI_CLIENT_SECRET ausente. Obrigatório em produção.')
+}
+
+if (config.isProduction && !config.efi.payeeCode) {
+  throw new Error('EFI_PAYEE_CODE ausente. Obrigatório em produção.')
 }
 
 if (config.isProduction && !process.env.DATABASE_URL) {

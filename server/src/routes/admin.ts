@@ -7,7 +7,16 @@ import {
   adjustLeadCredits,
   setTrialEvaluations,
 } from '../services/credits-service.js'
-import { getFeedbackStats } from '../services/evaluation-feedback-service.js'
+import {
+  getFeedbackStats,
+} from '../services/evaluation-feedback-service.js'
+import {
+  createPost,
+  deletePost,
+  getPostById,
+  listAllPosts,
+  updatePost,
+} from '../services/blog-service.js'
 import {
   getPlatformSettings,
   updatePlatformSettings,
@@ -400,6 +409,67 @@ router.get('/transactions', async (req, res) => {
       adminName: row.admin_name,
     })),
   })
+})
+
+const blogPostSchema = z.object({
+  title: z.string().trim().min(3, 'Título muito curto.').max(500),
+  excerpt: z.string().trim().max(1000).optional().nullable(),
+  content: z.string().trim().min(10, 'Conteúdo muito curto.'),
+  status: z.enum(['draft', 'published']).default('draft'),
+  slug: z.string().trim().max(120).optional(),
+})
+
+router.get('/blog', async (_req, res) => {
+  const posts = await listAllPosts()
+  return res.json({ posts })
+})
+
+router.get('/blog/:id', async (req, res) => {
+  const post = await getPostById(getParamId(req.params.id))
+  if (!post) {
+    return res.status(404).json({ message: 'Post não encontrado.' })
+  }
+  return res.json({ post })
+})
+
+router.post('/blog', async (req: AuthRequest, res) => {
+  const parsed = blogPostSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  const post = await createPost({
+    ...parsed.data,
+    authorId: req.user!.id,
+  })
+
+  return res.status(201).json({ post })
+})
+
+router.patch('/blog/:id', async (req, res) => {
+  const parsed = blogPostSchema.partial().safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  const post = await updatePost(getParamId(req.params.id), parsed.data)
+  if (!post) {
+    return res.status(404).json({ message: 'Post não encontrado.' })
+  }
+
+  return res.json({ post })
+})
+
+router.delete('/blog/:id', async (req, res) => {
+  const deleted = await deletePost(getParamId(req.params.id))
+  if (!deleted) {
+    return res.status(404).json({ message: 'Post não encontrado.' })
+  }
+  return res.status(204).send()
 })
 
 export default router

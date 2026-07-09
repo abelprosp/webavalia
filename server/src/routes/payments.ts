@@ -30,6 +30,26 @@ const cpfCnpjSchema = z
     message: 'CPF ou CNPJ inválido.',
   })
 
+const billingAddressSchema = z.object({
+  street: z.string().trim().min(1, 'Informe a rua.').max(200),
+  number: z.string().trim().min(1, 'Informe o número.').max(20),
+  neighborhood: z.string().trim().min(1, 'Informe o bairro.').max(100),
+  zipcode: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/\D/g, ''))
+    .refine((value) => value.length === 8, { message: 'CEP inválido.' }),
+  city: z.string().trim().min(1, 'Informe a cidade.').max(100),
+  state: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .refine((value) => /^[A-Z]{2}$/.test(value), {
+      message: 'UF inválida.',
+    }),
+  complement: z.string().trim().max(100).optional(),
+})
+
 router.post('/credits/pix', requireBrokerAccount, async (req: AuthRequest, res) => {
   const parsed = z
     .object({
@@ -87,6 +107,19 @@ router.post('/plan/checkout', async (req: AuthRequest, res) => {
   const parsed = z
     .object({
       cpfCnpj: cpfCnpjSchema,
+      paymentToken: z.string().trim().min(10, 'Token de pagamento inválido.'),
+      phoneNumber: z
+        .string()
+        .trim()
+        .transform((value) => value.replace(/\D/g, ''))
+        .refine((value) => value.length >= 10 && value.length <= 11, {
+          message: 'Telefone inválido.',
+        }),
+      birth: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de nascimento inválida (AAAA-MM-DD).'),
+      billingAddress: billingAddressSchema,
     })
     .safeParse(req.body)
 
@@ -100,11 +133,15 @@ router.post('/plan/checkout', async (req: AuthRequest, res) => {
     const checkout = await createEvaluationPlanCheckout({
       userId: req.user!.id,
       cpfCnpj: parsed.data.cpfCnpj,
+      paymentToken: parsed.data.paymentToken,
+      phoneNumber: parsed.data.phoneNumber,
+      birth: parsed.data.birth,
+      billingAddress: parsed.data.billingAddress,
     })
     return res.status(201).json(checkout)
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : 'Erro ao iniciar checkout.'
+      error instanceof Error ? error.message : 'Erro ao processar pagamento.'
     return res.status(502).json({ message })
   }
 })

@@ -1,4 +1,4 @@
-import { Coins, CreditCard, Minus, Plus, Sparkles } from 'lucide-react'
+import { Coins, Minus, Plus, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -20,12 +20,12 @@ import { useCreditsStore } from '@/stores/credits-store'
 import { fetchMe } from '@/lib/auth-api'
 import {
   createLeadCreditsPix,
-  createPlanCheckout,
   fetchPaymentPricing,
   type PaymentPricing,
   type PixPaymentResponse,
 } from '@/lib/payment-api'
 import { PixPaymentDialog } from './pix-payment-dialog'
+import { TransparentCheckoutForm } from './transparent-checkout-form'
 import { getApiErrorMessage } from '@/lib/api-error'
 
 function formatCpfCnpj(value: string) {
@@ -59,7 +59,6 @@ export function CreditsSettings() {
   const [quantity, setQuantity] = useState(1)
   const [cpfCnpj, setCpfCnpj] = useState('')
   const [loadingPix, setLoadingPix] = useState(false)
-  const [loadingPlan, setLoadingPlan] = useState(false)
   const [pixPayment, setPixPayment] = useState<PixPaymentResponse | null>(null)
   const [pixDialogOpen, setPixDialogOpen] = useState(false)
 
@@ -134,19 +133,6 @@ export function CreditsSettings() {
     }
   }
 
-  async function handleBuyPlan() {
-    if (!validateCpfCnpj()) return
-
-    setLoadingPlan(true)
-    try {
-      const checkout = await createPlanCheckout(getCpfDigits())
-      window.location.href = checkout.checkoutUrl
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Erro ao iniciar assinatura.'))
-      setLoadingPlan(false)
-    }
-  }
-
   const creditsPerUnit = pricing?.leadCreditPack.credits ?? 1
   const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 799
   const leadCreditsTotal = creditsPerUnit * quantity
@@ -187,8 +173,8 @@ export function CreditsSettings() {
             <CardTitle>Dados para pagamento</CardTitle>
             <CardDescription>
               {isBroker
-                ? 'CPF ou CNPJ exigido pelo Asaas para gerar cobranças e assinaturas'
-                : 'CPF exigido pelo Asaas para gerar cobranças e assinaturas'}
+                ? 'CPF ou CNPJ exigido pela Efí Bank para gerar cobranças e assinaturas'
+                : 'CPF exigido pela Efí Bank para gerar cobranças e assinaturas'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -230,16 +216,25 @@ export function CreditsSettings() {
               </span>
             </div>
             <p className='text-sm text-muted-foreground'>
-              Assinatura recorrente via Asaas — PIX ou cartão de crédito
+              Checkout transparente via Efí Bank — cartão de crédito na própria
+              página, sem redirecionamento
             </p>
-            <Button
-              className='w-full sm:w-auto'
-              onClick={handleBuyPlan}
-              disabled={loadingPlan}
-            >
-              <CreditCard className='size-4' />
-              {loadingPlan ? 'Redirecionando…' : 'Assinar plano'}
-            </Button>
+            <TransparentCheckoutForm
+              cpfCnpj={cpfCnpj}
+              pricing={pricing}
+              onSuccess={async (result) => {
+                if (result.status === 'paid' || result.status === 'approved') {
+                  toast.success(
+                    'Assinatura confirmada! Suas avaliações já estão disponíveis.'
+                  )
+                } else {
+                  toast.success(
+                    'Assinatura iniciada. As avaliações serão liberadas assim que o pagamento for confirmado.'
+                  )
+                }
+                await refreshUser()
+              }}
+            />
           </CardContent>
         </Card>
 

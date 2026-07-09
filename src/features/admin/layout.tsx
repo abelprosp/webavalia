@@ -5,6 +5,7 @@ import {
   CreditCard,
   Settings2,
   Shield,
+  Newspaper,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConfigDrawer } from '@/components/config-drawer'
@@ -31,6 +32,11 @@ const adminNavItems = [
     title: 'Planos',
     href: '/admin/plans',
     icon: CreditCard,
+  },
+  {
+    title: 'Blog',
+    href: '/admin/blog',
+    icon: Newspaper,
   },
   {
     title: 'Configurações',

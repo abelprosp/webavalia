@@ -14,7 +14,11 @@ export type PaymentPricing = {
     priceLabel: string
     label: string
     description: string
-    paymentMethods: readonly ['PIX', 'CARD']
+    paymentMethods: readonly ['CARD']
+  }
+  efi: {
+    payeeCode: string
+    environment: 'sandbox' | 'production'
   }
 }
 
@@ -30,11 +34,28 @@ export type PixPaymentResponse = {
 }
 
 export type PlanCheckoutResponse = {
-  orderId: string | null
-  checkoutUrl: string
+  orderId: string
   amountCents: number
   trialEvaluations: number
-  existingSubscription?: boolean
+  status: string
+  subscriptionId: string
+  chargeId: string | null
+}
+
+export type PlanCheckoutInput = {
+  cpfCnpj: string
+  paymentToken: string
+  phoneNumber: string
+  birth: string
+  billingAddress: {
+    street: string
+    number: string
+    neighborhood: string
+    zipcode: string
+    city: string
+    state: string
+    complement?: string
+  }
 }
 
 export async function fetchPaymentPricing() {
@@ -60,10 +81,10 @@ export async function pollLeadCreditsPixStatus(orderId: string) {
   return data
 }
 
-export async function createPlanCheckout(cpfCnpj: string) {
+export async function createPlanCheckout(input: PlanCheckoutInput) {
   const { data } = await api.post<PlanCheckoutResponse>(
     '/payments/plan/checkout',
-    { cpfCnpj }
+    input
   )
   return data
 }
