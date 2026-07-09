@@ -21,7 +21,7 @@ const EfiPayClient = EfiPay as unknown as new (options: EfiOptions) => EfiClient
 
 let client: EfiClient | null = null
 
-function assertEfiConfigured() {
+function assertEfiCredentials() {
   if (!config.efi.clientId || !config.efi.clientSecret) {
     throw new Error(
       'Pagamentos indisponíveis. Configure EFI_CLIENT_ID e EFI_CLIENT_SECRET no server/.env'
@@ -29,8 +29,22 @@ function assertEfiConfigured() {
   }
 }
 
+function assertPixConfigured() {
+  assertEfiCredentials()
+  if (!config.efi.certificate) {
+    throw new Error(
+      'PIX indisponível. Configure EFI_CERTIFICATE (ex.: ./certs/efi-certificado.p12) no server/.env'
+    )
+  }
+  if (!config.efi.pixKey) {
+    throw new Error(
+      'PIX indisponível. Configure EFI_PIX_KEY no server/.env'
+    )
+  }
+}
+
 function getEfiClient(): EfiClient {
-  assertEfiConfigured()
+  assertEfiCredentials()
 
   if (!client) {
     const options: EfiOptions = {
@@ -38,15 +52,13 @@ function getEfiClient(): EfiClient {
       client_id: config.efi.clientId,
       client_secret: config.efi.clientSecret,
       cache: true,
+      validate_mtls: config.efi.validateMtls,
     }
 
+    // Certificado .p12 obrigatório para API Pix; também usado pelo SDK nas demais APIs
     if (config.efi.certificate) {
       options.certificate = config.efi.certificate
       options.cert_base64 = config.efi.certificateBase64
-    }
-
-    if (config.efi.pixKey) {
-      options.validate_mtls = config.efi.validateMtls
     }
 
     client = new EfiPayClient(options)
@@ -248,16 +260,7 @@ export async function createPixCharge(input: {
   description: string
   orderId: string
 }): Promise<EfiPixChargeResult> {
-  if (!config.efi.pixKey) {
-    throw new Error(
-      'PIX indisponível. Configure EFI_PIX_KEY no server/.env'
-    )
-  }
-  if (!config.efi.certificate) {
-    throw new Error(
-      'PIX indisponível. Configure EFI_CERTIFICATE (caminho do .p12 ou base64) no server/.env'
-    )
-  }
+  assertPixConfigured()
 
   const digits = input.cpfCnpj.replace(/\D/g, '')
   const value = (input.amountCents / 100).toFixed(2)

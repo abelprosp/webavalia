@@ -91,7 +91,7 @@ export function TransparentCheckoutForm({
 
     if (!pricing?.efi.payeeCode) {
       toast.error(
-        'Checkout indisponível. Configure EFI_PAYEE_CODE no servidor.'
+        'Checkout de cartão indisponível. Configure EFI_PAYEE_CODE (Identificador de conta na Efí). Pix não precisa desta variável.'
       )
       return
     }

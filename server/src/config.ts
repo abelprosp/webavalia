@@ -23,15 +23,17 @@ export const config = {
   serperApiKey: process.env.SERPER_API_KEY ?? '',
   isProduction: process.env.NODE_ENV === 'production',
   efi: {
+    // API Pix — variáveis essenciais (SDK oficial)
     clientId: process.env.EFI_CLIENT_ID ?? '',
     clientSecret: process.env.EFI_CLIENT_SECRET ?? '',
+    // true = homologação | false = produção (padrão: sandbox se omitido)
     sandbox: process.env.EFI_SANDBOX !== 'false',
-    /** Identificador de conta (payee_code) — usado no checkout transparente no frontend */
-    payeeCode: process.env.EFI_PAYEE_CODE ?? '',
-    /** Caminho do .p12 ou conteúdo base64 do certificado (obrigatório para API Pix) */
+    /** Caminho do .p12 (ex.: ./certs/efi-certificado.p12) ou base64 */
     certificate: process.env.EFI_CERTIFICATE ?? '',
     certificateBase64: process.env.EFI_CERTIFICATE_BASE64 === 'true',
     pixKey: process.env.EFI_PIX_KEY ?? '',
+    // Só para checkout transparente (cartão) — não é necessário para Pix
+    payeeCode: process.env.EFI_PAYEE_CODE ?? '',
     planId: process.env.EFI_PLAN_ID
       ? Number(process.env.EFI_PLAN_ID)
       : undefined,
@@ -80,13 +82,19 @@ if (config.isProduction && !process.env.DATABASE_URL) {
 }
 
 if (config.isProduction) {
-  const missingEfi: string[] = []
-  if (!config.efi.clientId) missingEfi.push('EFI_CLIENT_ID')
-  if (!config.efi.clientSecret) missingEfi.push('EFI_CLIENT_SECRET')
-  if (!config.efi.payeeCode) missingEfi.push('EFI_PAYEE_CODE')
-  if (missingEfi.length > 0) {
+  const missingPix: string[] = []
+  if (!config.efi.clientId) missingPix.push('EFI_CLIENT_ID')
+  if (!config.efi.clientSecret) missingPix.push('EFI_CLIENT_SECRET')
+  if (!config.efi.certificate) missingPix.push('EFI_CERTIFICATE')
+  if (!config.efi.pixKey) missingPix.push('EFI_PIX_KEY')
+  if (missingPix.length > 0) {
     console.warn(
-      `[efi] Credenciais ausentes (${missingEfi.join(', ')}). Pagamentos ficarão indisponíveis até configurar.`
+      `[efi] Pix indisponível — faltam: ${missingPix.join(', ')}. Configure no painel da Efí (API > Aplicações + Certificado + Chave Pix).`
+    )
+  }
+  if (!config.efi.payeeCode) {
+    console.warn(
+      '[efi] EFI_PAYEE_CODE ausente — checkout transparente (cartão) indisponível. Pix não precisa desta variável.'
     )
   }
 }
