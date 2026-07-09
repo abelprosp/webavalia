@@ -98,3 +98,20 @@ export async function cancelPlanSubscription() {
   )
   return data
 }
+
+export type MonthlyCharge = {
+  id: string
+  kind: 'initial' | 'renewal'
+  label: string
+  amountCents: number
+  credits: number
+  status: 'paid' | 'pending' | 'fulfilled'
+  chargedAt: string
+}
+
+export async function fetchMonthlyCharges() {
+  const { data } = await api.get<{ charges: MonthlyCharge[] }>(
+    '/payments/plan/charges'
+  )
+  return data.charges
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -13,6 +14,14 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { ContentSection } from '../components/content-section'
 import { useAuthStore } from '@/stores/auth-store'
 import { isBrokerAccount } from '@/lib/auth-api'
@@ -22,13 +31,35 @@ import { fetchMe } from '@/lib/auth-api'
 import {
   cancelPlanSubscription,
   createLeadCreditsPix,
+  fetchMonthlyCharges,
   fetchPaymentPricing,
+  type MonthlyCharge,
   type PaymentPricing,
   type PixPaymentResponse,
 } from '@/lib/payment-api'
 import { PixPaymentDialog } from './pix-payment-dialog'
 import { TransparentCheckoutForm } from './transparent-checkout-form'
 import { getApiErrorMessage } from '@/lib/api-error'
+
+function formatChargeDate(value: string) {
+  return new Date(value).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatMoney(cents: number) {
+  return (cents / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+}
+
+function chargeStatusLabel(status: MonthlyCharge['status']) {
+  if (status === 'pending') return 'Pendente'
+  return 'Pago'
+}
 
 function formatCpfCnpj(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 14)
@@ -62,12 +93,27 @@ export function CreditsSettings() {
   const [pixDialogOpen, setPixDialogOpen] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [charges, setCharges] = useState<MonthlyCharge[]>([])
+  const [loadingCharges, setLoadingCharges] = useState(true)
   const hasActiveSubscription = Boolean(user?.hasActiveSubscription)
+
+  async function loadCharges() {
+    setLoadingCharges(true)
+    try {
+      const list = await fetchMonthlyCharges()
+      setCharges(list)
+    } catch {
+      // silencioso — histórico é complementar
+    } finally {
+      setLoadingCharges(false)
+    }
+  }
 
   useEffect(() => {
     fetchPaymentPricing()
       .then(setPricing)
       .catch(() => toast.error('Não foi possível carregar os preços.'))
+    void loadCharges()
   }, [])
 
   useEffect(() => {
@@ -92,6 +138,7 @@ export function CreditsSettings() {
       const user = await fetchMe()
       setUser(user)
       setCredits(user.credits ?? user.leadCredits ?? 0)
+      await loadCharges()
     } catch {
       // silencioso
     }
@@ -272,6 +319,59 @@ export function CreditsSettings() {
             )}
           </CardContent>
         </Card>
+
+        {(hasActiveSubscription || charges.length > 0 || loadingCharges) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico das cobranças mensais</CardTitle>
+              <CardDescription>
+                Cobranças do plano mensal e renovações creditadas na sua conta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingCharges ? (
+                <p className='text-sm text-muted-foreground'>Carregando…</p>
+              ) : charges.length === 0 ? (
+                <p className='text-sm text-muted-foreground'>
+                  Nenhuma cobrança registrada ainda.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Créditos</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {charges.map((charge) => (
+                      <TableRow key={charge.id}>
+                        <TableCell>{formatChargeDate(charge.chargedAt)}</TableCell>
+                        <TableCell>{charge.label}</TableCell>
+                        <TableCell>+{charge.credits}</TableCell>
+                        <TableCell>{formatMoney(charge.amountCents)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              charge.status === 'pending'
+                                ? 'outline'
+                                : 'secondary'
+                            }
+                          >
+                            {chargeStatusLabel(charge.status)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {isBroker && (
           <Card>

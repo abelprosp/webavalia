@@ -9,6 +9,7 @@ import {
   createLeadCreditsPixOrder,
   getPaymentDiagnostics,
   getPublicPricing,
+  listMonthlyCharges,
   pingPaymentProvider,
   syncLeadCreditsPixOrder,
 } from '../services/payment-service.js'
@@ -180,6 +181,19 @@ router.post('/plan/cancel', async (req: AuthRequest, res) => {
       error instanceof Error ? error.message : 'Erro ao cancelar assinatura.'
     const status = /não possui|não encontrado/i.test(message) ? 400 : 502
     return res.status(status).json({ message })
+  }
+})
+
+router.get('/plan/charges', async (req: AuthRequest, res) => {
+  try {
+    const charges = await listMonthlyCharges(req.user!.id)
+    return res.json({ charges })
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro ao carregar histórico de cobranças.'
+    return res.status(500).json({ message })
   }
 })
 

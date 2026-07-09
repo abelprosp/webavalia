@@ -377,13 +377,141 @@ export async function fulfillSubscriptionRenewal(input: {
     return { fulfilled: false, reason: 'user_not_found' as const }
   }
 
-  await addTrialEvaluations(
-    user.id,
-    PRICING.evaluationPlan.trialEvaluations,
-    `Renovação mensal — ${PRICING.evaluationPlan.trialEvaluations} crédito(s)`
+  const orderId = randomUUID()
+  const externalId = `renewal-${input.paymentId}`
+  const amountCents = PRICING.evaluationPlan.priceCents
+  const credits = PRICING.evaluationPlan.trialEvaluations
+
+  await pool.query(
+    `INSERT INTO payment_orders
+       (id, user_id, type, status, amount_cents, packs, abacate_id, external_id, metadata, paid_at, fulfilled_at)
+     VALUES ($1, $2, 'evaluation_plan', 'fulfilled', $3, 1, $4, $5, $6::jsonb, NOW(), NOW())
+     ON CONFLICT (external_id) DO NOTHING`,
+    [
+      orderId,
+      user.id,
+      amountCents,
+      input.subscriptionId,
+      externalId,
+      JSON.stringify({
+        provider: 'efi',
+        subscriptionId: input.subscriptionId,
+        chargeId: input.paymentId,
+        type: 'subscription_renewal',
+      }),
+    ]
   )
 
-  return { fulfilled: true, userId: user.id }
+  await addTrialEvaluations(
+    user.id,
+    credits,
+    `Renovação mensal — ${credits} crédito(s)`
+  )
+
+  return { fulfilled: true, userId: user.id, orderId }
+}
+
+export type MonthlyCharge = {
+  id: string
+  kind: 'initial' | 'renewal'
+  label: string
+  amountCents: number
+  credits: number
+  status: 'paid' | 'pending' | 'fulfilled'
+  chargedAt: string
+}
+
+export async function listMonthlyCharges(
+  userId: string,
+  limit = 24
+): Promise<MonthlyCharge[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 100)
+
+  const ordersResult = await pool.query<{
+    id: string
+    status: string
+    amount_cents: number
+    packs: number
+    metadata: { type?: string } | null
+    created_at: Date | string
+    paid_at: Date | string | null
+    fulfilled_at: Date | string | null
+  }>(
+    `SELECT id, status, amount_cents, packs, metadata, created_at, paid_at, fulfilled_at
+     FROM payment_orders
+     WHERE user_id = $1
+       AND type = 'evaluation_plan'
+       AND status IN ('paid', 'fulfilled', 'pending')
+     ORDER BY COALESCE(paid_at, fulfilled_at, created_at) DESC
+     LIMIT $2`,
+    [userId, safeLimit]
+  )
+
+  const orderCharges: MonthlyCharge[] = ordersResult.rows.map((row) => {
+    const isRenewal = row.metadata?.type === 'subscription_renewal'
+    const chargedAt = row.paid_at ?? row.fulfilled_at ?? row.created_at
+    return {
+      id: row.id,
+      kind: isRenewal ? 'renewal' : 'initial',
+      label: isRenewal
+        ? 'Renovação mensal'
+        : PRICING.evaluationPlan.label,
+      amountCents: row.amount_cents,
+      credits: PRICING.evaluationPlan.trialEvaluations * (row.packs || 1),
+      status: row.status as MonthlyCharge['status'],
+      chargedAt:
+        chargedAt instanceof Date ? chargedAt.toISOString() : String(chargedAt),
+    }
+  })
+
+  // Renovações antigas só existiam em credit_transactions (sem payment_order)
+  const legacyResult = await pool.query<{
+    id: string
+    amount: number
+    description: string | null
+    created_at: Date | string
+  }>(
+    `SELECT ct.id, ct.amount, ct.description, ct.created_at
+     FROM credit_transactions ct
+     WHERE ct.user_id = $1
+       AND ct.description ILIKE 'Renovação mensal%'
+       AND NOT EXISTS (
+         SELECT 1 FROM payment_orders o
+         WHERE o.user_id = $1
+           AND o.type = 'evaluation_plan'
+           AND o.metadata->>'type' = 'subscription_renewal'
+           AND ABS(
+             EXTRACT(
+               EPOCH FROM (
+                 COALESCE(o.fulfilled_at, o.paid_at, o.created_at) - ct.created_at
+               )
+             )
+           ) < 120
+       )
+     ORDER BY ct.created_at DESC
+     LIMIT $2`,
+    [userId, safeLimit]
+  )
+
+  const legacyCharges: MonthlyCharge[] = legacyResult.rows.map((row) => ({
+    id: row.id,
+    kind: 'renewal' as const,
+    label: 'Renovação mensal',
+    amountCents: PRICING.evaluationPlan.priceCents,
+    credits: row.amount,
+    status: 'fulfilled' as const,
+    chargedAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at),
+  }))
+
+  return [...orderCharges, ...legacyCharges]
+    .sort(
+      (a, b) =>
+        new Date(b.chargedAt).getTime() - new Date(a.chargedAt).getTime()
+    )
+    .slice(0, safeLimit)
 }
 
 export async function markOrderPaid(orderId: string) {
