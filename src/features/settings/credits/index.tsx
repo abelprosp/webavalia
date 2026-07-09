@@ -169,8 +169,8 @@ export function CreditsSettings() {
             <CardTitle>Dados para pagamento</CardTitle>
             <CardDescription>
               {isBroker
-                ? 'CPF ou CNPJ exigido pela Efí Bank para gerar cobranças e assinaturas'
-                : 'CPF exigido pela Efí Bank para gerar cobranças e assinaturas'}
+                ? 'CPF ou CNPJ necessário para gerar cobranças e assinaturas'
+                : 'CPF necessário para gerar cobranças e assinaturas'}
             </CardDescription>
           </CardHeader>
           <CardContent>
