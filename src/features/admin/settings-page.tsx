@@ -66,7 +66,7 @@ export function AdminSettingsPage() {
       <CardContent className='space-y-6'>
         <div className='grid gap-4 sm:grid-cols-2'>
           <div className='space-y-2'>
-            <Label>Avaliações grátis por cadastro</Label>
+            <Label>Créditos grátis por cadastro</Label>
             <Input
               type='number'
               min={0}

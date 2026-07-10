@@ -68,7 +68,7 @@ export function UserAuthForm({
           accountType: 'pf' as const,
           leadCredits: 0,
           trialEvaluationsRemaining: 3,
-          trialEvaluationsTotal: 3,
+          trialEvaluationsTotal: 2,
           credits: 3,
         }
 

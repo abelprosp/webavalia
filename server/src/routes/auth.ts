@@ -222,7 +222,7 @@ router.post(
       return res.status(400).json({ message: REGISTER_GENERIC_FAILURE })
     }
 
-    const trialTotal = await getSetting<number>('trial_evaluations_total', 3)
+    const trialTotal = await getSetting<number>('trial_evaluations_total', 2)
     const defaultLeadCredits = await getSetting<number>(
       'default_lead_credits',
       0

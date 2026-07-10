@@ -80,7 +80,7 @@ export function CreditsSettings() {
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
   const setUser = useAuthStore((s) => s.auth.setUser)
-  const signupBonus = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 3)
+  const signupBonus = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 2)
   const user = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(user)
 
@@ -218,8 +218,10 @@ export function CreditsSettings() {
               Seu saldo
             </CardTitle>
             <CardDescription>
-              Cada conta recebe {signupBonus} créditos ao se cadastrar. 1 crédito
-              = 1 avaliação IA{isBroker ? ' ou 1 desbloqueio de lead' : ''}.
+              Cada conta recebe {signupBonus} créditos ao se cadastrar e +1 ao
+              concluir a primeira avaliação. Depois, compre mais créditos. 1
+              crédito = 1 avaliação IA
+              {isBroker ? ' ou 1 desbloqueio de lead' : ''}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -447,8 +449,9 @@ export function CreditsSettings() {
               </p>
             )}
             <p>
-              Compre pacotes avulsos via PIX ou assine o plano mensal para
-              receber créditos automaticamente.
+              Cada conta começa com créditos grátis. Ao concluir a primeira
+              avaliação, você ganha +1 crédito. Depois disso, compre pacotes
+              avulsos via PIX ou assine o plano mensal.
             </p>
           </CardContent>
         </Card>

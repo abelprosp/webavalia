@@ -18,7 +18,7 @@ const sampleUser = {
   credits: 3,
   leadCredits: 3,
   trialEvaluationsRemaining: 3,
-  trialEvaluationsTotal: 3,
+  trialEvaluationsTotal: 2,
 }
 
 describe('useAuthStore', () => {

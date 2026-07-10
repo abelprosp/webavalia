@@ -72,7 +72,7 @@ function AchievementBadge({
           <p className='text-sm font-medium'>{title}</p>
           {rewardEvaluations > 0 && (
             <Badge variant='secondary' className='text-[10px]'>
-              +{rewardEvaluations} avaliação{rewardEvaluations === 1 ? '' : 'ões'}
+              +{rewardEvaluations} crédito{rewardEvaluations === 1 ? '' : 's'}
             </Badge>
           )}
         </div>

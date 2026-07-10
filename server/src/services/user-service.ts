@@ -21,7 +21,7 @@ export type UserRow = {
 }
 
 export async function mapUserResponse(row: UserRow) {
-  const signupBonus = await getSetting<number>('trial_evaluations_total', 3)
+  const signupBonus = await getSetting<number>('trial_evaluations_total', 2)
 
   return {
     id: row.id,

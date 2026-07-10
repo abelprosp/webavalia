@@ -6,7 +6,7 @@ export function showNewAchievements(achievements: Achievement[]) {
   for (const achievement of achievements) {
     const rewardText =
       achievement.rewardEvaluations > 0
-        ? ` +${achievement.rewardEvaluations} avaliação(ões) bônus`
+        ? ` +${achievement.rewardEvaluations} crédito(s) bônus`
         : ''
 
     toast.success(`Conquista: ${achievement.title}`, {
@@ -33,7 +33,7 @@ export function showGamificationUpdates(payload: GamificationPayload | undefined
     payload.newAchievements.length > 1
   ) {
     toast.success(
-      `Total de +${payload.achievementTrialReward} avaliações por conquistas!`,
+      `Total de +${payload.achievementTrialReward} créditos por conquistas!`,
       { duration: 5000 }
     )
   }

@@ -29,37 +29,37 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     key: 'evaluations_5',
     title: 'Corretor em ação',
     description: 'Completou 5 avaliações de imóveis',
-    rewardEvaluations: 2,
+    rewardEvaluations: 0,
   },
   {
     key: 'evaluations_10',
     title: 'Analista imobiliário',
     description: 'Completou 10 avaliações de imóveis',
-    rewardEvaluations: 3,
+    rewardEvaluations: 0,
   },
   {
     key: 'first_feedback',
     title: 'Mentor da IA',
     description: 'Enviou o primeiro feedback para calibrar a IA',
-    rewardEvaluations: 1,
+    rewardEvaluations: 0,
   },
   {
     key: 'feedback_5',
     title: 'Treinador expert',
     description: 'Enviou 5 feedbacks úteis para a IA',
-    rewardEvaluations: 2,
+    rewardEvaluations: 0,
   },
   {
     key: 'monthly_goal',
     title: 'Meta do mês',
     description: 'Atingiu a meta mensal de avaliações',
-    rewardEvaluations: 3,
+    rewardEvaluations: 0,
   },
   {
     key: 'streak_3',
     title: 'Sequência de 3 dias',
     description: 'Avaliou imóveis 3 dias seguidos',
-    rewardEvaluations: 2,
+    rewardEvaluations: 0,
   },
 ]
 
@@ -420,7 +420,7 @@ export async function processEvaluationGamification(userId: string) {
 export async function processFeedbackGamification(userId: string) {
   const feedbackRewardAmount = await getSetting<number>(
     'gamification_feedback_reward',
-    1
+    0
   )
 
   const gamification = await processEvaluationGamification(userId)

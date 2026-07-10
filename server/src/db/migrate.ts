@@ -305,13 +305,25 @@ async function migrate() {
 
   await pool.query(
     `INSERT INTO platform_settings (key, value) VALUES
-      ('trial_evaluations_total', '{"value": 3}'),
+      ('trial_evaluations_total', '{"value": 2}'),
       ('default_lead_credits', '{"value": 0}'),
       ('registration_enabled', '{"value": true}'),
       ('evaluation_feedback_mode', '{"value": true}'),
       ('gamification_monthly_goal', '{"value": 5}'),
-      ('gamification_feedback_reward', '{"value": 1}')
+      ('gamification_feedback_reward', '{"value": 0}')
      ON CONFLICT (key) DO NOTHING`
+  )
+
+  // Funil gratuito: 2 no cadastro + 1 na primeira tarefa; sem créditos extras por feedback
+  await pool.query(
+    `UPDATE platform_settings
+     SET value = '{"value": 2}'::jsonb, updated_at = NOW()
+     WHERE key = 'trial_evaluations_total'`
+  )
+  await pool.query(
+    `UPDATE platform_settings
+     SET value = '{"value": 0}'::jsonb, updated_at = NOW()
+     WHERE key = 'gamification_feedback_reward'`
   )
 
   const plansCount = await pool.query('SELECT COUNT(*)::int AS count FROM plans')
