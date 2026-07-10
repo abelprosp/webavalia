@@ -1,6 +1,7 @@
 import { pool } from '../db/pool.js'
 import { getSetting } from './settings-service.js'
 import { config } from '../config.js'
+import { createLead } from './lead-service.js'
 
 type StoredPropertyInput = Record<string, unknown>
 
@@ -72,6 +73,86 @@ export async function submitEvaluationFeedback(input: {
      VALUES ($1, $2, $3, $4)`,
     [input.evaluationId, input.userId, input.rating, input.comment.trim()]
   )
+}
+
+function getPublicLocation(propertyInput: StoredPropertyInput) {
+  const address =
+    typeof propertyInput.address === 'string'
+      ? propertyInput.address.trim()
+      : ''
+  const locality = address.includes('—')
+    ? address.split('—').slice(1).join('—').trim()
+    : address
+  const parts = locality
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  if (parts.length >= 2) return parts.slice(-2).join(', ')
+  return locality || 'Localização não informada'
+}
+
+export async function publishEvaluationAsLead(input: {
+  evaluationId: string
+  userId: string
+  phone: string
+}) {
+  const result = await pool.query<{
+    property_input: StoredPropertyInput
+    evaluation_result: StoredEvaluationResult
+    name: string
+    email: string
+    account_type: string
+  }>(
+    `SELECT e.property_input, e.evaluation_result,
+            u.name, u.email, u.account_type
+     FROM property_evaluations e
+     JOIN users u ON u.id = e.user_id
+     WHERE e.id = $1 AND e.user_id = $2`,
+    [input.evaluationId, input.userId]
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Avaliação não encontrada.')
+  }
+
+  const evaluation = result.rows[0]
+  if (evaluation.account_type !== 'pf') {
+    throw new Error('Esta opção está disponível apenas para proprietários.')
+  }
+
+  const estimatedValue = evaluation.evaluation_result.estimatedValue
+  const budget =
+    typeof estimatedValue === 'number'
+      ? estimatedValue.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+          maximumFractionDigits: 0,
+        })
+      : undefined
+
+  return createLead({
+    externalId: `evaluation-${input.evaluationId}`,
+    name: evaluation.name,
+    phone: input.phone,
+    email: evaluation.email,
+    propertyType:
+      typeof evaluation.property_input.propertyType === 'string'
+        ? evaluation.property_input.propertyType
+        : undefined,
+    interest: 'Proprietário interessado em vender',
+    budget,
+    location: getPublicLocation(evaluation.property_input),
+    source: 'owner_evaluation',
+    propertyInput: evaluation.property_input,
+    evaluationResult: evaluation.evaluation_result,
+    rawPayload: {
+      evaluationId: input.evaluationId,
+      ownerUserId: input.userId,
+      consent: true,
+      consentedAt: new Date().toISOString(),
+    },
+  })
 }
 
 type FeedbackLearningRow = {

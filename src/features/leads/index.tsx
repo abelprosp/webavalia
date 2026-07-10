@@ -7,10 +7,12 @@ import {
   MapPin,
   MessageCircle,
   Phone,
+  Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
@@ -68,6 +70,7 @@ export function Leads() {
   const [loading, setLoading] = useState(true)
   const [unlockLead, setUnlockLead] = useState<LeadItem | null>(null)
   const [detailLead, setDetailLead] = useState<LeadItem | null>(null)
+  const [locationFilter, setLocationFilter] = useState('')
 
   const loadLeads = useCallback(async () => {
     try {
@@ -92,6 +95,14 @@ export function Leads() {
       comAvaliacao: leads.filter((l) => l.hasEvaluation).length,
     }
   }, [leads])
+
+  const visibleLeads = useMemo(() => {
+    const filter = locationFilter.trim().toLocaleLowerCase('pt-BR')
+    if (!filter) return leads
+    return leads.filter((lead) =>
+      lead.location.toLocaleLowerCase('pt-BR').includes(filter)
+    )
+  }, [leads, locationFilter])
 
   function handleUnlockSuccess(lead: LeadItem, credits: number) {
     syncCreditsFromUser(credits)
@@ -125,7 +136,8 @@ export function Leads() {
         <div>
           <h2 className='text-2xl font-bold tracking-tight'>Leads</h2>
           <p className='text-muted-foreground'>
-            Avaliações e contatos captados pelo WhatsApp da Avalia.
+            Proprietários interessados em vender e contatos recebidos pela
+            Avalia.
           </p>
         </div>
 
@@ -164,15 +176,25 @@ export function Leads() {
           </Card>
         </div>
 
+        <div className='relative max-w-md'>
+          <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Input
+            value={locationFilter}
+            onChange={(event) => setLocationFilter(event.target.value)}
+            placeholder='Filtrar por bairro, cidade ou estado'
+            className='pl-9'
+          />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <MessageCircle className='size-5' />
-              Leads do WhatsApp
+              Oportunidades de imóveis
             </CardTitle>
             <CardDescription>
-              Desbloqueie com créditos para ver telefone e detalhes completos da
-              avaliação.
+              Encontre proprietários da sua região. Desbloqueie com créditos
+              para ver o contato e os detalhes completos da avaliação.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,12 +203,13 @@ export function Leads() {
                 <Loader2 className='size-5 animate-spin' />
                 Carregando leads...
               </div>
-            ) : leads.length === 0 ? (
+            ) : visibleLeads.length === 0 ? (
               <div className='flex flex-col items-center gap-3 py-12 text-center'>
                 <Inbox className='size-8 text-muted-foreground' />
                 <p className='text-sm text-muted-foreground'>
-                  Nenhum lead do WhatsApp ainda. Configure o webhook para começar
-                  a receber avaliações.
+                  {leads.length === 0
+                    ? 'Nenhuma oportunidade disponível no momento.'
+                    : 'Nenhuma oportunidade encontrada nessa região.'}
                 </p>
               </div>
             ) : (
@@ -202,7 +225,7 @@ export function Leads() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leads.map((lead) => (
+                  {visibleLeads.map((lead) => (
                     <TableRow key={lead.id}>
                       <TableCell>
                         <div className='font-medium'>{lead.name}</div>

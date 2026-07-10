@@ -69,9 +69,11 @@ import { useEvaluationsStore } from '@/stores/evaluations-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
+import { isBrokerAccount } from '@/lib/auth-api'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
 import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
+import { PublishPropertyLead } from './components/publish-property-lead'
 import {
   PhotoUpload,
   type EvaluationPhoto,
@@ -90,7 +92,9 @@ export function Avaliacao() {
   const recordEvaluation = useEvaluationsStore((s) => s.recordEvaluation)
   const credits = useCreditsStore((s) => s.credits)
   const updateCredits = useAuthStore((s) => s.auth.updateCredits)
-  const userId = useAuthStore((s) => s.auth.user?.id)
+  const authUser = useAuthStore((s) => s.auth.user)
+  const userId = authUser?.id
+  const isBroker = isBrokerAccount(authUser)
   const saveDraft = useEvaluationDraftStore((s) => s.saveDraft)
   const getDraftForUser = useEvaluationDraftStore((s) => s.getDraftForUser)
   const clearDraft = useEvaluationDraftStore((s) => s.clearDraft)
@@ -984,6 +988,12 @@ export function Avaliacao() {
                 result={result}
                 property={evaluatedProperty}
               />
+              {!isBroker && evaluationId && (
+                <PublishPropertyLead
+                  key={evaluationId}
+                  evaluationId={evaluationId}
+                />
+              )}
               {feedbackModeEnabled && evaluationId && !feedbackSubmitted && (
                 <EvaluationFeedbackPanel
                   evaluationId={evaluationId}

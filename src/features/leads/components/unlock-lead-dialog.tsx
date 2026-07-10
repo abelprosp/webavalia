@@ -70,7 +70,7 @@ export function UnlockLeadDialog({
             <div className='space-y-4 pt-2'>
               <p>
                 Confirme o desbloqueio para visualizar os dados completos deste
-                lead captado pelo WhatsApp da Avalia.
+                proprietário e os detalhes da avaliação do imóvel.
               </p>
 
               <div className='rounded-lg border bg-muted/50 p-4 space-y-2 text-sm'>

@@ -22,6 +22,13 @@ export function LeadDetailDialog({
 }: LeadDetailDialogProps) {
   if (!lead) return null
 
+  const sourceLabel =
+    lead.source === 'owner_evaluation'
+      ? 'avaliação autorizada pelo proprietário'
+      : lead.source === 'whatsapp'
+        ? 'WhatsApp da Avalia'
+        : lead.source
+
   const insights = Array.isArray(lead.evaluationResult?.aiInsights)
     ? (lead.evaluationResult.aiInsights as string[])
     : []
@@ -32,7 +39,7 @@ export function LeadDetailDialog({
         <DialogHeader>
           <DialogTitle>{lead.name}</DialogTitle>
           <DialogDescription>
-            Lead captado via {lead.source} em{' '}
+            Lead recebido por {sourceLabel} em{' '}
             {new Date(lead.receivedAt).toLocaleString('pt-BR')}
           </DialogDescription>
         </DialogHeader>

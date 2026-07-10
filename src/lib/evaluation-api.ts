@@ -35,6 +35,18 @@ export async function submitEvaluationFeedback(input: {
   return data
 }
 
+export async function publishEvaluationAsLead(input: {
+  evaluationId: string
+  phone: string
+  consent: true
+}) {
+  const { data } = await api.post<{
+    published: boolean
+    alreadyPublished: boolean
+  }>('/evaluation/publish-lead', input)
+  return data
+}
+
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

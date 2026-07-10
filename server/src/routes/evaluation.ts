@@ -11,6 +11,7 @@ import {
 } from '../services/trial-service.js'
 import {
   isEvaluationFeedbackModeEnabled,
+  publishEvaluationAsLead,
   savePropertyEvaluation,
   submitEvaluationFeedback,
 } from '../services/evaluation-feedback-service.js'
@@ -74,6 +75,19 @@ const feedbackSchema = z.object({
   evaluationId: z.uuid(),
   rating: z.enum(['good', 'bad']),
   comment: z.string().trim().min(10, 'Explique com ao menos 10 caracteres.').max(2000),
+})
+
+const publishLeadSchema = z.object({
+  evaluationId: z.uuid(),
+  phone: z
+    .string()
+    .transform((value) => value.replace(/\D/g, ''))
+    .refine((value) => value.length >= 10 && value.length <= 11, {
+      message: 'Informe um telefone válido com DDD.',
+    }),
+  consent: z.literal(true, {
+    error: 'É necessário autorizar o compartilhamento dos dados.',
+  }),
 })
 
 router.get('/config', requireAuth, async (_req, res) => {
@@ -202,6 +216,37 @@ router.post('/feedback', requireAuth, async (req: AuthRequest, res) => {
     const message =
       error instanceof Error ? error.message : 'Erro ao enviar feedback.'
     return res.status(400).json({ message })
+  }
+})
+
+router.post('/publish-lead', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = publishLeadSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  try {
+    const result = await publishEvaluationAsLead({
+      evaluationId: parsed.data.evaluationId,
+      userId: req.user!.id,
+      phone: parsed.data.phone,
+    })
+
+    return res.status(result.created ? 201 : 200).json({
+      published: true,
+      alreadyPublished: !result.created,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro ao disponibilizar o imóvel.'
+    const status = /não encontrada|apenas para proprietários/i.test(message)
+      ? 403
+      : 500
+    return res.status(status).json({ message })
   }
 })
 
