@@ -71,7 +71,35 @@ async function migrate() {
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS trade_name VARCHAR(255);
 
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS phone VARCHAR(11);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT false;
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS terms_version VARCHAR(20);
+
     CREATE INDEX IF NOT EXISTS users_account_type_idx ON users (account_type);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_verified_unique_idx
+      ON users (phone)
+      WHERE phone IS NOT NULL AND phone_verified = true;
+
+    CREATE TABLE IF NOT EXISTS phone_verification_codes (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      phone VARCHAR(11) NOT NULL,
+      code_hash VARCHAR(64) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      attempts INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS phone_verification_codes_expires_idx
+      ON phone_verification_codes (expires_at);
 
     CREATE TABLE IF NOT EXISTS email_verification_tokens (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -291,6 +319,19 @@ async function migrate() {
   await pool.query(`
     UPDATE users SET email_verified = true WHERE role = 'admin' AND email_verified = false
   `)
+
+  const phoneGrandfather = await pool.query(
+    `SELECT 1 FROM platform_settings WHERE key = 'phone_verification_grandfathered'`
+  )
+  if (!phoneGrandfather.rowCount) {
+    await pool.query(
+      `UPDATE users SET phone_verified = true WHERE phone_verified = false`
+    )
+    await pool.query(
+      `INSERT INTO platform_settings (key, value)
+       VALUES ('phone_verification_grandfathered', '{"value": true}')`
+    )
+  }
 
   const grandfather = await pool.query(
     `SELECT 1 FROM platform_settings WHERE key = 'email_verification_grandfathered'`

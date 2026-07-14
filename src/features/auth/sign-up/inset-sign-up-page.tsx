@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { registerRequest, type AccountType } from '@/lib/auth-api'
@@ -12,6 +13,7 @@ import {
   documentDigits,
   formatDocumentForAccountType,
 } from '@/lib/document'
+import { formatBrazilianPhone, phoneDigits } from '@/lib/phone'
 import { validatePassword, TRIAL_EVALUATIONS_TOTAL } from '@/lib/password-policy'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
@@ -84,9 +86,11 @@ function SignUpForm() {
   const [companyName, setCompanyName] = useState('')
   const [tradeName, setTradeName] = useState('')
   const [document, setDocument] = useState('')
+  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [reveal, setReveal] = useState(false)
   const [pending, setPending] = useState(false)
   const navigate = useNavigate()
@@ -124,6 +128,17 @@ function SignUpForm() {
       return
     }
 
+    const phoneValue = phoneDigits(phone)
+    if (phoneValue.length < 10 || phoneValue.length > 11) {
+      toast.error('Informe um telefone válido com DDD.')
+      return
+    }
+
+    if (!acceptedTerms) {
+      toast.error('Você precisa aceitar os Termos de Uso para se cadastrar.')
+      return
+    }
+
     setPending(true)
     try {
       const result = await registerRequest({
@@ -132,9 +147,25 @@ function SignUpForm() {
         email: email.trim(),
         password,
         document: documentValue,
+        phone: phoneValue,
+        acceptedTerms: true,
         companyName: accountType === 'pj' ? companyName.trim() : undefined,
         tradeName: accountType === 'pj' ? tradeName.trim() || undefined : undefined,
       })
+
+      const registeredEmail = result.email ?? email.trim()
+
+      if (result.needsPhoneVerification) {
+        toast.success(
+          result.message ?? 'Enviamos um código de verificação por SMS.'
+        )
+        navigate({
+          to: '/verify-phone',
+          search: { email: registeredEmail },
+          replace: true,
+        })
+        return
+      }
 
       if (result.needsEmailVerification) {
         toast.success(
@@ -258,6 +289,24 @@ function SignUpForm() {
       </div>
 
       <div className='space-y-2'>
+        <Label htmlFor='signup-phone'>
+          Telefone (SMS) <span className='text-muted-foreground'>*</span>
+        </Label>
+        <Input
+          id='signup-phone'
+          required
+          inputMode='tel'
+          placeholder='(11) 99999-9999'
+          autoComplete='tel'
+          value={phone}
+          onChange={(e) => setPhone(formatBrazilianPhone(e.target.value))}
+        />
+        <p className='text-xs text-muted-foreground'>
+          Enviaremos um código de verificação por SMS para este número.
+        </p>
+      </div>
+
+      <div className='space-y-2'>
         <Label htmlFor='signup-email'>
           E-mail <span className='text-muted-foreground'>*</span>
         </Label>
@@ -314,6 +363,24 @@ function SignUpForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
+      </div>
+
+      <div className='flex items-start gap-3 rounded-xl border border-border p-4'>
+        <Checkbox
+          id='signup-terms'
+          checked={acceptedTerms}
+          onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+        />
+        <Label htmlFor='signup-terms' className='cursor-pointer leading-snug font-normal'>
+          Li e aceito os{' '}
+          <Link
+            to='/termos-de-uso'
+            target='_blank'
+            className='font-medium text-foreground underline underline-offset-4'
+          >
+            Termos de Uso
+          </Link>
+        </Label>
       </div>
 
       <Button type='submit' size='lg' disabled={pending} className='mt-2'>

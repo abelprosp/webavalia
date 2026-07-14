@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { loginRequest, isEmailNotVerifiedError } from '@/lib/auth-api'
+import { loginRequest, isEmailNotVerifiedError, isPhoneNotVerifiedError } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthHoneypotField } from '../components/auth-honeypot-field'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
@@ -104,6 +104,17 @@ function SignInForm({ redirectTo }: { redirectTo?: string }) {
         redirectTo && redirectTo.startsWith('/') ? redirectTo : '/'
       navigate({ to: target, replace: true })
     } catch (error) {
+      if (isPhoneNotVerifiedError(error)) {
+        toast.error(
+          'Confirme seu telefone antes de entrar. Verifique o SMS recebido.'
+        )
+        navigate({
+          to: '/verify-phone',
+          search: { email: email.trim() },
+        })
+        return
+      }
+
       if (isEmailNotVerifiedError(error)) {
         toast.error(
           'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.'

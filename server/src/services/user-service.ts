@@ -15,6 +15,10 @@ export type UserRow = {
   evaluations_used: number
   session_version: number
   email_verified: boolean
+  phone: string | null
+  phone_verified: boolean
+  terms_accepted_at: Date | string | null
+  terms_version: string | null
   efi_subscription_id: string | null
   created_at: Date | string
   updated_at?: Date | string
@@ -34,6 +38,8 @@ export async function mapUserResponse(row: UserRow) {
     companyName: row.company_name,
     tradeName: row.trade_name,
     emailVerified: row.email_verified,
+    phone: row.phone,
+    phoneVerified: row.phone_verified,
     credits: row.credits,
     // Aliases de compatibilidade (mesmo saldo unificado)
     leadCredits: row.credits,
@@ -50,6 +56,7 @@ export async function mapUserResponse(row: UserRow) {
 
 export const USER_SELECT_FIELDS = `
   id, name, email, role, status, account_type, document, company_name,
-  trade_name, email_verified, credits, evaluations_used, session_version,
+  trade_name, email_verified, phone, phone_verified, terms_accepted_at,
+  terms_version, credits, evaluations_used, session_version,
   efi_subscription_id, created_at, updated_at
 `

@@ -14,6 +14,8 @@ export type AuthUser = {
   companyName?: string | null
   tradeName?: string | null
   emailVerified?: boolean
+  phone?: string | null
+  phoneVerified?: boolean
   /** Saldo unificado (avaliações IA + desbloqueio de leads) */
   credits?: number
   /** @deprecated Use credits */
@@ -29,6 +31,7 @@ type AuthResponse = {
 }
 
 export type RegisterResponse = {
+  needsPhoneVerification?: boolean
   needsEmailVerification?: boolean
   message?: string
   email?: string
@@ -50,6 +53,8 @@ export type RegisterPayload = {
   email: string
   password: string
   document: string
+  phone: string
+  acceptedTerms: true
   companyName?: string
   tradeName?: string
 }
@@ -73,6 +78,22 @@ export async function verifyEmailRequest(token: string) {
 export async function resendVerificationRequest(email: string) {
   const { data } = await api.post<{ message: string }>(
     '/auth/resend-verification',
+    { email, _honeypot: '' }
+  )
+  return data
+}
+
+export async function verifyPhoneRequest(email: string, code: string) {
+  const { data } = await api.post<{ message: string; verified: boolean }>(
+    '/auth/verify-phone',
+    { email, code, _honeypot: '' }
+  )
+  return data
+}
+
+export async function resendPhoneCodeRequest(email: string) {
+  const { data } = await api.post<{ message: string }>(
+    '/auth/resend-phone-code',
     { email, _honeypot: '' }
   )
   return data
@@ -110,5 +131,15 @@ export function isEmailNotVerifiedError(error: unknown) {
     typeof error.response.data === 'object' &&
     'code' in error.response.data &&
     (error.response.data as { code?: string }).code === 'EMAIL_NOT_VERIFIED'
+  )
+}
+
+export function isPhoneNotVerifiedError(error: unknown) {
+  return (
+    error instanceof AxiosError &&
+    error.response?.data &&
+    typeof error.response.data === 'object' &&
+    'code' in error.response.data &&
+    (error.response.data as { code?: string }).code === 'PHONE_NOT_VERIFIED'
   )
 }

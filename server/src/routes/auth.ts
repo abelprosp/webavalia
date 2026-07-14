@@ -5,6 +5,8 @@ import {
   forgotPasswordRateLimiter,
   loginIpRateLimiter,
   loginRateLimiter,
+  phoneSendRateLimiter,
+  phoneVerifyRateLimiter,
   registerRateLimiter,
   resendVerificationRateLimiter,
 } from '../middleware/rate-limit.js'
@@ -47,8 +49,18 @@ import {
   FORGOT_PASSWORD_GENERIC,
   REGISTER_GENERIC_FAILURE,
 } from '../constants/auth-messages.js'
+import {
+  createAndSendPhoneCode,
+  isPhoneTakenByAnotherUser,
+  PHONE_NOT_VERIFIED,
+  PHONE_VERIFICATION_SENT,
+  resendPhoneCodeForEmail,
+  verifyPhoneCode,
+} from '../services/phone-verification-service.js'
+import { CURRENT_TERMS_VERSION } from '../constants/terms.js'
 import { ACCOUNT_TYPES } from '../constants/account-type.js'
 import { validateDocumentForAccountType } from '../utils/document.js'
+import { validateBrazilianPhone } from '../utils/phone.js'
 
 const router = Router()
 
@@ -65,6 +77,10 @@ const registerSchema = honeypotSchema
     email: z.email('E-mail inválido.'),
     password: passwordSchema,
     document: z.string().trim().min(11, 'Informe um CPF ou CNPJ válido.'),
+    phone: z.string().trim().min(10, 'Informe um telefone válido com DDD.'),
+    acceptedTerms: z.literal(true, {
+      message: 'Você precisa aceitar os Termos de Uso para se cadastrar.',
+    }),
     companyName: z.string().trim().optional(),
     tradeName: z.string().trim().optional(),
   })
@@ -81,6 +97,15 @@ const registerSchema = honeypotSchema
       })
     }
 
+    const phoneCheck = validateBrazilianPhone(data.phone)
+    if (!phoneCheck.ok) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['phone'],
+        message: phoneCheck.message,
+      })
+    }
+
     if (data.accountType === 'pj' && !data.companyName?.trim()) {
       ctx.addIssue({
         code: 'custom',
@@ -89,6 +114,18 @@ const registerSchema = honeypotSchema
       })
     }
   })
+
+const verifyPhoneSchema = honeypotSchema.extend({
+  email: z.email('E-mail inválido.'),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Informe o código de 6 dígitos.'),
+})
+
+const resendPhoneSchema = honeypotSchema.extend({
+  email: z.email('E-mail inválido.'),
+})
 
 const loginSchema = honeypotSchema.extend({
   email: z.email('E-mail inválido.'),
@@ -167,8 +204,16 @@ router.post(
       })
     }
 
-    const { name, email, password, accountType, document, companyName, tradeName } =
-      parsed.data
+    const {
+      name,
+      email,
+      password,
+      accountType,
+      document,
+      phone,
+      companyName,
+      tradeName,
+    } = parsed.data
     const normalizedEmail = normalizeEmail(email)
     const ipAddress = getClientIp(req)
     const documentCheck = validateDocumentForAccountType(accountType, document)
@@ -177,23 +222,50 @@ router.post(
       return res.status(400).json({ message: documentCheck.message })
     }
 
+    const phoneCheck = validateBrazilianPhone(phone)
+    if (!phoneCheck.ok) {
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({ message: phoneCheck.message })
+    }
+
+    if (await isPhoneTakenByAnotherUser(phoneCheck.digits)) {
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({
+        message: 'Este telefone já está vinculado a outra conta.',
+      })
+    }
+
     const passwordHash = await hashPassword(password)
 
-    const existing = await pool.query<{ id: string; email_verified: boolean; name: string }>(
-      'SELECT id, email_verified, name FROM users WHERE email = $1',
+    const existing = await pool.query<{
+      id: string
+      email_verified: boolean
+      phone_verified: boolean
+      name: string
+      phone: string | null
+    }>(
+      'SELECT id, email_verified, phone_verified, name, phone FROM users WHERE email = $1',
       [normalizedEmail]
     )
 
     if (existing.rowCount && existing.rowCount > 0) {
       const existingUser = existing.rows[0]
 
-      if (!existingUser.email_verified) {
+      if (!existingUser.email_verified || !existingUser.phone_verified) {
         try {
-          await createAndSendVerificationEmail({
-            userId: existingUser.id,
-            email: normalizedEmail,
-            name: existingUser.name,
-          })
+          if (!existingUser.email_verified) {
+            await createAndSendVerificationEmail({
+              userId: existingUser.id,
+              email: normalizedEmail,
+              name: existingUser.name,
+            })
+          }
+          if (!existingUser.phone_verified && existingUser.phone) {
+            await createAndSendPhoneCode({
+              userId: existingUser.id,
+              phoneDigits: existingUser.phone,
+            })
+          }
         } catch (error) {
           console.error('Erro ao reenviar verificação no cadastro:', error)
         }
@@ -206,8 +278,11 @@ router.post(
         })
         await normalizeAuthTiming(startedAt)
         return res.status(201).json({
-          needsEmailVerification: true,
-          message: EMAIL_VERIFICATION_SENT,
+          needsPhoneVerification: !existingUser.phone_verified,
+          needsEmailVerification: !existingUser.email_verified,
+          message: !existingUser.phone_verified
+            ? PHONE_VERIFICATION_SENT
+            : EMAIL_VERIFICATION_SENT,
           email: normalizedEmail,
         })
       }
@@ -232,10 +307,11 @@ router.post(
 
     const result = await pool.query<UserRow>(
       `INSERT INTO users (
-         name, email, password_hash, role, account_type, document,
-         company_name, trade_name, credits, email_verified
+         name, email, password_hash, role, account_type, document, phone,
+         company_name, trade_name, credits, email_verified, phone_verified,
+         terms_accepted_at, terms_version
        )
-       VALUES ($1, $2, $3, 'corretor', $4, $5, $6, $7, $8, false)
+       VALUES ($1, $2, $3, 'corretor', $4, $5, $6, $7, $8, $9, false, false, NOW(), $10)
        RETURNING ${USER_SELECT_FIELDS}`,
       [
         name,
@@ -243,13 +319,31 @@ router.post(
         passwordHash,
         accountType,
         documentCheck.digits,
+        phoneCheck.digits,
         accountType === 'pj' ? companyName?.trim() ?? null : null,
         accountType === 'pj' ? tradeName?.trim() || null : null,
         initialCredits,
+        CURRENT_TERMS_VERSION,
       ]
     )
 
     const user = result.rows[0]
+
+    try {
+      await createAndSendPhoneCode({
+        userId: user.id,
+        phoneDigits: phoneCheck.digits,
+      })
+    } catch (error) {
+      console.error('Erro ao enviar SMS de verificação:', error)
+      await normalizeAuthTiming(startedAt)
+      return res.status(503).json({
+        message:
+          'Conta criada, mas não foi possível enviar o SMS de confirmação. Tente reenviar em alguns minutos.',
+        needsPhoneVerification: true,
+        email: normalizedEmail,
+      })
+    }
 
     try {
       await createAndSendVerificationEmail({
@@ -259,13 +353,6 @@ router.post(
       })
     } catch (error) {
       console.error('Erro ao enviar e-mail de verificação:', error)
-      await normalizeAuthTiming(startedAt)
-      return res.status(503).json({
-        message:
-          'Conta criada, mas não foi possível enviar o e-mail de confirmação. Tente reenviar em alguns minutos.',
-        needsEmailVerification: true,
-        email: normalizedEmail,
-      })
     }
 
     await logAuthAttempt({
@@ -277,8 +364,9 @@ router.post(
     await normalizeAuthTiming(startedAt)
 
     return res.status(201).json({
+      needsPhoneVerification: true,
       needsEmailVerification: true,
-      message: EMAIL_VERIFICATION_SENT,
+      message: PHONE_VERIFICATION_SENT,
       email: normalizedEmail,
     })
   }
@@ -346,6 +434,14 @@ router.post(
       user?.password_hash
     )
 
+    if (user && passwordValid && user.status === 'active' && !user.phone_verified) {
+      await normalizeAuthTiming(startedAt)
+      return res.status(403).json({
+        message: PHONE_NOT_VERIFIED,
+        code: 'PHONE_NOT_VERIFIED',
+      })
+    }
+
     if (user && passwordValid && user.status === 'active' && !user.email_verified) {
       await normalizeAuthTiming(startedAt)
       return res.status(403).json({
@@ -358,7 +454,8 @@ router.post(
       Boolean(user) &&
       passwordValid &&
       user!.status === 'active' &&
-      user!.email_verified
+      user!.email_verified &&
+      user!.phone_verified
 
     if (!loginAllowed) {
       return rejectInvalidLogin({
@@ -383,6 +480,87 @@ router.post(
     return res.json({
       user: await mapUserResponse(user!),
     })
+  }
+)
+
+router.post(
+  '/verify-phone',
+  phoneVerifyRateLimiter,
+  async (req, res) => {
+    const startedAt = Date.now()
+
+    try {
+      assertHoneypotEmpty(req.body?._honeypot)
+    } catch {
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({ message: 'Código inválido.' })
+    }
+
+    const parsed = verifyPhoneSchema.safeParse(req.body)
+    if (!parsed.success) {
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({
+        message: parsed.error.issues[0]?.message ?? 'Código inválido.',
+      })
+    }
+
+    const normalizedEmail = normalizeEmail(parsed.data.email)
+    const result = await verifyPhoneCode({
+      emailNormalized: normalizedEmail,
+      code: parsed.data.code,
+    })
+
+    if (!result.ok) {
+      const message =
+        result.reason === 'expired'
+          ? 'Código expirado. Solicite um novo SMS.'
+          : result.reason === 'too_many_attempts'
+            ? 'Muitas tentativas incorretas. Solicite um novo código.'
+            : 'Código inválido. Verifique e tente novamente.'
+
+      await normalizeAuthTiming(startedAt)
+      return res.status(400).json({ message, reason: result.reason })
+    }
+
+    await normalizeAuthTiming(startedAt)
+    return res.json({
+      message: result.alreadyVerified
+        ? 'Telefone já confirmado.'
+        : 'Telefone confirmado! Agora confirme seu e-mail.',
+      verified: true,
+    })
+  }
+)
+
+router.post(
+  '/resend-phone-code',
+  phoneSendRateLimiter,
+  async (req, res) => {
+    const startedAt = Date.now()
+
+    try {
+      assertHoneypotEmpty(req.body?._honeypot)
+    } catch {
+      await normalizeAuthTiming(startedAt)
+      return res.json({ message: PHONE_VERIFICATION_SENT })
+    }
+
+    const parsed = resendPhoneSchema.safeParse(req.body)
+    if (!parsed.success) {
+      await normalizeAuthTiming(startedAt)
+      return res.json({ message: PHONE_VERIFICATION_SENT })
+    }
+
+    const normalizedEmail = normalizeEmail(parsed.data.email)
+
+    try {
+      await resendPhoneCodeForEmail(normalizedEmail)
+    } catch (error) {
+      console.error('Erro ao reenviar SMS:', error)
+    }
+
+    await normalizeAuthTiming(startedAt)
+    return res.json({ message: PHONE_VERIFICATION_SENT })
   }
 )
 

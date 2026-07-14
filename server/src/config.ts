@@ -139,6 +139,12 @@ export const config = {
     webhookSecret: process.env.WHATSAPP_WEBHOOK_SECRET ?? '',
     appSecret: process.env.WHATSAPP_APP_SECRET ?? '',
   },
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
+    authToken: process.env.TWILIO_AUTH_TOKEN ?? '',
+    fromNumber: process.env.TWILIO_FROM_NUMBER ?? '',
+  },
+  termsVersion: process.env.TERMS_VERSION?.trim() || '1.0',
 }
 
 const weakSecrets = new Set([

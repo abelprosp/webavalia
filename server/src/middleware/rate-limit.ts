@@ -97,6 +97,18 @@ export const forgotPasswordRateLimiter = createRateLimiter({
   message: 'Muitas solicitações. Aguarde antes de tentar novamente.',
 })
 
+export const phoneSendRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Muitas solicitações de SMS. Aguarde antes de tentar novamente.',
+})
+
+export const phoneVerifyRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: 'Muitas tentativas de verificação. Aguarde alguns minutos.',
+})
+
 export const evaluationRateLimiter = createUserRateLimiter({
   windowMs: 60 * 60 * 1000,
   max: 15,
