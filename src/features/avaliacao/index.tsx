@@ -304,6 +304,9 @@ export function Avaliacao() {
               </>
             )}
           </p>
+          <p className='mt-2 text-xs text-muted-foreground'>
+            Cada avaliação não substitui a avaliação de um corretor profissional.
+          </p>
           {credits === 0 && (
             <p className='mt-2 text-sm text-destructive'>
               Você não tem créditos. Compre em Configurações → Créditos para

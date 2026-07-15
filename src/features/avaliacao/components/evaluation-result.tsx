@@ -713,6 +713,10 @@ export function EvaluationResultPanel({
             </p>
           </div>
         )}
+
+        <p className='text-center text-xs text-muted-foreground'>
+          Cada avaliação não substitui a avaliação de um corretor profissional.
+        </p>
       </div>
 
       <SaveToCrmDialog
