@@ -34,7 +34,8 @@ export function DashboardFoxAiInsights({
   })
 
   const mutation = useMutation({
-    mutationFn: (force = false) => getDashboardInsight(force, dashboardContext),
+    mutationFn: (force: boolean) =>
+      getDashboardInsight(force, dashboardContext),
     meta: FOX_AI_QUERY_META,
   })
 
