@@ -42,6 +42,8 @@ type FoxAiChatProps = {
 }
 
 const EMPTY_MESSAGES: FoxAiMessage[] = []
+const DEFAULT_PLACEHOLDER =
+  'Pergunte sobre mercado, precificação, bairros, investimentos...'
 const PAGE_SUGGESTIONS = [
   {
     title: 'Analisar imóvel',
@@ -69,7 +71,7 @@ export function FoxAiChat({
   onConversationChange,
   className,
   compact = false,
-  placeholder = 'Pergunte sobre mercado, precificação, bairros, investimentos...',
+  placeholder = DEFAULT_PLACEHOLDER,
   initialMessages = EMPTY_MESSAGES,
   showQuickActions = true,
   showEvaluationPicker = true,
@@ -472,7 +474,7 @@ function FoxAiChatLocalSession({
   onConversationChange,
   className,
   compact = false,
-  placeholder,
+  placeholder = DEFAULT_PLACEHOLDER,
   initialMessages = EMPTY_MESSAGES,
   showQuickActions = true,
   showEvaluationPicker = true,
