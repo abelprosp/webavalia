@@ -14,6 +14,7 @@ import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
 import leadsRoutes from './routes/leads.js'
 import blogRoutes from './routes/blog.js'
+import foxAiRoutes from './routes/fox-ai.js'
 import {
   efiChargesWebhookHandler,
   efiPixWebhookHandler,
@@ -142,6 +143,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/leads', leadsRoutes)
 app.use('/api/blog', blogRoutes)
+app.use('/api/fox-ai', foxAiRoutes)
 
 if (config.isProduction) {
   const frontendDist = path.join(__dirname, '../../dist')

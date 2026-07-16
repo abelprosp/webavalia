@@ -28,6 +28,8 @@ import { Overview } from './components/overview'
 import { RecentLeads } from './components/recent-leads'
 import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
 import { useGamificationStats } from '@/features/gamification/hooks/use-gamification-stats'
+import { DashboardFoxAiInsights } from '@/features/fox-ai/components/dashboard-fox-ai-insights'
+import { MarketInsightsPanel } from '@/features/fox-ai/components/market-insights-panel'
 
 export function Dashboard() {
   const user = useAuthStore((s) => s.auth.user)
@@ -43,6 +45,16 @@ export function Dashboard() {
   const currentMonth = new Date().getMonth()
   const monthlyCounts = gamificationStats?.monthlyBreakdown ?? localMonthlyCounts
   const evaluationsThisMonth = monthlyCounts[MONTHS[currentMonth]] ?? 0
+
+  const dashboardContext = {
+    credits,
+    evaluationsTotal,
+    evaluationsThisMonth,
+    monthlyCounts,
+    leadsTotal: isBroker ? leads.length : undefined,
+    leadsUnlocked: isBroker ? unlockedCount : undefined,
+    currentPage: 'dashboard',
+  }
 
   return (
     <>
@@ -190,6 +202,14 @@ export function Dashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        <div className='mb-6'>
+          <DashboardFoxAiInsights dashboardContext={dashboardContext} />
+        </div>
+
+        <div className='mb-6'>
+          <MarketInsightsPanel />
         </div>
 
         <Card className='mt-6'>

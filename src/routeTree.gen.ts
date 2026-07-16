@@ -36,6 +36,7 @@ import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticated/crm/index'
+import { Route as AuthenticatedFoxAiIndexRouteImport } from './routes/_authenticated/fox-ai/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAvaliacaoIndexRouteImport } from './routes/_authenticated/avaliacao/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
@@ -189,6 +190,11 @@ const AuthenticatedCrmIndexRoute = AuthenticatedCrmIndexRouteImport.update({
   path: '/crm/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFoxAiIndexRoute = AuthenticatedFoxAiIndexRouteImport.update({
+  id: '/fox-ai/',
+  path: '/fox-ai/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   id: '/chats/',
   path: '/chats/',
@@ -320,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/apps/': typeof AuthenticatedAppsIndexRoute
   '/avaliacao/': typeof AuthenticatedAvaliacaoIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
+  '/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
   '/crm/': typeof AuthenticatedCrmIndexRoute
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -360,6 +367,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/avaliacao': typeof AuthenticatedAvaliacaoIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/fox-ai': typeof AuthenticatedFoxAiIndexRoute
   '/crm': typeof AuthenticatedCrmIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
@@ -407,6 +415,7 @@ export interface FileRoutesById {
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/avaliacao/': typeof AuthenticatedAvaliacaoIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
   '/_authenticated/crm/': typeof AuthenticatedCrmIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/apps/'
     | '/avaliacao/'
     | '/chats/'
+    | '/fox-ai/'
     | '/crm/'
     | '/help-center/'
     | '/leads/'
@@ -492,6 +502,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/avaliacao'
     | '/chats'
+    | '/fox-ai'
     | '/crm'
     | '/help-center'
     | '/leads'
@@ -538,6 +549,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apps/'
     | '/_authenticated/avaliacao/'
     | '/_authenticated/chats/'
+    | '/_authenticated/fox-ai/'
     | '/_authenticated/crm/'
     | '/_authenticated/help-center/'
     | '/_authenticated/leads/'
@@ -761,6 +773,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fox-ai/': {
+      id: '/_authenticated/fox-ai/'
+      path: '/fox-ai'
+      fullPath: '/fox-ai/'
+      preLoaderRoute: typeof AuthenticatedFoxAiIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/avaliacao/': {
       id: '/_authenticated/avaliacao/'
       path: '/avaliacao'
@@ -931,6 +950,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedAvaliacaoIndexRoute: typeof AuthenticatedAvaliacaoIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedFoxAiIndexRoute: typeof AuthenticatedFoxAiIndexRoute
   AuthenticatedCrmIndexRoute: typeof AuthenticatedCrmIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
@@ -946,6 +966,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedAvaliacaoIndexRoute: AuthenticatedAvaliacaoIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedFoxAiIndexRoute: AuthenticatedFoxAiIndexRoute,
   AuthenticatedCrmIndexRoute: AuthenticatedCrmIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedLeadsIndexRoute: AuthenticatedLeadsIndexRoute,

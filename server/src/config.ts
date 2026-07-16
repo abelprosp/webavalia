@@ -98,6 +98,15 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
   serperApiKey: process.env.SERPER_API_KEY ?? '',
+  nvidia: {
+    apiKey: process.env.NVIDIA_API_KEY ?? '',
+    baseUrl:
+      process.env.NVIDIA_API_BASE_URL ??
+      'https://integrate.api.nvidia.com/v1',
+    model:
+      process.env.NVIDIA_MODEL ??
+      'meta/llama-3.3-70b-instruct',
+  },
   isProduction: process.env.NODE_ENV === 'production',
   efi: {
     // API Pix — variáveis essenciais (SDK oficial)

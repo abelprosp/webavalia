@@ -15,6 +15,7 @@ import {
   CreditCard,
   Settings2,
   Newspaper,
+  Sparkles,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
@@ -49,6 +50,12 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
       title: 'Avaliação de Imóveis',
       url: '/avaliacao',
       icon: Home,
+    },
+    {
+      title: 'FoxAi',
+      url: '/fox-ai',
+      icon: Sparkles,
+      badge: 'IA',
     },
   ]
 
