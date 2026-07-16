@@ -17,6 +17,7 @@ import {
   type FoxAiConversationSummary,
 } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { cn } from '@/lib/utils'
 
 type ConversationSidebarProps = {
@@ -61,6 +62,9 @@ export function ConversationSidebar({
   className,
   onNavigate,
 }: ConversationSidebarProps) {
+  const isStreaming = useFoxAiChatStore((s) => s.loading)
+  const streamingConversationId = useFoxAiChatStore((s) => s.conversationId)
+
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['fox-ai', 'conversations'],
     queryFn: listFoxAiConversations,
@@ -78,7 +82,9 @@ export function ConversationSidebar({
           </div>
           <div>
             <p className='font-semibold leading-none'>FoxAi</p>
-            <p className='mt-1 text-xs text-muted-foreground'>Assistente imobiliário</p>
+            <p className='mt-1 text-xs text-muted-foreground'>
+              Assistente imobiliário
+            </p>
           </div>
         </div>
         <Button
@@ -88,6 +94,12 @@ export function ConversationSidebar({
           <Plus className='size-4' />
           Nova conversa
         </Button>
+        {isStreaming && (
+          <p className='mt-2 flex items-center gap-1.5 px-1 text-xs text-orange-600 dark:text-orange-400'>
+            <Loader2 className='size-3 animate-spin' />
+            Análise em andamento…
+          </p>
+        )}
       </div>
 
       <nav className='space-y-1 border-b p-3' aria-label='Atalhos da FoxAi'>
@@ -134,24 +146,39 @@ export function ConversationSidebar({
                   {group.label}
                 </p>
                 <div className='space-y-0.5'>
-                  {group.conversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      type='button'
-                      onClick={() => {
-                        onSelect(conv.id)
-                        onNavigate?.()
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-sm transition-colors hover:bg-background',
-                        activeId === conv.id &&
-                          'bg-background font-medium text-orange-600 shadow-sm ring-1 ring-border'
-                      )}
-                    >
-                      <MessageSquare className='size-3.5 shrink-0 text-muted-foreground' />
-                      <p className='truncate'>{conv.title}</p>
-                    </button>
-                  ))}
+                  {group.conversations.map((conv) => {
+                    const isActiveStream =
+                      isStreaming &&
+                      (streamingConversationId === conv.id ||
+                        (!streamingConversationId && activeId === conv.id))
+                    return (
+                      <button
+                        key={conv.id}
+                        type='button'
+                        onClick={() => {
+                          onSelect(conv.id)
+                          onNavigate?.()
+                        }}
+                        disabled={
+                          isStreaming &&
+                          Boolean(streamingConversationId) &&
+                          streamingConversationId !== conv.id
+                        }
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-sm transition-colors hover:bg-background disabled:pointer-events-none disabled:opacity-50',
+                          activeId === conv.id &&
+                            'bg-background font-medium text-orange-600 shadow-sm ring-1 ring-border'
+                        )}
+                      >
+                        {isActiveStream ? (
+                          <Loader2 className='size-3.5 shrink-0 animate-spin text-orange-500' />
+                        ) : (
+                          <MessageSquare className='size-3.5 shrink-0 text-muted-foreground' />
+                        )}
+                        <p className='truncate'>{conv.title}</p>
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
             ))}

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, Menu, Sparkles } from 'lucide-react'
 import { HeaderActions } from '@/components/layout/header-actions'
@@ -17,6 +17,7 @@ import {
   type FoxAiMessage,
 } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { ConversationSidebar } from './components/conversation-sidebar'
 import { FoxAiChat } from './components/fox-ai-chat'
 
@@ -24,36 +25,65 @@ const EMPTY_MESSAGES: FoxAiMessage[] = []
 const CHAT_DASHBOARD_CONTEXT = { currentPage: 'fox-ai-chat' } as const
 
 export function FoxAiChatPage() {
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | undefined
-  >()
-  const [chatKey, setChatKey] = useState(0)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  const conversationId = useFoxAiChatStore((s) => s.conversationId)
+  const loading = useFoxAiChatStore((s) => s.loading)
+  const storeMessages = useFoxAiChatStore((s) => s.messages)
+  const hydrateConversation = useFoxAiChatStore((s) => s.hydrateConversation)
+  const startNewConversation = useFoxAiChatStore((s) => s.startNewConversation)
 
   const { data: activeConversation, isFetching: isLoadingConversation } =
     useQuery({
-      queryKey: ['fox-ai', 'conversation', activeConversationId],
-      queryFn: () => getFoxAiConversation(activeConversationId!),
-      enabled: Boolean(activeConversationId),
+      queryKey: ['fox-ai', 'conversation', conversationId],
+      queryFn: () => getFoxAiConversation(conversationId!),
+      enabled: Boolean(conversationId) && !loading && storeMessages.length === 0,
       meta: FOX_AI_QUERY_META,
     })
 
+  useEffect(() => {
+    if (!activeConversation || loading) return
+    if (activeConversation.id !== conversationId) return
+    // Só hidrata se o store ainda não tem mensagens (ex.: selecionou no histórico).
+    if (storeMessages.length > 0) return
+    hydrateConversation(activeConversation.id, activeConversation.messages)
+  }, [
+    activeConversation,
+    conversationId,
+    hydrateConversation,
+    loading,
+    storeMessages.length,
+  ])
+
   const handleNewConversation = useCallback(() => {
-    setActiveConversationId(undefined)
-    setChatKey((key) => key + 1)
+    startNewConversation()
     setMobileSidebarOpen(false)
-  }, [])
+  }, [startNewConversation])
 
-  const handleSelectConversation = useCallback((id: string) => {
-    setActiveConversationId(id)
-    setChatKey((key) => key + 1)
-  }, [])
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      if (loading) return
+      const current = useFoxAiChatStore.getState()
+      if (current.conversationId === id && current.messages.length > 0) {
+        setMobileSidebarOpen(false)
+        return
+      }
+      hydrateConversation(id, EMPTY_MESSAGES)
+      setMobileSidebarOpen(false)
+    },
+    [hydrateConversation, loading]
+  )
 
-  const initialMessages = activeConversation?.messages ?? EMPTY_MESSAGES
+  const showLoadingSpinner =
+    Boolean(conversationId) &&
+    isLoadingConversation &&
+    !activeConversation &&
+    storeMessages.length === 0 &&
+    !loading
 
   const sidebar = (
     <ConversationSidebar
-      activeId={activeConversationId}
+      activeId={conversationId}
       onSelect={handleSelectConversation}
       onNew={handleNewConversation}
       onNavigate={() => setMobileSidebarOpen(false)}
@@ -78,7 +108,9 @@ export function FoxAiChatPage() {
           <div className='min-w-0'>
             <p className='truncate text-sm font-semibold'>Chat FoxAi</p>
             <p className='truncate text-xs text-muted-foreground'>
-              Inteligência imobiliária em tempo real
+              {loading
+                ? 'Análise em andamento em segundo plano...'
+                : 'Inteligência imobiliária em tempo real'}
             </p>
           </div>
         </div>
@@ -92,20 +124,14 @@ export function FoxAiChatPage() {
           </aside>
 
           <section className='min-w-0 flex-1 bg-background'>
-            {activeConversationId &&
-            isLoadingConversation &&
-            !activeConversation ? (
+            {showLoadingSpinner ? (
               <div className='flex h-full items-center justify-center text-muted-foreground'>
                 <Loader2 className='size-6 animate-spin' />
                 <span className='sr-only'>Carregando conversa</span>
               </div>
             ) : (
               <FoxAiChat
-                key={chatKey}
                 pageMode
-                conversationId={activeConversationId}
-                initialMessages={initialMessages}
-                onConversationChange={setActiveConversationId}
                 dashboardContext={CHAT_DASHBOARD_CONTEXT}
                 className='h-full px-4 sm:px-6'
               />

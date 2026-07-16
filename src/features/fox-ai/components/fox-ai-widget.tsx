@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ExternalLink, Sparkles, X } from 'lucide-react'
+import { ExternalLink, Loader2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sheet'
 import { getSuggestedPrompts, type DashboardContext } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { FoxAiChat } from './fox-ai-chat'
 import { QuickActionChips } from './quick-action-chips'
 
@@ -25,6 +26,7 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const isBackgroundBusy = useFoxAiChatStore((s) => s.loading)
 
   const { data: prompts } = useQuery({
     queryKey: ['fox-ai', 'suggested-prompts'],
@@ -40,11 +42,22 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
     <>
       <Button
         size='lg'
-        className='fixed bottom-6 end-6 z-50 size-14 rounded-full bg-orange-500 shadow-lg hover:bg-orange-600'
+        className='relative fixed bottom-6 end-6 z-50 size-14 rounded-full bg-orange-500 shadow-lg hover:bg-orange-600'
         onClick={() => setOpen(true)}
-        aria-label='Abrir FoxAi'
+        aria-label={
+          isBackgroundBusy
+            ? 'Abrir FoxAi — análise em andamento'
+            : 'Abrir FoxAi'
+        }
       >
-        <Sparkles className='size-6' />
+        {isBackgroundBusy ? (
+          <Loader2 className='size-6 animate-spin' />
+        ) : (
+          <Sparkles className='size-6' />
+        )}
+        {isBackgroundBusy && (
+          <span className='absolute -end-0.5 -top-0.5 size-3 rounded-full bg-emerald-400 ring-2 ring-background' />
+        )}
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -61,17 +74,37 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
                 <div>
                   <SheetTitle>FoxAi</SheetTitle>
                   <SheetDescription>
-                    Especialista em imóveis com IA
+                    {isBackgroundBusy
+                      ? 'Análise em andamento no chat'
+                      : 'Especialista em imóveis com IA'}
                   </SheetDescription>
                 </div>
               </div>
               <Button variant='ghost' size='icon' asChild>
                 <Link to='/fox-ai/chat'>
                   <ExternalLink className='size-4' />
+                  <span className='sr-only'>Abrir chat completo</span>
                 </Link>
               </Button>
             </div>
           </SheetHeader>
+
+          {isBackgroundBusy && (
+            <div className='mt-3 flex items-center gap-2 rounded-lg border border-orange-500/20 bg-orange-500/5 px-3 py-2 text-xs text-orange-800 dark:text-orange-300'>
+              <Loader2 className='size-3.5 shrink-0 animate-spin' />
+              <span className='min-w-0 flex-1'>
+                Sua pesquisa/análise continua no chat. Volte para acompanhar.
+              </span>
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 shrink-0 px-2'
+                asChild
+              >
+                <Link to='/fox-ai/chat'>Abrir</Link>
+              </Button>
+            </div>
+          )}
 
           {prompts && (
             <QuickActionChips
