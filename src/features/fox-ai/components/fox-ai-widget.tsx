@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { ExternalLink, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,6 +22,9 @@ type FoxAiWidgetProps = {
 export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
   const [open, setOpen] = useState(false)
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null)
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
 
   const { data: prompts } = useQuery({
     queryKey: ['fox-ai', 'suggested-prompts'],
@@ -30,6 +33,8 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
     meta: FOX_AI_QUERY_META,
     enabled: open,
   })
+
+  if (pathname === '/fox-ai/chat') return null
 
   return (
     <>
@@ -61,7 +66,7 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
                 </div>
               </div>
               <Button variant='ghost' size='icon' asChild>
-                <Link to='/fox-ai'>
+                <Link to='/fox-ai/chat'>
                   <ExternalLink className='size-4' />
                 </Link>
               </Button>

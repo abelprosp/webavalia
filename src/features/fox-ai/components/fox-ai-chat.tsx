@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Send, Sparkles } from 'lucide-react'
+import {
+  BarChart3,
+  Building2,
+  CircleHelp,
+  Loader2,
+  Search,
+  Send,
+  Sparkles,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,9 +35,30 @@ type FoxAiChatProps = {
   showQuickActions?: boolean
   showEvaluationPicker?: boolean
   triggerMessage?: string | null
+  pageMode?: boolean
 }
 
 const EMPTY_MESSAGES: FoxAiMessage[] = []
+const PAGE_SUGGESTIONS = [
+  {
+    title: 'Analisar imóvel',
+    description: 'Compare preço, localização e potencial de valorização.',
+    message: 'Quero analisar um imóvel e entender seu valor de mercado.',
+    icon: Building2,
+  },
+  {
+    title: 'Resumir mercado',
+    description: 'Veja tendências, oportunidades e riscos do seu portfólio.',
+    message: 'Resuma o cenário atual do meu mercado imobiliário.',
+    icon: BarChart3,
+  },
+  {
+    title: 'Responder dúvidas',
+    description: 'Tire dúvidas sobre avaliações, bairros e investimentos.',
+    message: 'Quero tirar uma dúvida sobre avaliação imobiliária.',
+    icon: CircleHelp,
+  },
+] as const
 
 export function FoxAiChat({
   conversationId: initialConversationId,
@@ -42,6 +71,7 @@ export function FoxAiChat({
   showQuickActions = true,
   showEvaluationPicker = true,
   triggerMessage,
+  pageMode = false,
 }: FoxAiChatProps) {
   const queryClient = useQueryClient()
   const [messages, setMessages] = useState<FoxAiMessage[]>(initialMessages)
@@ -189,8 +219,8 @@ export function FoxAiChat({
   const isStreaming = loading && streamingContent.length > 0
 
   return (
-    <div className={cn('flex flex-col', className)}>
-      {showEvaluationPicker && !compact && (
+    <div className={cn('flex min-h-0 flex-col', className)}>
+      {showEvaluationPicker && !compact && !pageMode && (
         <div className='mb-3'>
           <EvaluationPicker
             value={evaluationId}
@@ -200,7 +230,7 @@ export function FoxAiChat({
         </div>
       )}
 
-      {showQuickActions && prompts && messages.length === 0 && (
+      {showQuickActions && prompts && messages.length === 0 && !pageMode && (
         <QuickActionChips
           prompts={prompts}
           onSelect={(msg) => void sendMessage(msg)}
@@ -210,19 +240,55 @@ export function FoxAiChat({
       )}
 
       <ScrollArea
-        className={cn('flex-1', compact ? 'h-72' : 'h-[min(55vh,480px)]')}
+        className={cn(
+          'flex-1',
+          compact
+            ? 'h-72'
+            : pageMode
+              ? 'min-h-0'
+              : 'h-[min(55vh,480px)]'
+        )}
       >
-        <div className='space-y-4 p-1 pe-3'>
+        <div
+          className={cn(
+            'space-y-4 p-1 pe-3',
+            pageMode && messages.length > 0 && 'mx-auto w-full max-w-3xl py-6'
+          )}
+        >
           {messages.length === 0 && (
-            <div className='flex flex-col items-center justify-center gap-3 py-12 text-center text-muted-foreground'>
-              <div className='flex size-12 items-center justify-center rounded-full bg-orange-500/10'>
-                <Sparkles className='size-6 text-orange-500' />
+            <div
+              className={cn(
+                'flex flex-col items-center justify-center gap-3 text-center text-muted-foreground',
+                pageMode ? 'min-h-[28vh] pt-8' : 'py-12'
+              )}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-center rounded-2xl bg-orange-500/10',
+                  pageMode ? 'size-16' : 'size-12'
+                )}
+              >
+                <Sparkles
+                  className={cn(
+                    'text-orange-500',
+                    pageMode ? 'size-8' : 'size-6'
+                  )}
+                />
               </div>
               <div>
-                <p className='font-medium text-foreground'>Olá! Sou a FoxAi</p>
-                <p className='mt-1 max-w-sm text-sm'>
-                  Especialista em imóveis. Analiso seu portfólio, mercado e
-                  avaliações em tempo real.
+                <p
+                  className={cn(
+                    'font-medium text-foreground',
+                    pageMode && 'text-2xl font-semibold tracking-tight sm:text-3xl'
+                  )}
+                >
+                  {pageMode
+                    ? 'Vamos começar uma conversa inteligente'
+                    : 'Olá! Sou a FoxAi'}
+                </p>
+                <p className='mx-auto mt-2 max-w-lg text-sm'>
+                  Analise imóveis, avaliações e tendências de mercado com a
+                  inteligência da FoxAi.
                 </p>
               </div>
             </div>
@@ -294,19 +360,62 @@ export function FoxAiChat({
         />
       )}
 
-      <div className='mt-3 flex gap-2'>
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          rows={compact ? 2 : 3}
-          disabled={loading}
-          className='min-h-0 resize-none'
-        />
+      <div
+        className={cn(
+          'mt-3 flex gap-2',
+          pageMode &&
+            'mx-auto w-full max-w-3xl rounded-2xl border bg-background p-3 shadow-sm ring-1 ring-black/5'
+        )}
+      >
+        <div className={cn(pageMode && 'min-w-0 flex-1')}>
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              pageMode ? 'Pergunte qualquer coisa sobre imóveis...' : placeholder
+            }
+            rows={compact ? 2 : pageMode ? 2 : 3}
+            disabled={loading}
+            className={cn(
+              'min-h-0 resize-none',
+              pageMode &&
+                'border-0 bg-transparent px-1 shadow-none focus-visible:ring-0'
+            )}
+          />
+          {pageMode && (
+            <div className='mt-2 flex flex-wrap items-center gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='h-8 gap-1.5 rounded-full border-orange-500/30 bg-orange-500/5 text-xs text-orange-700 hover:bg-orange-500/10 dark:text-orange-400'
+                onClick={() =>
+                  setInput(
+                    'Faça uma pesquisa profunda sobre o mercado imobiliário e '
+                  )
+                }
+                disabled={loading}
+              >
+                <Search className='size-3.5' />
+                Pesquisa profunda
+              </Button>
+              {showEvaluationPicker && (
+                <EvaluationPicker
+                  value={evaluationId}
+                  onChange={setEvaluationId}
+                  disabled={loading}
+                />
+              )}
+            </div>
+          )}
+        </div>
         <Button
           size='icon'
-          className='shrink-0 self-end bg-orange-500 hover:bg-orange-600'
+          className={cn(
+            'shrink-0 self-end bg-orange-500 hover:bg-orange-600',
+            pageMode && 'size-10 rounded-full'
+          )}
           onClick={handleSend}
           disabled={loading || !input.trim()}
           aria-label='Enviar mensagem'
@@ -314,6 +423,29 @@ export function FoxAiChat({
           <Send className='size-4' />
         </Button>
       </div>
+
+      {pageMode && messages.length === 0 && (
+        <div className='mx-auto mt-4 grid w-full max-w-3xl gap-3 pb-6 sm:grid-cols-3'>
+          {PAGE_SUGGESTIONS.map((suggestion) => {
+            const Icon = suggestion.icon
+            return (
+              <button
+                key={suggestion.title}
+                type='button'
+                onClick={() => void sendMessage(suggestion.message)}
+                disabled={loading}
+                className='group rounded-xl border bg-muted/30 p-4 text-start transition-colors hover:border-orange-500/30 hover:bg-orange-500/5 disabled:pointer-events-none disabled:opacity-50'
+              >
+                <Icon className='mb-3 size-5 text-orange-500' />
+                <p className='text-sm font-semibold'>{suggestion.title}</p>
+                <p className='mt-1 text-xs leading-relaxed text-muted-foreground'>
+                  {suggestion.description}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
