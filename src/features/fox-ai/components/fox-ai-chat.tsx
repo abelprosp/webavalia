@@ -21,6 +21,8 @@ type FoxAiChatProps = {
   initialMessages?: FoxAiMessage[]
 }
 
+const EMPTY_MESSAGES: FoxAiMessage[] = []
+
 function getFoxAiErrorMessage(err: unknown) {
   if (err instanceof AxiosError) {
     const message = err.response?.data?.message
@@ -40,7 +42,7 @@ export function FoxAiChat({
   className,
   compact = false,
   placeholder = 'Pergunte sobre mercado, precificação, bairros, investimentos...',
-  initialMessages = [],
+  initialMessages = EMPTY_MESSAGES,
 }: FoxAiChatProps) {
   const [messages, setMessages] = useState<FoxAiMessage[]>(initialMessages)
   const [input, setInput] = useState('')
