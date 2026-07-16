@@ -233,14 +233,9 @@ export function Avaliacao() {
     setEvaluatedProperty(null)
     setEvaluationId(null)
     setFeedbackSubmitted(false)
-    setEvaluatingStep(
-      'Pesquisando mercado, bairro, enchentes e valorização...'
-    )
+    setEvaluatingStep('Analisando mercado')
 
     try {
-      setEvaluatingStep(
-        'Gerando análise avançada com IA (NBR 14653)...'
-      )
       const {
         evaluation,
         evaluationId: newEvaluationId,
@@ -949,7 +944,7 @@ export function Avaliacao() {
                 {isEvaluating ? (
                   <>
                     <Loader2 className='size-4 animate-spin' />
-                    {evaluatingStep || 'Analisando com IA...'}
+                    {evaluatingStep || 'Analisando mercado'}
                   </>
                 ) : (
                   <>

@@ -9,15 +9,6 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,11 +27,17 @@ const directionIcons = {
   stable: Minus,
 } as const
 
-const directionColors = {
+type TrendDirection = keyof typeof directionIcons
+
+const directionColors: Record<TrendDirection, string> = {
   up: 'text-emerald-600',
   down: 'text-amber-600',
   stable: 'text-blue-600',
-} as const
+}
+
+function resolveTrendDirection(value: string): TrendDirection {
+  return value in directionIcons ? (value as TrendDirection) : 'stable'
+}
 
 const severityStyles = {
   low: 'border-blue-500/30 bg-blue-500/5',
@@ -48,7 +45,12 @@ const severityStyles = {
   high: 'border-red-500/30 bg-red-500/5',
 } as const
 
-const CHART_COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6']
+const CHART_COLORS = [
+  'bg-orange-500',
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-violet-500',
+] as const
 
 export function MarketReportCard() {
   const mutation = useMutation({
@@ -120,8 +122,9 @@ function ReportContent({ report }: { report: MarketReport }) {
     name: m.label,
     value: parseMetricValue(m.value),
     display: m.value,
-    fill: CHART_COLORS[i % CHART_COLORS.length],
+    barClass: CHART_COLORS[i % CHART_COLORS.length],
   }))
+  const maxValue = Math.max(...chartData.map((d) => d.value), 0)
 
   return (
     <div className='space-y-4'>
@@ -133,31 +136,23 @@ function ReportContent({ report }: { report: MarketReport }) {
       </div>
 
       {chartData.some((d) => d.value > 0) && (
-        <div className='h-48'>
-          <ResponsiveContainer width='100%' height='100%'>
-            <BarChart data={chartData} layout='vertical'>
-              <XAxis type='number' hide />
-              <YAxis
-                type='category'
-                dataKey='name'
-                width={90}
-                tick={{ fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                formatter={(_v, _n, props) => [
-                  (props.payload as { display: string }).display,
-                  '',
-                ]}
-              />
-              <Bar dataKey='value' radius={[0, 4, 4, 0]}>
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className='space-y-2.5'>
+          {chartData.map((entry) => (
+            <div key={entry.name} className='grid grid-cols-[90px_1fr_auto] items-center gap-2'>
+              <span className='truncate text-xs text-muted-foreground'>
+                {entry.name}
+              </span>
+              <div className='h-2 overflow-hidden rounded-full bg-muted'>
+                <div
+                  className={cn('h-full rounded-full transition-all', entry.barClass)}
+                  style={{
+                    width: `${maxValue > 0 ? (entry.value / maxValue) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              <span className='text-xs font-medium tabular-nums'>{entry.display}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -167,16 +162,19 @@ function ReportContent({ report }: { report: MarketReport }) {
             Tendências
           </p>
           <div className='space-y-2'>
-            {report.trends.map((t, i) => {
-              const Icon = directionIcons[t.direction]
+            {report.trends.map((trend, i) => {
+              const direction = resolveTrendDirection(trend.direction)
+              const Icon = directionIcons[direction]
               return (
                 <div key={i} className='flex items-start gap-2 rounded-lg border p-3'>
                   <Icon
-                    className={cn('mt-0.5 size-4', directionColors[t.direction])}
+                    className={cn('mt-0.5 size-4', directionColors[direction])}
                   />
                   <div>
-                    <p className='text-sm font-medium'>{t.title}</p>
-                    <p className='text-xs text-muted-foreground'>{t.description}</p>
+                    <p className='text-sm font-medium'>{trend.title}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      {trend.description}
+                    </p>
                   </div>
                 </div>
               )
@@ -194,7 +192,10 @@ function ReportContent({ report }: { report: MarketReport }) {
             {report.risks.map((r, i) => (
               <div
                 key={i}
-                className={cn('rounded-lg border p-3', severityStyles[r.severity])}
+                className={cn(
+                  'rounded-lg border p-3',
+                  severityStyles[r.severity] ?? severityStyles.medium
+                )}
               >
                 <p className='text-sm font-medium'>{r.title}</p>
                 <p className='text-xs text-muted-foreground'>{r.description}</p>
