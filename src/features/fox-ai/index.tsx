@@ -12,13 +12,15 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getFoxAiStatus } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { FoxAiChat } from './components/fox-ai-chat'
 import { MarketInsightsPanel } from './components/market-insights-panel'
 
 export function FoxAiPage() {
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading, isError } = useQuery({
     queryKey: ['fox-ai', 'status'],
     queryFn: getFoxAiStatus,
+    meta: FOX_AI_QUERY_META,
   })
 
   return (
@@ -41,6 +43,8 @@ export function FoxAiPage() {
           </div>
           {isLoading ? (
             <Loader2 className='size-4 animate-spin' />
+          ) : isError ? (
+            <Badge variant='destructive'>Serviço indisponível</Badge>
           ) : status?.available ? (
             <Badge
               variant='outline'
@@ -75,9 +79,9 @@ export function FoxAiPage() {
 
           <Card className='lg:col-span-2'>
             <CardHeader>
-              <CardTitle>Capacidades HouseCanary</CardTitle>
+              <CardTitle>Capacidades da FoxAi</CardTitle>
               <CardDescription>
-                Funcionalidades inspiradas na plataforma líder em analytics
+                Analytics de mercado e insights imobiliários integrados à plataforma
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4 text-sm'>

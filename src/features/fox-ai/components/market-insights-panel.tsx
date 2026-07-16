@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getMarketInsights, type MarketInsight } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { cn } from '@/lib/utils'
 
 const severityStyles: Record<MarketInsight['severity'], string> = {
@@ -56,6 +57,7 @@ export function MarketInsightsPanel() {
     queryKey: ['fox-ai', 'market-insights'],
     queryFn: getMarketInsights,
     staleTime: 60_000,
+    meta: FOX_AI_QUERY_META,
   })
 
   if (isLoading) {
@@ -78,7 +80,8 @@ export function MarketInsightsPanel() {
     )
   }
 
-  const trend = trendLabels[data.appreciationTrend]
+  const trend =
+    trendLabels[data.appreciationTrend] ?? trendLabels.indeterminado
 
   return (
     <div className='space-y-4'>
@@ -106,7 +109,7 @@ export function MarketInsightsPanel() {
           </CardHeader>
           <CardContent>
             <p className='text-xs text-muted-foreground'>
-              Estilo HouseCanary AVM
+              Estimativa por modelo AVM
             </p>
           </CardContent>
         </Card>
@@ -155,7 +158,7 @@ export function MarketInsightsPanel() {
               Bairros monitorados
             </CardTitle>
             <CardDescription>
-              Análise granular por região — como na HouseCanary
+              Análise granular por região
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,13 +190,15 @@ export function MarketInsightsPanel() {
           </CardHeader>
           <CardContent className='space-y-3'>
             {data.insights.map((insight) => {
-              const Icon = typeIcons[insight.type]
+              const Icon = typeIcons[insight.type] ?? Sparkles
+              const severityClass =
+                severityStyles[insight.severity] ?? severityStyles.info
               return (
                 <div
                   key={insight.id}
                   className={cn(
                     'rounded-lg border p-3',
-                    severityStyles[insight.severity]
+                    severityClass
                   )}
                 >
                   <div className='flex items-start gap-2'>

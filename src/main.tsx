@@ -10,6 +10,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
+import { isFoxAiQueryKey } from '@/lib/query-meta'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
@@ -49,7 +50,7 @@ const queryClient = new QueryClient({
     },
   },
   queryCache: new QueryCache({
-    onError: (error) => {
+    onError: (error, query) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
           toast.error('Session expired!')
@@ -58,10 +59,15 @@ const queryClient = new QueryClient({
           router.navigate({ to: '/sign-in', search: { redirect } })
         }
         if (error.response?.status === 500) {
-          toast.error('Internal Server Error!')
-          // Only navigate to error page in production to avoid disrupting HMR in development
-          if (import.meta.env.PROD) {
-            router.navigate({ to: '/500' })
+          const skipRedirect =
+            query.meta?.skipGlobalErrorRedirect === true ||
+            isFoxAiQueryKey(query.queryKey)
+          if (!skipRedirect) {
+            toast.error('Internal Server Error!')
+            // Only navigate to error page in production to avoid disrupting HMR in development
+            if (import.meta.env.PROD) {
+              router.navigate({ to: '/500' })
+            }
           }
         }
         if (error.response?.status === 403) {

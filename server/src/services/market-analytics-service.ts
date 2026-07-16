@@ -26,9 +26,53 @@ export type PortfolioSnapshot = {
 }
 
 type EvaluationRow = {
-  property_input: Record<string, unknown>
-  evaluation_result: Record<string, unknown>
+  property_input: Record<string, unknown> | null
+  evaluation_result: Record<string, unknown> | null
   created_at: Date
+}
+
+const APPRECIATION_TRENDS = [
+  'valorizacao',
+  'estavel',
+  'desvalorizacao',
+  'indeterminado',
+] as const satisfies readonly PortfolioSnapshot['appreciationTrend'][]
+
+type AppreciationTrend = (typeof APPRECIATION_TRENDS)[number]
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+async function safeCountQuery(
+  query: string,
+  params: unknown[] = []
+): Promise<number> {
+  try {
+    const result = await pool.query<{ count: string }>(query, params)
+    return Number(result.rows[0]?.count ?? 0)
+  } catch (error) {
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String(error.code)
+        : ''
+    if (code === '42P01') return 0
+    throw error
+  }
+}
+
+function normalizeAppreciationTrend(value: string | undefined): AppreciationTrend {
+  if (
+    value === 'valorizacao' ||
+    value === 'estavel' ||
+    value === 'desvalorizacao' ||
+    value === 'indeterminado'
+  ) {
+    return value
+  }
+  return 'indeterminado'
 }
 
 const MONTH_KEYS = [
@@ -57,7 +101,7 @@ function extractValuePerSqm(result: Record<string, unknown>) {
 
 function extractAppreciationTrend(
   result: Record<string, unknown>
-): 'valorizacao' | 'estavel' | 'desvalorizacao' | 'indeterminado' | null {
+): AppreciationTrend | null {
   const analysis = result.marketAppreciationAnalysis as
     | { trend?: string }
     | undefined
@@ -96,7 +140,7 @@ function buildInsights(data: {
       type: 'opportunity',
       title: 'Comece seu portfólio analítico',
       description:
-        'Realize sua primeira avaliação para a FoxAi gerar insights de mercado, previsões e alertas como na HouseCanary.',
+        'Realize sua primeira avaliação para a FoxAi gerar insights de mercado, previsões e alertas para o seu portfólio.',
       severity: 'info',
     })
     return insights
@@ -186,44 +230,42 @@ export async function getPortfolioSnapshot(
   userId: string,
   accountType: string
 ): Promise<PortfolioSnapshot> {
-  const [userResult, evaluationsResult, monthlyResult, leadsResult, unlocksResult] =
-    await Promise.all([
-      pool.query<{ credits: number }>(
-        'SELECT credits FROM users WHERE id = $1',
-        [userId]
-      ),
-      pool.query<EvaluationRow>(
-        `SELECT property_input, evaluation_result, created_at
-         FROM property_evaluations
-         WHERE user_id = $1
-         ORDER BY created_at DESC
-         LIMIT 50`,
-        [userId]
-      ),
-      pool.query<{ month: number; count: string }>(
-        `SELECT EXTRACT(MONTH FROM created_at)::int AS month, COUNT(*)::text AS count
-         FROM property_evaluations
-         WHERE user_id = $1 AND created_at >= date_trunc('year', NOW())
-         GROUP BY EXTRACT(MONTH FROM created_at)`,
-        [userId]
-      ),
-      accountType === 'pj'
-        ? pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM leads')
-        : Promise.resolve({ rows: [{ count: '0' }] }),
-      accountType === 'pj'
-        ? pool.query<{ count: string }>(
-            'SELECT COUNT(*)::text AS count FROM lead_unlocks WHERE user_id = $1',
-            [userId]
-          )
-        : Promise.resolve({ rows: [{ count: '0' }] }),
-    ])
+  const [userResult, evaluationsResult, monthlyResult] = await Promise.all([
+    pool.query<{ credits: number }>(
+      'SELECT credits FROM users WHERE id = $1',
+      [userId]
+    ),
+    pool.query<EvaluationRow>(
+      `SELECT property_input, evaluation_result, created_at
+       FROM property_evaluations
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [userId]
+    ),
+    pool.query<{ month: number; count: string }>(
+      `SELECT EXTRACT(MONTH FROM created_at)::int AS month, COUNT(*)::text AS count
+       FROM property_evaluations
+       WHERE user_id = $1 AND created_at >= date_trunc('year', NOW())
+       GROUP BY EXTRACT(MONTH FROM created_at)`,
+      [userId]
+    ),
+  ])
+
+  const leadsTotal =
+    accountType === 'pj'
+      ? await safeCountQuery('SELECT COUNT(*)::text AS count FROM leads')
+      : null
+  const leadsUnlocked =
+    accountType === 'pj'
+      ? await safeCountQuery(
+          'SELECT COUNT(*)::text AS count FROM lead_unlocks WHERE user_id = $1',
+          [userId]
+        )
+      : null
 
   const evaluations = evaluationsResult.rows
   const credits = userResult.rows[0]?.credits ?? 0
-  const leadsTotal =
-    accountType === 'pj' ? Number(leadsResult.rows[0]?.count ?? 0) : null
-  const leadsUnlocked =
-    accountType === 'pj' ? Number(unlocksResult.rows[0]?.count ?? 0) : null
 
   const monthlyVolume = Object.fromEntries(
     MONTH_KEYS.map((key) => [key, 0])
@@ -239,10 +281,10 @@ export async function getPortfolioSnapshot(
   const previousMonthCount = monthlyVolume[MONTH_KEYS[prevMonth]] ?? 0
 
   const values = evaluations
-    .map((e) => extractValue(e.evaluation_result))
+    .map((e) => extractValue(asRecord(e.evaluation_result)))
     .filter((v): v is number => v !== null)
   const valuesPerSqm = evaluations
-    .map((e) => extractValuePerSqm(e.evaluation_result))
+    .map((e) => extractValuePerSqm(asRecord(e.evaluation_result)))
     .filter((v): v is number => v !== null)
 
   const neighborhoodMap = new Map<
@@ -250,8 +292,10 @@ export async function getPortfolioSnapshot(
     { count: number; values: number[] }
   >()
   for (const evaluation of evaluations) {
-    const name = extractNeighborhood(evaluation.property_input)
-    const value = extractValue(evaluation.evaluation_result)
+    const input = asRecord(evaluation.property_input)
+    const result = asRecord(evaluation.evaluation_result)
+    const name = extractNeighborhood(input)
+    const value = extractValue(result)
     const entry = neighborhoodMap.get(name) ?? { count: 0, values: [] }
     entry.count += 1
     if (value !== null) entry.values.push(value)
@@ -275,15 +319,16 @@ export async function getPortfolioSnapshot(
   const appreciationCounts: Record<string, number> = {}
   const riskCounts: Record<string, number> = {}
   for (const evaluation of evaluations) {
-    const trend = extractAppreciationTrend(evaluation.evaluation_result)
+    const result = asRecord(evaluation.evaluation_result)
+    const trend = extractAppreciationTrend(result)
     if (trend) appreciationCounts[trend] = (appreciationCounts[trend] ?? 0) + 1
-    const risk = extractFloodRisk(evaluation.evaluation_result)
+    const risk = extractFloodRisk(result)
     riskCounts[risk] = (riskCounts[risk] ?? 0) + 1
   }
 
-  const dominantTrend = Object.entries(appreciationCounts).sort(
-    (a, b) => b[1] - a[1]
-  )[0]?.[0] as PortfolioSnapshot['appreciationTrend'] | undefined
+  const dominantTrend = normalizeAppreciationTrend(
+    Object.entries(appreciationCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+  )
 
   const recentValues = values.slice(0, Math.min(5, values.length))
   const olderValues = values.slice(5, Math.min(10, values.length))
@@ -323,7 +368,7 @@ export async function getPortfolioSnapshot(
           )
         : null,
     topNeighborhoods,
-    appreciationTrend: dominantTrend ?? 'indeterminado',
+    appreciationTrend: dominantTrend,
     riskDistribution: Object.entries(riskCounts).map(([level, count]) => ({
       level,
       count,

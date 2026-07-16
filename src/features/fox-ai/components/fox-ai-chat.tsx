@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AxiosError } from 'axios'
 import { Loader2, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -18,6 +19,18 @@ type FoxAiChatProps = {
   compact?: boolean
   placeholder?: string
   initialMessages?: FoxAiMessage[]
+}
+
+function getFoxAiErrorMessage(err: unknown) {
+  if (err instanceof AxiosError) {
+    const message = err.response?.data?.message
+    if (typeof message === 'string' && message.length > 0) return message
+    if (err.response?.status === 503) {
+      return 'FoxAi indisponível no momento. Tente novamente mais tarde.'
+    }
+  }
+  if (err instanceof Error && err.message) return err.message
+  return 'Não foi possível enviar a mensagem.'
 }
 
 export function FoxAiChat({
@@ -75,11 +88,7 @@ export function FoxAiChat({
       ])
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id))
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Não foi possível enviar a mensagem.'
-      )
+      setError(getFoxAiErrorMessage(err))
     } finally {
       setLoading(false)
     }

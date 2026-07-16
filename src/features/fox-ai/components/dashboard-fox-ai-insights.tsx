@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,7 +41,7 @@ export function DashboardFoxAiInsights({
             </CardTitle>
             <CardDescription>
               A IA monitora seu dashboard e identifica tendências, alertas e
-              oportunidades como a HouseCanary
+              oportunidades no mercado imobiliário
             </CardDescription>
           </div>
           <Button
@@ -62,9 +63,12 @@ export function DashboardFoxAiInsights({
       <CardContent>
         {mutation.isError && (
           <p className='text-sm text-destructive'>
-            {mutation.error instanceof Error
-              ? mutation.error.message
-              : 'Erro ao analisar o dashboard.'}
+            {mutation.error instanceof AxiosError &&
+            typeof mutation.error.response?.data?.message === 'string'
+              ? mutation.error.response.data.message
+              : mutation.error instanceof Error
+                ? mutation.error.message
+                : 'Erro ao analisar o dashboard.'}
           </p>
         )}
 

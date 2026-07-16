@@ -4,6 +4,7 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import { config } from './config.js'
+import { ensureFoxAiTables } from './db/ensure-fox-ai-tables.js'
 import authRoutes from './routes/auth.js'
 import adminRoutes from './routes/admin.js'
 import plansRoutes from './routes/plans.js'
@@ -156,6 +157,9 @@ if (config.isProduction) {
 }
 
 app.listen(config.port, () => {
+  void ensureFoxAiTables().catch((error) => {
+    console.error('Falha ao garantir tabelas FoxAi na inicialização:', error)
+  })
   console.log(
     config.isProduction
       ? `Avalia Imobe em produção na porta ${config.port}`

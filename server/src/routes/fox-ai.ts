@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import { ensureFoxAiTables } from '../db/ensure-fox-ai-tables.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { createUserRateLimiter } from '../middleware/rate-limit.js'
 import { isNvidiaConfigured } from '../services/nvidia-nim.js'
@@ -12,6 +13,13 @@ import {
 } from '../services/fox-ai-service.js'
 
 const router = Router()
+
+router.use(requireAuth)
+
+async function withFoxAiTables<T>(handler: () => Promise<T>): Promise<T> {
+  await ensureFoxAiTables()
+  return handler()
+}
 
 const foxAiRateLimiter = createUserRateLimiter({
   windowMs: 60 * 1000,
@@ -39,7 +47,7 @@ const dashboardSchema = z.object({
   dashboardContext: chatSchema.shape.dashboardContext,
 })
 
-router.get('/status', requireAuth, (_req, res) => {
+router.get('/status', (_req, res) => {
   return res.json({
     available: isNvidiaConfigured(),
     model: isNvidiaConfigured() ? process.env.NVIDIA_MODEL ?? 'meta/llama-3.3-70b-instruct' : null,
@@ -48,9 +56,11 @@ router.get('/status', requireAuth, (_req, res) => {
   })
 })
 
-router.get('/conversations', requireAuth, async (req: AuthRequest, res) => {
+router.get('/conversations', async (req: AuthRequest, res) => {
   try {
-    const conversations = await listConversations(req.user!.id)
+    const conversations = await withFoxAiTables(() =>
+      listConversations(req.user!.id)
+    )
     return res.json({ conversations })
   } catch (error) {
     console.error('Erro ao listar conversas FoxAi:', error)
@@ -60,12 +70,10 @@ router.get('/conversations', requireAuth, async (req: AuthRequest, res) => {
 
 router.get(
   '/conversations/:id',
-  requireAuth,
   async (req: AuthRequest, res) => {
     try {
-      const conversation = await getConversation(
-        String(req.params.id),
-        req.user!.id
+      const conversation = await withFoxAiTables(() =>
+        getConversation(String(req.params.id), req.user!.id)
       )
       if (!conversation) {
         return res.status(404).json({ message: 'Conversa não encontrada.' })
@@ -78,7 +86,7 @@ router.get(
   }
 )
 
-router.post('/chat', requireAuth, foxAiRateLimiter, async (req: AuthRequest, res) => {
+router.post('/chat', foxAiRateLimiter, async (req: AuthRequest, res) => {
   if (!isNvidiaConfigured()) {
     return res.status(503).json({
       message:
@@ -93,13 +101,15 @@ router.post('/chat', requireAuth, foxAiRateLimiter, async (req: AuthRequest, res
   }
 
   try {
-    const result = await chatWithFoxAi({
-      userId: req.user!.id,
-      accountType: req.user!.accountType,
-      message: parsed.data.message,
-      conversationId: parsed.data.conversationId,
-      dashboardContext: parsed.data.dashboardContext,
-    })
+    const result = await withFoxAiTables(() =>
+      chatWithFoxAi({
+        userId: req.user!.id,
+        accountType: req.user!.accountType,
+        message: parsed.data.message,
+        conversationId: parsed.data.conversationId,
+        dashboardContext: parsed.data.dashboardContext,
+      })
+    )
     return res.json(result)
   } catch (error) {
     console.error('Erro no chat FoxAi:', error)
@@ -111,7 +121,6 @@ router.post('/chat', requireAuth, foxAiRateLimiter, async (req: AuthRequest, res
 
 router.post(
   '/analyze-dashboard',
-  requireAuth,
   foxAiRateLimiter,
   async (req: AuthRequest, res) => {
     if (!isNvidiaConfigured()) {
@@ -143,7 +152,7 @@ router.post(
   }
 )
 
-router.get('/market-insights', requireAuth, async (req: AuthRequest, res) => {
+router.get('/market-insights', async (req: AuthRequest, res) => {
   try {
     const snapshot = await getMarketInsights(
       req.user!.id,
