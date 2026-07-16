@@ -63,7 +63,10 @@ router.get(
   requireAuth,
   async (req: AuthRequest, res) => {
     try {
-      const conversation = await getConversation(req.params.id, req.user!.id)
+      const conversation = await getConversation(
+        String(req.params.id),
+        req.user!.id
+      )
       if (!conversation) {
         return res.status(404).json({ message: 'Conversa não encontrada.' })
       }
