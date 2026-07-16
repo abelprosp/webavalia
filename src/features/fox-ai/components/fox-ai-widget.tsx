@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ExternalLink, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +10,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { getSuggestedPrompts, type DashboardContext } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { FoxAiChat } from './fox-ai-chat'
-import type { DashboardContext } from '@/lib/fox-ai-api'
+import { QuickActionChips } from './quick-action-chips'
 
 type FoxAiWidgetProps = {
   dashboardContext?: DashboardContext
@@ -18,6 +21,15 @@ type FoxAiWidgetProps = {
 
 export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
   const [open, setOpen] = useState(false)
+  const [triggerMessage, setTriggerMessage] = useState<string | null>(null)
+
+  const { data: prompts } = useQuery({
+    queryKey: ['fox-ai', 'suggested-prompts'],
+    queryFn: getSuggestedPrompts,
+    staleTime: 120_000,
+    meta: FOX_AI_QUERY_META,
+    enabled: open,
+  })
 
   return (
     <>
@@ -44,7 +56,7 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
                 <div>
                   <SheetTitle>FoxAi</SheetTitle>
                   <SheetDescription>
-                    Especialista em imóveis · NVIDIA NIM
+                    Especialista em imóveis com IA
                   </SheetDescription>
                 </div>
               </div>
@@ -56,9 +68,20 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
             </div>
           </SheetHeader>
 
+          {prompts && (
+            <QuickActionChips
+              prompts={prompts.slice(0, 4)}
+              onSelect={setTriggerMessage}
+              className='mt-3'
+            />
+          )}
+
           <div className='flex flex-1 flex-col overflow-hidden pt-4'>
             <FoxAiChat
               compact
+              showQuickActions={false}
+              showEvaluationPicker={false}
+              triggerMessage={triggerMessage}
               dashboardContext={{
                 ...dashboardContext,
                 currentPage: dashboardContext?.currentPage ?? 'widget',

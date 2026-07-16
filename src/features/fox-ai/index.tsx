@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, Sparkles } from 'lucide-react'
 import { HeaderActions } from '@/components/layout/header-actions'
@@ -11,17 +12,49 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getFoxAiStatus } from '@/lib/fox-ai-api'
+import {
+  getFoxAiConversation,
+  getFoxAiStatus,
+  type FoxAiMessage,
+} from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { ConversationSidebar } from './components/conversation-sidebar'
 import { FoxAiChat } from './components/fox-ai-chat'
-import { MarketInsightsPanel } from './components/market-insights-panel'
+import { LiveInsightsSidebar } from './components/live-insights-sidebar'
+import { MarketReportCard } from './components/market-report-card'
+
+const EMPTY_MESSAGES: FoxAiMessage[] = []
 
 export function FoxAiPage() {
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | undefined
+  >()
+  const [chatKey, setChatKey] = useState(0)
+
   const { data: status, isLoading, isError } = useQuery({
     queryKey: ['fox-ai', 'status'],
     queryFn: getFoxAiStatus,
     meta: FOX_AI_QUERY_META,
   })
+
+  const { data: activeConversation } = useQuery({
+    queryKey: ['fox-ai', 'conversation', activeConversationId],
+    queryFn: () => getFoxAiConversation(activeConversationId!),
+    enabled: Boolean(activeConversationId),
+    meta: FOX_AI_QUERY_META,
+  })
+
+  const handleNewConversation = useCallback(() => {
+    setActiveConversationId(undefined)
+    setChatKey((k) => k + 1)
+  }, [])
+
+  const handleSelectConversation = useCallback((id: string) => {
+    setActiveConversationId(id)
+    setChatKey((k) => k + 1)
+  }, [])
+
+  const initialMessages = activeConversation?.messages ?? EMPTY_MESSAGES
 
   return (
     <>
@@ -37,8 +70,8 @@ export function FoxAiPage() {
               FoxAi
             </h1>
             <p className='text-muted-foreground'>
-              Especialista em imóveis com IA — análise de mercado, portfólio e
-              conversação inteligente
+              Assistente imobiliário avançado — análise de portfólio, mercado e
+              avaliações com IA
             </p>
           </div>
           {isLoading ? (
@@ -50,80 +83,50 @@ export function FoxAiPage() {
               variant='outline'
               className='border-orange-500/40 text-orange-600'
             >
-              NVIDIA NIM · {status.model}
+              FoxAi disponível
             </Badge>
           ) : (
-            <Badge variant='destructive'>Configure NVIDIA_API_KEY</Badge>
+            <Badge variant='destructive'>FoxAi indisponível</Badge>
           )}
         </div>
 
-        <div className='mb-6'>
-          <MarketInsightsPanel />
-        </div>
+        <div className='grid gap-6 lg:grid-cols-12'>
+          <Card className='hidden lg:col-span-2 lg:block'>
+            <CardContent className='pt-6'>
+              <ConversationSidebar
+                activeId={activeConversationId}
+                onSelect={handleSelectConversation}
+                onNew={handleNewConversation}
+                className='h-[min(70vh,600px)]'
+              />
+            </CardContent>
+          </Card>
 
-        <div className='grid gap-6 lg:grid-cols-5'>
-          <Card className='lg:col-span-3'>
+          <Card className='lg:col-span-5'>
             <CardHeader>
               <CardTitle>Conversar com a FoxAi</CardTitle>
               <CardDescription>
-                Tire dúvidas sobre mercado, precificação, investimentos e
-                estratégias imobiliárias
+                Streaming em tempo real, análise de imóveis e contexto do seu
+                portfólio
               </CardDescription>
             </CardHeader>
             <CardContent>
               <FoxAiChat
+                key={`${chatKey}-${activeConversationId ?? 'new'}`}
+                conversationId={activeConversationId}
+                initialMessages={initialMessages}
+                onConversationChange={setActiveConversationId}
                 dashboardContext={{ currentPage: 'fox-ai' }}
               />
             </CardContent>
           </Card>
 
-          <Card className='lg:col-span-2'>
-            <CardHeader>
-              <CardTitle>Capacidades da FoxAi</CardTitle>
-              <CardDescription>
-                Analytics de mercado e insights imobiliários integrados à plataforma
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4 text-sm'>
-              <FeatureItem
-                title='AVM — Avaliação Automatizada'
-                description='Valores estimados com base nas suas avaliações e comparáveis de mercado.'
-              />
-              <FeatureItem
-                title='Previsão de mercado'
-                description='Tendências de valorização e projeções para os próximos meses.'
-              />
-              <FeatureItem
-                title='Monitoramento de portfólio'
-                description='Acompanhe bairros, riscos hídricos e volume de avaliações.'
-              />
-              <FeatureItem
-                title='Alertas inteligentes'
-                description='Sinais de risco, oportunidade e créditos baixos em tempo real.'
-              />
-              <FeatureItem
-                title='Análise conversacional'
-                description='Pergunte qualquer coisa sobre imóveis — a FoxAi responde com contexto.'
-              />
-            </CardContent>
-          </Card>
+          <div className='space-y-4 lg:col-span-5'>
+            <LiveInsightsSidebar />
+            <MarketReportCard />
+          </div>
         </div>
       </Main>
     </>
-  )
-}
-
-function FeatureItem({
-  title,
-  description,
-}: {
-  title: string
-  description: string
-}) {
-  return (
-    <div className='rounded-lg border p-3'>
-      <p className='font-medium'>{title}</p>
-      <p className='mt-1 text-muted-foreground'>{description}</p>
-    </div>
   )
 }

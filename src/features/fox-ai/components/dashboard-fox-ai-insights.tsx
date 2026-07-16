@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { analyzeDashboard, type DashboardContext } from '@/lib/fox-ai-api'
+import {
+  getDashboardInsight,
+  getFoxAiStatus,
+  type DashboardContext,
+} from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { FoxAiMarkdown } from './fox-ai-markdown'
 
 type DashboardFoxAiInsightsProps = {
   dashboardContext: DashboardContext
@@ -19,16 +25,34 @@ type DashboardFoxAiInsightsProps = {
 export function DashboardFoxAiInsights({
   dashboardContext,
 }: DashboardFoxAiInsightsProps) {
-  const [analysis, setAnalysis] = useState<string | null>(null)
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const autoLoadedRef = useRef(false)
+
+  const { data: status } = useQuery({
+    queryKey: ['fox-ai', 'status'],
+    queryFn: getFoxAiStatus,
+    meta: FOX_AI_QUERY_META,
+  })
 
   const mutation = useMutation({
-    mutationFn: () => analyzeDashboard(dashboardContext),
-    onSuccess: (data) => {
-      setAnalysis(data.analysis)
-      setGeneratedAt(data.generatedAt)
-    },
+    mutationFn: (force = false) => getDashboardInsight(force, dashboardContext),
+    meta: FOX_AI_QUERY_META,
   })
+
+  useEffect(() => {
+    if (
+      status?.available &&
+      !autoLoadedRef.current &&
+      !mutation.isPending &&
+      !mutation.data
+    ) {
+      autoLoadedRef.current = true
+      mutation.mutate(false)
+    }
+  }, [status?.available, mutation.isPending, mutation.data, mutation.mutate])
+
+  const analysis = mutation.data?.analysis
+  const generatedAt = mutation.data?.generatedAt
+  const cached = mutation.data?.cached
 
   return (
     <Card className='border-orange-500/20'>
@@ -40,15 +64,15 @@ export function DashboardFoxAiInsights({
               FoxAi — Análise em tempo real
             </CardTitle>
             <CardDescription>
-              A IA monitora seu dashboard e identifica tendências, alertas e
-              oportunidades no mercado imobiliário
+              Insights proativos sobre tendências, alertas e oportunidades do
+              seu portfólio
             </CardDescription>
           </div>
           <Button
             variant='outline'
             size='sm'
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
+            onClick={() => mutation.mutate(true)}
+            disabled={mutation.isPending || !status?.available}
             className='border-orange-500/30'
           >
             {mutation.isPending ? (
@@ -61,6 +85,12 @@ export function DashboardFoxAiInsights({
         </div>
       </CardHeader>
       <CardContent>
+        {!status?.available && (
+          <p className='text-sm text-muted-foreground'>
+            FoxAi indisponível no momento.
+          </p>
+        )}
+
         {mutation.isError && (
           <p className='text-sm text-destructive'>
             {mutation.error instanceof AxiosError &&
@@ -72,17 +102,10 @@ export function DashboardFoxAiInsights({
           </p>
         )}
 
-        {!analysis && !mutation.isPending && !mutation.isError && (
-          <p className='text-sm text-muted-foreground'>
-            Clique em &quot;Analisar agora&quot; para a FoxAi interpretar seus
-            números, leads e avaliações em tempo real.
-          </p>
-        )}
-
-        {mutation.isPending && (
+        {status?.available && mutation.isPending && !analysis && (
           <div className='flex items-center gap-2 text-sm text-muted-foreground'>
             <Loader2 className='size-4 animate-spin text-orange-500' />
-            FoxAi está analisando movimentações do dashboard...
+            FoxAi está analisando seu portfólio...
           </div>
         )}
 
@@ -90,13 +113,12 @@ export function DashboardFoxAiInsights({
           <div className='space-y-2'>
             {generatedAt && (
               <p className='text-xs text-muted-foreground'>
+                {cached ? 'Cache · ' : ''}
                 Atualizado em{' '}
                 {new Date(generatedAt).toLocaleString('pt-BR')}
               </p>
             )}
-            <div className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed'>
-              {analysis}
-            </div>
+            <FoxAiMarkdown content={analysis} />
           </div>
         )}
       </CardContent>
