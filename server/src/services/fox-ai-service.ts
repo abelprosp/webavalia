@@ -572,7 +572,7 @@ export async function chatWithFoxAi(input: ChatInput) {
   }
 }
 
-export async function chatWithFoxAiStream(input: ChatInput) {
+export async function* chatWithFoxAiStream(input: ChatInput) {
   const { snapshot, conversationId, userMessage, nimMessages } =
     await prepareChatContext(input)
 
@@ -658,7 +658,7 @@ export async function getProactiveDashboardInsight(input: {
 }) {
   const cacheKey = input.userId
   const cached = dashboardInsightCache.get(cacheKey)
-  if (!force && cached && cached.expiresAt > Date.now()) {
+  if (!input.force && cached && cached.expiresAt > Date.now()) {
     return {
       analysis: cached.analysis,
       insights: cached.insights,
