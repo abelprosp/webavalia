@@ -82,7 +82,6 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
         title: 'Leads',
         url: '/leads',
         icon: Users,
-        badge: 'Em breve',
       },
       {
         title: 'CRM',

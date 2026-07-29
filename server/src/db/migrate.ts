@@ -310,6 +310,115 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS lead_unlocks_user_idx
       ON lead_unlocks (user_id, unlocked_at DESC);
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS service_regions TEXT[] NOT NULL DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS specialties TEXT[] NOT NULL DEFAULT '{}';
+
+    ALTER TABLE leads
+      ADD COLUMN IF NOT EXISTS lead_score JSONB,
+      ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS assignee_id UUID REFERENCES users(id) ON DELETE SET NULL;
+
+    CREATE TABLE IF NOT EXISTS crm_pipelines (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      is_default BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS crm_pipelines_user_idx
+      ON crm_pipelines (user_id);
+
+    CREATE TABLE IF NOT EXISTS crm_stages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      pipeline_id UUID NOT NULL REFERENCES crm_pipelines(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      slug VARCHAR(100) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      color VARCHAR(50) NOT NULL DEFAULT 'lavender',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (pipeline_id, slug)
+    );
+
+    CREATE INDEX IF NOT EXISTS crm_stages_pipeline_idx
+      ON crm_stages (pipeline_id, sort_order);
+
+    CREATE TABLE IF NOT EXISTS crm_deals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      pipeline_id UUID NOT NULL REFERENCES crm_pipelines(id) ON DELETE CASCADE,
+      stage_id UUID NOT NULL REFERENCES crm_stages(id) ON DELETE RESTRICT,
+      lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+      title VARCHAR(500) NOT NULL,
+      client_name VARCHAR(255),
+      client_phone VARCHAR(50),
+      client_email VARCHAR(255),
+      location VARCHAR(500),
+      property_type VARCHAR(100),
+      notes TEXT,
+      assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      lead_score JSONB,
+      tags TEXT[] NOT NULL DEFAULT '{}',
+      property_input JSONB,
+      evaluation_result JSONB,
+      expected_ticket NUMERIC,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS crm_deals_user_idx ON crm_deals (user_id, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS crm_deals_stage_idx ON crm_deals (stage_id);
+    CREATE INDEX IF NOT EXISTS crm_deals_lead_idx ON crm_deals (lead_id);
+
+    CREATE TABLE IF NOT EXISTS crm_activities (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      deal_id UUID NOT NULL REFERENCES crm_deals(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      activity_type VARCHAR(50) NOT NULL,
+      title VARCHAR(500) NOT NULL,
+      body TEXT,
+      metadata JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS crm_activities_deal_idx
+      ON crm_activities (deal_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS crm_tasks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      deal_id UUID NOT NULL REFERENCES crm_deals(id) ON DELETE CASCADE,
+      stage_id UUID REFERENCES crm_stages(id) ON DELETE SET NULL,
+      title VARCHAR(500) NOT NULL,
+      description TEXT,
+      due_at TIMESTAMPTZ,
+      reminder_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS crm_tasks_deal_idx ON crm_tasks (deal_id, due_at);
+
+    CREATE TABLE IF NOT EXISTS crm_stage_automations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      stage_id UUID NOT NULL REFERENCES crm_stages(id) ON DELETE CASCADE,
+      trigger_type VARCHAR(50) NOT NULL DEFAULT 'on_enter',
+      action_type VARCHAR(50) NOT NULL,
+      action_config JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS lead_assignments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      method VARCHAR(50) NOT NULL DEFAULT 'manual',
+      assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS lead_assignments_lead_idx ON lead_assignments (lead_id);
   `)
 
   await pool.query(`

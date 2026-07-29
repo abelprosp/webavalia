@@ -14,6 +14,7 @@ import gamificationRoutes from './routes/gamification.js'
 import notificationRoutes from './routes/notifications.js'
 import paymentRoutes from './routes/payments.js'
 import leadsRoutes from './routes/leads.js'
+import crmRoutes from './routes/crm.js'
 import blogRoutes from './routes/blog.js'
 import foxAiRoutes from './routes/fox-ai.js'
 import {
@@ -143,6 +144,7 @@ app.use('/api/gamification', gamificationRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/leads', leadsRoutes)
+app.use('/api/crm', crmRoutes)
 app.use('/api/blog', blogRoutes)
 app.use('/api/fox-ai', foxAiRoutes)
 

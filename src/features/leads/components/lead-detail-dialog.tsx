@@ -1,4 +1,8 @@
-import { Mail, Phone } from 'lucide-react'
+import { Kanban, Mail, Phone } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +16,7 @@ import {
   getListingIntentLabel,
 } from '@/features/avaliacao/data/evaluation-engine'
 import { type LeadItem } from '@/lib/leads-api'
+import { createDealFromLead } from '@/lib/crm-api'
 import {
   getLeadDisplayValue,
   parseLeadEvaluation,
@@ -28,6 +33,9 @@ export function LeadDetailDialog({
   open,
   onOpenChange,
 }: LeadDetailDialogProps) {
+  const navigate = useNavigate()
+  const [adding, setAdding] = useState(false)
+
   if (!lead) return null
 
   const sourceLabel =
@@ -63,6 +71,30 @@ export function LeadDetailDialog({
               Lead recebido por {sourceLabel} em{' '}
               {new Date(lead.receivedAt).toLocaleString('pt-BR')}
             </DialogDescription>
+            {lead.unlocked && (
+              <div className='mt-3'>
+                <Button
+                  size='sm'
+                  disabled={adding}
+                  onClick={async () => {
+                    setAdding(true)
+                    try {
+                      await createDealFromLead(lead.id)
+                      toast.success('Lead adicionado ao pipeline CRM.')
+                      onOpenChange(false)
+                      void navigate({ to: '/crm' })
+                    } catch {
+                      toast.error('Erro ao adicionar ao pipeline.')
+                    } finally {
+                      setAdding(false)
+                    }
+                  }}
+                >
+                  <Kanban className='me-2 size-4' />
+                  Adicionar ao pipeline
+                </Button>
+              </div>
+            )}
           </DialogHeader>
 
           <div className={`space-y-4 text-sm ${parsedEvaluation ? 'mt-4' : ''}`}>
