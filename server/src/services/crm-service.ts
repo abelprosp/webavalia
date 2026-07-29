@@ -451,4 +451,148 @@ export async function updateDealNotes(
   })
 }
 
+export type UpdateDealInput = {
+  title?: string
+  clientName?: string | null
+  clientPhone?: string | null
+  clientEmail?: string | null
+  location?: string | null
+  propertyType?: string | null
+  notes?: string | null
+  assigneeId?: string | null
+  stageId?: string
+  tags?: string[]
+  expectedTicket?: number | null
+  leadScore?: Partial<LeadScore>
+}
+
+export async function listBrokerAssignees() {
+  const result = await pool.query<{ id: string; name: string | null; email: string }>(
+    `SELECT id, name, email
+     FROM users
+     WHERE account_type = 'pj' AND status = 'active'
+     ORDER BY COALESCE(name, email) ASC`
+  )
+
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    name: row.name ? String(row.name) : String(row.email),
+  }))
+}
+
+export async function updateDeal(
+  userId: string,
+  dealId: string,
+  input: UpdateDealInput
+) {
+  const current = await pool.query<Record<string, unknown>>(
+    `SELECT * FROM crm_deals WHERE id = $1 AND user_id = $2`,
+    [dealId, userId]
+  )
+
+  if (!current.rowCount) throw new Error('Negócio não encontrado.')
+
+  const deal = current.rows[0]!
+  const sets: string[] = []
+  const values: unknown[] = []
+  let i = 1
+
+  const add = (column: string, value: unknown) => {
+    sets.push(`${column} = $${i++}`)
+    values.push(value)
+  }
+
+  if (input.title !== undefined) add('title', input.title)
+  if (input.clientName !== undefined) add('client_name', input.clientName)
+  if (input.clientPhone !== undefined) add('client_phone', input.clientPhone)
+  if (input.clientEmail !== undefined) add('client_email', input.clientEmail)
+  if (input.location !== undefined) add('location', input.location)
+  if (input.propertyType !== undefined) add('property_type', input.propertyType)
+  if (input.notes !== undefined) add('notes', input.notes)
+  if (input.assigneeId !== undefined) add('assignee_id', input.assigneeId)
+
+  let tags = input.tags
+  let expectedTicket = input.expectedTicket
+
+  if (input.leadScore) {
+    const existing = (deal.lead_score as LeadScore | null) ?? {
+      probability: 0,
+      urgency: 'baixa' as const,
+      expectedTicket: 0,
+      interest: '',
+      summary: '',
+      tags: [],
+      scoredAt: new Date().toISOString(),
+    }
+    const merged: LeadScore = {
+      ...existing,
+      ...input.leadScore,
+      scoredAt: existing.scoredAt,
+    }
+    add('lead_score', JSON.stringify(merged))
+
+    if (input.leadScore.expectedTicket !== undefined) {
+      expectedTicket = input.leadScore.expectedTicket
+    }
+    if (input.leadScore.tags !== undefined) {
+      tags = input.leadScore.tags
+    }
+  }
+
+  if (tags !== undefined) add('tags', tags)
+  if (expectedTicket !== undefined) add('expected_ticket', expectedTicket)
+
+  const stageChanged =
+    input.stageId !== undefined && input.stageId !== String(deal.stage_id)
+
+  if (stageChanged) {
+    const stage = await pool.query<{ id: string; slug: string; name: string }>(
+      `SELECT id, slug, name FROM crm_stages WHERE id = $1`,
+      [input.stageId]
+    )
+    if (!stage.rowCount) throw new Error('Etapa inválida.')
+    add('stage_id', input.stageId)
+  }
+
+  if (sets.length === 0) {
+    return mapDeal(deal)
+  }
+
+  add('updated_at', new Date())
+  values.push(dealId, userId)
+
+  const updated = await pool.query<Record<string, unknown>>(
+    `UPDATE crm_deals SET ${sets.join(', ')}
+     WHERE id = $${i++} AND user_id = $${i++}
+     RETURNING *`,
+    values
+  )
+
+  const mapped = mapDeal(updated.rows[0]!)
+
+  await logActivity({
+    dealId,
+    userId,
+    activityType: 'deal_updated',
+    title: 'Negócio atualizado',
+    metadata: { fields: Object.keys(input) },
+  })
+
+  if (stageChanged) {
+    const stage = await pool.query<{ slug: string; name: string }>(
+      `SELECT slug, name FROM crm_stages WHERE id = $1`,
+      [input.stageId]
+    )
+    await logActivity({
+      dealId,
+      userId,
+      activityType: 'stage_changed',
+      title: `Movido para ${stage.rows[0]!.name}`,
+    })
+    await seedStageTasks(dealId, stage.rows[0]!.slug, userId)
+  }
+
+  return mapped
+}
+
 export type { CrmStage }

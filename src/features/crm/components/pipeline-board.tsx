@@ -119,6 +119,12 @@ export function PipelineBoard() {
 
       <DealDetailSheet
         dealId={selectedDealId}
+        stages={board.stages.map((s) => ({
+          id: s.id,
+          name: s.name,
+          slug: s.slug,
+          color: s.color,
+        }))}
         open={Boolean(selectedDealId)}
         onOpenChange={(open) => {
           if (!open) setSelectedDealId(null)

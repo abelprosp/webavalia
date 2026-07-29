@@ -33,6 +33,32 @@ export type CrmDeal = {
   updatedAt: string
 }
 
+export type CrmStageSummary = {
+  id: string
+  name: string
+  slug: string
+  color: string
+}
+
+export type CrmAssignee = {
+  id: string
+  name: string
+}
+
+export type UpdateDealPayload = {
+  title?: string
+  clientName?: string | null
+  clientPhone?: string | null
+  clientEmail?: string | null
+  location?: string | null
+  propertyType?: string | null
+  notes?: string | null
+  assigneeId?: string | null
+  stageId?: string
+  tags?: string[]
+  expectedTicket?: number | null
+  leadScore?: Partial<LeadScore>
+}
 export type CrmStage = {
   id: string
   pipelineId: string
@@ -105,6 +131,16 @@ export async function rescoreDeal(dealId: string) {
 
 export async function updateDealNotes(dealId: string, notes: string) {
   await api.patch(`/crm/deals/${dealId}/notes`, { notes })
+}
+
+export async function updateDeal(dealId: string, payload: UpdateDealPayload) {
+  const { data } = await api.patch<{ deal: CrmDeal }>(`/crm/deals/${dealId}`, payload)
+  return data.deal
+}
+
+export async function fetchCrmAssignees() {
+  const { data } = await api.get<{ assignees: CrmAssignee[] }>('/crm/assignees')
+  return data.assignees
 }
 
 export async function completeCrmTask(taskId: string) {
