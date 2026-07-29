@@ -101,6 +101,76 @@ export async function searchCities(query: string): Promise<CitySearchResult[]> {
   return results
 }
 
+export async function geocodeCep(cep: string): Promise<CitySearchResult & { cep: string }> {
+  const digits = cep.replace(/\D/g, '')
+  if (digits.length !== 8) {
+    throw new Error('CEP inválido.')
+  }
+
+  const viaCepResponse = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+  if (!viaCepResponse.ok) {
+    throw new Error('Falha ao consultar CEP.')
+  }
+
+  const viaCep = (await viaCepResponse.json()) as {
+    cep?: string
+    localidade?: string
+    uf?: string
+    bairro?: string
+    erro?: boolean
+  }
+
+  if (viaCep.erro || !viaCep.localidade || !viaCep.uf) {
+    throw new Error('CEP não encontrado.')
+  }
+
+  const url = new URL('https://nominatim.openstreetmap.org/search')
+  url.searchParams.set('postalcode', digits)
+  url.searchParams.set('country', 'Brazil')
+  url.searchParams.set('format', 'json')
+  url.searchParams.set('addressdetails', '1')
+  url.searchParams.set('limit', '1')
+  url.searchParams.set('accept-language', 'pt-BR')
+
+  const response = await fetch(url.toString(), { headers: NOMINATIM_HEADERS })
+  if (!response.ok) {
+    throw new Error('Falha ao localizar CEP no mapa.')
+  }
+
+  const data = (await response.json()) as Array<{ lat: string; lon: string }>
+
+  if (data.length > 0) {
+    const city = viaCep.localidade
+    const state = viaCep.uf.toUpperCase()
+    return {
+      label: `${city}, ${state}`,
+      city,
+      state,
+      lat: Number(data[0]!.lat),
+      lng: Number(data[0]!.lon),
+      zoom: 14,
+      cep: viaCep.cep ?? digits,
+    }
+  }
+
+  const fallback = await searchCities(`${viaCep.localidade}, ${viaCep.uf}`)
+  const match = fallback.find(
+    (item) =>
+      item.city.toLowerCase() === viaCep.localidade!.toLowerCase() &&
+      item.state.toUpperCase() === viaCep.uf!.toUpperCase()
+  )
+
+  if (!match) {
+    throw new Error('Não foi possível centralizar o mapa neste CEP.')
+  }
+
+  return {
+    ...match,
+    zoom: 14,
+    cep: viaCep.cep ?? digits,
+  }
+}
+
 export async function reverseGeocode(
   lat: number,
   lng: number

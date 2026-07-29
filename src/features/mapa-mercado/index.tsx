@@ -24,8 +24,8 @@ import { MarketMapResultPanel } from './components/market-map-result'
 
 const INITIAL_FILTERS: MarketMapFiltersState = {
   propertyType: 'apartamento',
-  bedrooms: 2,
-  area: 70,
+  bedrooms: 0,
+  area: 0,
 }
 
 export function MapaMercado() {

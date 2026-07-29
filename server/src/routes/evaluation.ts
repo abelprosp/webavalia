@@ -6,12 +6,13 @@ import {
   createUserRateLimiter,
   evaluationRateLimiter,
 } from '../middleware/rate-limit.js'
-import { MARKET_MAP_EVALUATION_DEFAULTS, isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
+import { MARKET_MAP_EVALUATION_DEFAULTS, MARKET_MAP_DEFAULT_AREA, isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 import { runPropertyEvaluation } from '../services/evaluation-service.js'
 import {
   composeMarketMapAddress,
   reverseGeocode,
   searchCities,
+  geocodeCep,
 } from '../services/geocoding-service.js'
 import { validatePhotos } from '../utils/photo-validation.js'
 import {
@@ -54,7 +55,7 @@ const marketMapSchema = z.object({
   state: z.string().length(2),
   propertyType: z.string().min(1),
   bedrooms: z.number().min(0).optional(),
-  area: z.number().min(10),
+  area: z.number().min(0),
   listingIntent: z.enum(['alugar', 'vender']).default('vender'),
 })
 
@@ -289,6 +290,23 @@ router.get(
   }
 )
 
+router.get(
+  '/market-map/cep/:cep',
+  requireAuth,
+  requireBrokerAccount,
+  async (req: AuthRequest, res) => {
+    try {
+      const location = await geocodeCep(String(req.params.cep))
+      return res.json(location)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Falha ao localizar CEP.'
+      const status = message.includes('não encontrado') ? 404 : 400
+      return res.status(status).json({ message })
+    }
+  }
+)
+
 router.post(
   '/market-map',
   requireAuth,
@@ -317,11 +335,14 @@ router.post(
         state: parsed.data.state,
       })
 
+      const evaluationArea =
+        parsed.data.area > 0 ? parsed.data.area : MARKET_MAP_DEFAULT_AREA
+
       const result = await runPropertyEvaluation({
         ...MARKET_MAP_EVALUATION_DEFAULTS,
         address,
         propertyType: parsed.data.propertyType,
-        area: parsed.data.area,
+        area: evaluationArea,
         bedrooms: isLandOnlyPropertyType(parsed.data.propertyType)
           ? 0
           : (parsed.data.bedrooms ?? 0),

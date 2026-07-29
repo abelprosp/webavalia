@@ -18,6 +18,7 @@ export type MarketCitySearchResult = {
   lat: number
   lng: number
   zoom: number
+  cep?: string
 }
 
 export type MarketMapResult = {
@@ -47,6 +48,16 @@ export async function searchMarketCities(
   const { data } = await api.get<MarketCitySearchResult[]>(
     '/evaluation/market-map/cities',
     { params: { q: query } }
+  )
+  return data
+}
+
+export async function lookupMarketMapCep(
+  cep: string
+): Promise<MarketCitySearchResult> {
+  const digits = cep.replace(/\D/g, '')
+  const { data } = await api.get<MarketCitySearchResult>(
+    `/evaluation/market-map/cep/${digits}`
   )
   return data
 }

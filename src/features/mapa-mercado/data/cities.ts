@@ -8,10 +8,10 @@ export type MarketCity = {
 }
 
 export const DEFAULT_MARKET_CITY: MarketCity = {
-  label: 'São Paulo, SP',
-  city: 'São Paulo',
-  state: 'SP',
-  lat: -23.5505,
-  lng: -46.6333,
-  zoom: 12,
+  label: 'Lajeado, RS',
+  city: 'Lajeado',
+  state: 'RS',
+  lat: -29.4674,
+  lng: -51.9619,
+  zoom: 13,
 }

@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import type { MarketCity } from '../data/cities'
 import { MarketCitySearch } from './market-city-search'
+import { MarketCepSearch } from './market-cep-search'
 
 export type MarketMapFiltersState = {
   propertyType: string
@@ -26,6 +27,13 @@ type MarketMapFiltersProps = {
   onCityChange: (city: MarketCity) => void
 }
 
+function parseOptionalCount(value: string) {
+  if (value.trim() === '') return 0
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return 0
+  return Math.floor(parsed)
+}
+
 export function MarketMapFilters({
   filters,
   selectedCity,
@@ -36,6 +44,15 @@ export function MarketMapFilters({
 
   return (
     <div className='space-y-4'>
+      <MarketCepSearch onLocationFound={onCityChange} />
+
+      <div className='relative'>
+        <div className='absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-border/60' />
+        <p className='relative mx-auto w-fit bg-card px-2 text-[10px] uppercase tracking-wider text-muted-foreground'>
+          ou busque por cidade
+        </p>
+      </div>
+
       <MarketCitySearch
         selectedCity={selectedCity}
         onCityChange={onCityChange}
@@ -75,12 +92,12 @@ export function MarketMapFilters({
               id='market-bedrooms'
               type='number'
               min={0}
-              max={10}
-              value={filters.bedrooms}
+              placeholder='0 = qualquer'
+              value={filters.bedrooms === 0 ? '' : filters.bedrooms}
               onChange={(e) =>
                 onChange({
                   ...filters,
-                  bedrooms: Math.max(0, Number(e.target.value) || 0),
+                  bedrooms: parseOptionalCount(e.target.value),
                 })
               }
             />
@@ -93,18 +110,22 @@ export function MarketMapFilters({
           <Input
             id='market-area'
             type='number'
-            min={10}
-            max={5000}
-            value={filters.area}
+            min={0}
+            placeholder='0 = qualquer'
+            value={filters.area === 0 ? '' : filters.area}
             onChange={(e) =>
               onChange({
                 ...filters,
-                area: Math.max(10, Number(e.target.value) || 10),
+                area: parseOptionalCount(e.target.value),
               })
             }
           />
         </div>
       </div>
+
+      <p className='text-[11px] text-muted-foreground'>
+        Use <strong>0</strong> ou deixe em branco para considerar qualquer tamanho na consulta.
+      </p>
     </div>
   )
 }
