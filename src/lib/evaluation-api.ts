@@ -16,6 +16,7 @@ export type AnalyzePropertyResponse = {
   feedbackModeEnabled: boolean
   credits: number
   trialEvaluationsRemaining: number
+  pfCreditsEarned?: number
   gamification?: GamificationPayload
 }
 
@@ -43,6 +44,8 @@ export async function publishEvaluationAsLead(input: {
   const { data } = await api.post<{
     published: boolean
     alreadyPublished: boolean
+    creditsEarned?: number
+    credits?: number
   }>('/evaluation/publish-lead', input)
   return data
 }
@@ -81,6 +84,7 @@ export async function analyzeProperty(
     feedbackModeEnabled: boolean
     credits?: number
     trialEvaluationsRemaining: number
+    pfCreditsEarned?: number
     gamification?: GamificationPayload
   }>('/evaluation/analyze', {
     ...values,
@@ -99,6 +103,7 @@ export async function analyzeProperty(
     feedbackModeEnabled: data.feedbackModeEnabled,
     credits,
     trialEvaluationsRemaining: credits,
+    pfCreditsEarned: data.pfCreditsEarned,
     gamification: data.gamification,
   }
 }

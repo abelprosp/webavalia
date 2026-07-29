@@ -37,6 +37,7 @@ type CrmEvaluationDetailProps = {
   evaluation: CrmEvaluation | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  personalMode?: boolean
 }
 
 function getPropertyTypeLabel(value: string) {
@@ -47,6 +48,7 @@ export function CrmEvaluationDetail({
   evaluation,
   open,
   onOpenChange,
+  personalMode = false,
 }: CrmEvaluationDetailProps) {
   const updateEvaluation = useCrmStore((s) => s.updateEvaluation)
   const removeEvaluation = useCrmStore((s) => s.removeEvaluation)
@@ -77,7 +79,11 @@ export function CrmEvaluationDetail({
       notes: notes.trim() || undefined,
       status,
     })
-    toast.success('Avaliação atualizada no CRM')
+    toast.success(
+      personalMode
+        ? 'Avaliação atualizada'
+        : 'Avaliação atualizada no CRM'
+    )
   }
 
   async function handleExportPdf() {
@@ -97,7 +103,11 @@ export function CrmEvaluationDetail({
 
   function handleDelete() {
     removeEvaluation(evaluation!.id)
-    toast.success('Avaliação removida do CRM')
+    toast.success(
+      personalMode
+        ? 'Avaliação removida'
+        : 'Avaliação removida do CRM'
+    )
     onOpenChange(false)
   }
 
@@ -143,44 +153,50 @@ export function CrmEvaluationDetail({
               <p className='text-xs text-muted-foreground'>Quartos</p>
               <p>{evaluation.property.bedrooms}</p>
             </div>
-            <div>
-              <p className='text-xs text-muted-foreground'>Status CRM</p>
-              <p>{getCrmStatusLabel(evaluation.status)}</p>
-            </div>
+            {!personalMode && (
+              <div>
+                <p className='text-xs text-muted-foreground'>Status CRM</p>
+                <p>{getCrmStatusLabel(evaluation.status)}</p>
+              </div>
+            )}
           </div>
 
           <Separator />
 
           <div className='space-y-3'>
-            <div className='space-y-2'>
-              <Label htmlFor='detail-client'>Cliente</Label>
-              <Input
-                id='detail-client'
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder='Nome do cliente'
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='detail-status'>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) =>
-                  setStatus(v as (typeof crmStatuses)[number]['value'])
-                }
-              >
-                <SelectTrigger id='detail-status'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {crmStatuses.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!personalMode && (
+              <>
+                <div className='space-y-2'>
+                  <Label htmlFor='detail-client'>Cliente</Label>
+                  <Input
+                    id='detail-client'
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder='Nome do cliente'
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='detail-status'>Status</Label>
+                  <Select
+                    value={status}
+                    onValueChange={(v) =>
+                      setStatus(v as (typeof crmStatuses)[number]['value'])
+                    }
+                  >
+                    <SelectTrigger id='detail-status'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {crmStatuses.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             <div className='space-y-2'>
               <Label htmlFor='detail-notes'>Observações</Label>
               <Textarea

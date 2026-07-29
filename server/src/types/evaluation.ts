@@ -23,6 +23,7 @@ export type EvaluationCriteriaInput = {
   condominiumLevel: 'nao-aplica' | 'padrao' | 'alto-padrao' | 'clube'
   viewType?: 'nenhuma' | 'cidade' | 'mar' | 'montanha' | 'parque' | 'lago'
   amenities?: string[]
+  listingIntent?: 'alugar' | 'vender'
   highEndFurnitureValue?: number
   askingPrice?: number
   notes?: string
@@ -58,6 +59,16 @@ export type MasterPlanAnalysis = {
   restrictions: string[]
   developmentPotential: string
   summary: string
+}
+
+export type SaleScenario = {
+  id: 'rapida' | 'moderada' | 'lenta'
+  label: string
+  description: string
+  timeframe: string
+  value: number
+  valuePerSqm: number
+  adjustmentPercent: number
 }
 
 export type NbrHomogenizationFactor = {

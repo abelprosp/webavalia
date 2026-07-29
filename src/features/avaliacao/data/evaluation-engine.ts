@@ -6,7 +6,56 @@ const buildingAgeValues = buildingAgeOptions.map((option) => option.value) as [
   ...(typeof buildingAgeOptions)[number]['value'][],
 ]
 
+export const listingIntentValues = ['alugar', 'vender'] as const
+export type ListingIntent = (typeof listingIntentValues)[number]
+
+export const LISTING_INTENT_OPTIONS: Array<{
+  value: ListingIntent
+  label: string
+  description: string
+}> = [
+  {
+    value: 'alugar',
+    label: 'Alugar',
+    description: 'Estimativa de aluguel mensal com base no mercado',
+  },
+  {
+    value: 'vender',
+    label: 'Vender',
+    description: 'Valor de venda estimado para o imóvel',
+  },
+]
+
+export function getListingIntentLabel(intent: ListingIntent) {
+  return LISTING_INTENT_OPTIONS.find((option) => option.value === intent)?.label ?? intent
+}
+
+const MONTHLY_YIELD_BY_STANDARD: Record<
+  'padrao' | 'alto-padrao' | 'luxo',
+  number
+> = {
+  padrao: 0.005,
+  'alto-padrao': 0.0045,
+  luxo: 0.004,
+}
+
+export function estimateMonthlyRent(
+  estimatedValue: number,
+  property: { area: number; standardLevel: 'padrao' | 'alto-padrao' | 'luxo' }
+) {
+  const monthlyYield =
+    MONTHLY_YIELD_BY_STANDARD[property.standardLevel] ?? 0.005
+  const monthlyRent = Math.round(estimatedValue * monthlyYield)
+  const rentPerSqm = Math.round(monthlyRent / property.area)
+  const annualYieldPercent = monthlyYield * 12 * 100
+
+  return { monthlyRent, rentPerSqm, annualYieldPercent, monthlyYield }
+}
+
 export const evaluationFormSchema = z.object({
+  listingIntent: z.enum(listingIntentValues, {
+    message: 'Selecione se deseja alugar ou vender',
+  }),
   cep: z.union([
     z.literal(''),
     z.string().regex(/^\d{5}-?\d{3}$/, 'Informe um CEP válido'),
@@ -53,6 +102,7 @@ export const evaluationFormSchema = z.object({
 export type EvaluationFormValues = z.infer<typeof evaluationFormSchema>
 
 export const DEFAULT_EVALUATION_FORM_VALUES: EvaluationFormValues = {
+  listingIntent: 'vender',
   cep: '',
   streetNumber: '',
   address: '',
@@ -96,6 +146,70 @@ export type MasterPlanAnalysis = {
   restrictions: string[]
   developmentPotential: string
   summary: string
+}
+
+export type SaleScenarioId = 'rapida' | 'moderada' | 'lenta'
+
+export type SaleScenario = {
+  id: SaleScenarioId
+  label: string
+  description: string
+  timeframe: string
+  value: number
+  valuePerSqm: number
+  adjustmentPercent: number
+}
+
+const SALE_SCENARIO_ADJUSTMENTS: Record<SaleScenarioId, number> = {
+  rapida: -0.1,
+  moderada: 0,
+  lenta: 0.08,
+}
+
+const SALE_SCENARIO_META: Record<
+  SaleScenarioId,
+  { label: string; description: string; timeframe: string }
+> = {
+  rapida: {
+    label: 'Venda rápida',
+    description: 'Preço mais agressivo para atrair compradores',
+    timeframe: '30–60 dias',
+  },
+  moderada: {
+    label: 'Venda moderada',
+    description: 'Valor alinhado ao mercado',
+    timeframe: '3–6 meses',
+  },
+  lenta: {
+    label: 'Venda lenta',
+    description: 'Preço otimista — exige mais tempo no mercado',
+    timeframe: '6+ meses',
+  },
+}
+
+export function computeSaleScenarios(
+  estimatedValue: number,
+  area: number
+): SaleScenario[] {
+  const safeArea = area > 0 ? area : 1
+
+  return (Object.keys(SALE_SCENARIO_ADJUSTMENTS) as SaleScenarioId[]).map(
+    (id) => {
+      const adjustmentPercent = SALE_SCENARIO_ADJUSTMENTS[id]
+      const value = Math.round(estimatedValue * (1 + adjustmentPercent))
+      const meta = SALE_SCENARIO_META[id]
+
+      return {
+        id,
+        label: meta.label,
+        description: meta.description,
+        timeframe: meta.timeframe,
+        value,
+        valuePerSqm: Math.round(value / safeArea),
+        adjustmentPercent: adjustmentPercent * 100,
+      }
+    }
+  )
 }
 
 export type NeighborhoodAnalysis = {
@@ -196,6 +310,7 @@ export type EvaluationResult = {
   floodRiskAnalysis?: FloodRiskAnalysis
   marketAppreciationAnalysis?: MarketAppreciationAnalysis
   nbr14653?: Nbr14653Analysis
+  saleScenarios?: SaleScenario[]
   photoPreviews: string[]
   photoCount: number
   evaluatedAt: Date
@@ -206,6 +321,13 @@ export type EvaluationResult = {
     floodResultsCount?: number
     appreciationResultsCount?: number
   }
+}
+
+export function getSaleScenarios(
+  result: Pick<EvaluationResult, 'estimatedValue' | 'saleScenarios'>,
+  area: number
+) {
+  return result.saleScenarios ?? computeSaleScenarios(result.estimatedValue, area)
 }
 
 export function formatCurrency(value: number) {

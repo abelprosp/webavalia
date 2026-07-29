@@ -1,4 +1,5 @@
 import type { EvaluationRequest } from '../types/evaluation.js'
+import { computeSaleScenarios } from '../utils/sale-scenarios.js'
 import { evaluateWithOpenAI } from './openai-evaluator.js'
 import { applyNbr14653ToEvaluation } from './nbr-14653-service.js'
 import {
@@ -38,8 +39,14 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
     marketResults.length
   )
 
+  const listingIntent = input.listingIntent ?? 'vender'
+
   return {
     ...withNbr,
+    saleScenarios:
+      listingIntent === 'vender'
+        ? computeSaleScenarios(withNbr.estimatedValue, input.area)
+        : undefined,
     evaluatedAt: new Date().toISOString(),
     photoCount: input.photos?.length ?? 0,
     sources: {

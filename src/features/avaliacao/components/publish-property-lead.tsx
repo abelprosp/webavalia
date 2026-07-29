@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Building2, CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, KeyRound, Loader2, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import { publishEvaluationAsLead } from '@/lib/evaluation-api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { getListingIntentLabel, type ListingIntent } from '@/features/avaliacao/data/evaluation-engine'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,6 +19,7 @@ import { Label } from '@/components/ui/label'
 
 type PublishPropertyLeadProps = {
   evaluationId: string
+  listingIntent: ListingIntent
 }
 
 function formatPhone(value: string) {
@@ -33,11 +36,13 @@ function formatPhone(value: string) {
 
 export function PublishPropertyLead({
   evaluationId,
+  listingIntent,
 }: PublishPropertyLeadProps) {
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [published, setPublished] = useState(false)
+  const updateCredits = useAuthStore((s) => s.auth.updateCredits)
 
   async function handlePublish() {
     const phoneDigits = phone.replace(/\D/g, '')
@@ -58,11 +63,20 @@ export function PublishPropertyLead({
         consent: true,
       })
       setPublished(true)
-      toast.success(
-        result.alreadyPublished
-          ? 'Este imóvel já está disponível para imobiliárias.'
-          : 'Imóvel disponibilizado para imobiliárias da região.'
-      )
+      if (result.credits != null) {
+        updateCredits(result.credits)
+      }
+      if (result.creditsEarned && result.creditsEarned > 0) {
+        toast.success(
+          `Imóvel disponibilizado! Você ganhou +${result.creditsEarned} créditos.`
+        )
+      } else {
+        toast.success(
+          result.alreadyPublished
+            ? 'Este imóvel já está disponível para imobiliárias.'
+            : 'Imóvel disponibilizado para imobiliárias da região.'
+        )
+      }
     } catch (error) {
       toast.error(
         getApiErrorMessage(error, 'Não foi possível disponibilizar o imóvel.')
@@ -72,16 +86,21 @@ export function PublishPropertyLead({
     }
   }
 
+  const intentLabel = getListingIntentLabel(listingIntent).toLowerCase()
+  const IntentIcon = listingIntent === 'alugar' ? KeyRound : Tag
+
   if (published) {
     return (
       <Card className='border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30'>
         <CardContent className='flex items-start gap-3 py-6'>
           <CheckCircle2 className='mt-0.5 size-5 shrink-0 text-emerald-600' />
           <div>
-            <p className='font-medium'>Imóvel disponível para imobiliárias</p>
+            <p className='font-medium'>
+              Imóvel disponível para imobiliárias ({intentLabel})
+            </p>
             <p className='mt-1 text-sm text-muted-foreground'>
-              Imobiliárias que atendem a região poderão encontrar este imóvel e
-              desbloquear seus dados para entrar em contato.
+              Imobiliárias que atendem a região poderão encontrar este imóvel,
+              desbloquear a avaliação completa e entrar em contato com você.
             </p>
           </div>
         </CardContent>
@@ -93,12 +112,13 @@ export function PublishPropertyLead({
     <Card className='border-primary/30'>
       <CardHeader>
         <CardTitle className='flex items-center gap-2'>
-          <Building2 className='size-5' />
-          Quer ajuda para vender este imóvel?
+          <IntentIcon className='size-5' />
+          Quer ajuda para {intentLabel} este imóvel?
         </CardTitle>
         <CardDescription>
-          Disponibilize a avaliação para imobiliárias que atuam na região. Elas
-          poderão demonstrar interesse e entrar em contato com você.
+          Disponibilize a avaliação completa para imobiliárias que atuam na
+          região. Elas poderão desbloquear todos os detalhes — comparáveis,
+          NBR 14653, aluguel ou valor de venda — e entrar em contato com você.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
@@ -123,9 +143,10 @@ export function PublishPropertyLead({
             htmlFor='owner-lead-consent'
             className='cursor-pointer text-sm leading-relaxed font-normal'
           >
-            Autorizo o compartilhamento do meu nome, telefone, e-mail e dados
-            desta avaliação com imobiliárias interessadas. Antes do
-            desbloqueio, somente a região e um resumo do imóvel serão exibidos.
+            Autorizo o compartilhamento do meu nome, telefone, e-mail e da
+            avaliação completa deste imóvel com imobiliárias interessadas.
+            Antes do desbloqueio, somente a região e um resumo do imóvel serão
+            exibidos.
           </Label>
         </div>
 
@@ -137,7 +158,7 @@ export function PublishPropertyLead({
           {publishing && <Loader2 className='size-4 animate-spin' />}
           {publishing
             ? 'Disponibilizando…'
-            : 'Disponibilizar para imobiliárias'}
+            : `Disponibilizar para ${intentLabel}`}
         </Button>
       </CardContent>
     </Card>

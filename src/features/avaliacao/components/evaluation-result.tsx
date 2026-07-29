@@ -11,8 +11,11 @@ import {
   MapPinned,
   Sparkles,
   Building2,
+  Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { useAuthStore } from '@/stores/auth-store'
 import { useCrmStore } from '@/stores/crm-store'
 import {
   CrmSavedToastAction,
@@ -26,8 +29,12 @@ import {
 } from '../data/criteria'
 import {
   formatCurrency,
+  estimateMonthlyRent,
+  getListingIntentLabel,
+  getSaleScenarios,
   type EvaluationFormValues,
   type EvaluationResult,
+  type SaleScenario,
 } from '../data/evaluation-engine'
 import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
 import { Nbr14653Panel } from './nbr-14653-panel'
@@ -129,6 +136,50 @@ function DotMatrix({ filled, total = 25 }: { filled: number; total?: number }) {
 
 const BAR_COLORS = ['bg-flux-lavender', 'bg-flux-dark', 'bg-flux-lime'] as const
 
+const SALE_SCENARIO_STYLES: Record<
+  SaleScenario['id'],
+  { badge: 'lime' | 'lavender' | 'dark'; ring: string }
+> = {
+  rapida: {
+    badge: 'lime',
+    ring: 'ring-flux-lime/40',
+  },
+  moderada: {
+    badge: 'lavender',
+    ring: 'ring-flux-lavender/50',
+  },
+  lenta: {
+    badge: 'dark',
+    ring: 'ring-flux-dark/15',
+  },
+}
+
+function SaleScenarioCard({ scenario }: { scenario: SaleScenario }) {
+  const styles = SALE_SCENARIO_STYLES[scenario.id]
+  const adjustmentLabel =
+    scenario.adjustmentPercent === 0
+      ? 'Valor de mercado'
+      : `${scenario.adjustmentPercent > 0 ? '+' : ''}${scenario.adjustmentPercent}% vs. estimado`
+
+  return (
+    <div
+      className={`flex flex-col rounded-2xl border border-black/[0.04] bg-muted/25 p-4 ring-1 ${styles.ring}`}
+    >
+      <div className='mb-3 flex items-start justify-between gap-2'>
+        <div>
+          <p className='text-[13px] font-semibold tracking-tight'>{scenario.label}</p>
+          <p className='mt-0.5 text-[11px] text-muted-foreground'>{scenario.description}</p>
+        </div>
+        <FluxBadge variant={styles.badge}>{scenario.timeframe}</FluxBadge>
+      </div>
+      <p className='text-xl font-bold tracking-tight'>{formatCurrency(scenario.value)}</p>
+      <p className='mt-1 text-[11px] text-muted-foreground'>
+        {formatCurrency(scenario.valuePerSqm)}/m² · {adjustmentLabel}
+      </p>
+    </div>
+  )
+}
+
 function HeroCriteriaBars({
   criteria,
 }: {
@@ -218,9 +269,18 @@ export function EvaluationResultPanel({
 }: EvaluationResultPanelProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+  const authUser = useAuthStore((s) => s.auth.user)
+  const isBroker = isBrokerAccount(authUser)
   const saveEvaluation = useCrmStore((s) => s.saveEvaluation)
   const { marketAnalysis, masterPlanAnalysis } = result
   const propertyHighlights = getPropertyHighlights(property)
+  const isRentalView = (property.listingIntent ?? 'vender') === 'alugar'
+  const rentalEstimate = isRentalView
+    ? estimateMonthlyRent(result.estimatedValue, property)
+    : null
+  const saleScenarios = !isRentalView
+    ? getSaleScenarios(result, property.area)
+    : null
 
   const locationScore = getCriterionScore(result, 'location')
   const conditionScore = getCriterionScore(result, 'condition')
@@ -246,9 +306,14 @@ export function EvaluationResultPanel({
     status: 'novo' | 'em_negociacao' | 'proposta' | 'fechado' | 'arquivado'
   }) {
     saveEvaluation({ property, result, ...data })
-    toast.success('Avaliação salva no CRM!', {
-      action: <CrmSavedToastAction />,
-    })
+    toast.success(
+      isBroker
+        ? 'Avaliação salva no CRM!'
+        : 'Avaliação salva em minhas avaliações!',
+      {
+        action: <CrmSavedToastAction mode={isBroker ? 'broker' : 'personal'} />,
+      }
+    )
   }
 
   return (
@@ -264,12 +329,13 @@ export function EvaluationResultPanel({
               </span>
             </div>
             <h2 className='text-[1.65rem] font-bold tracking-tight'>
-              Visão da avaliação
+              {isRentalView ? 'Avaliação de aluguel' : 'Visão da avaliação'}
             </h2>
             <p className='mt-0.5 max-w-lg text-sm text-muted-foreground'>
               {property.address}
             </p>
             <p className='text-xs text-muted-foreground/70'>
+              Objetivo: {getListingIntentLabel(property.listingIntent ?? 'vender')} ·{' '}
               {result.evaluatedAt.toLocaleString('pt-BR', {
                 dateStyle: 'long',
                 timeStyle: 'short',
@@ -284,7 +350,7 @@ export function EvaluationResultPanel({
               onClick={() => setSaveDialogOpen(true)}
             >
               <BookmarkPlus className='size-3.5' />
-              Salvar no CRM
+              {isBroker ? 'Salvar no CRM' : 'Salvar em minhas avaliações'}
             </Button>
             <Button
               variant='outline'
@@ -307,18 +373,43 @@ export function EvaluationResultPanel({
         {/* Row 1 — Hero + métricas */}
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           <BentoCard
-            title='Valor estimado'
-            subtitle='Determinação de mercado · NBR 14653'
+            title={isRentalView ? 'Aluguel estimado' : 'Valor estimado'}
+            subtitle={
+              isRentalView
+                ? 'Locação mensal · com base no valor de mercado'
+                : 'Determinação de mercado · NBR 14653'
+            }
             className='min-h-[420px] sm:col-span-2 lg:col-span-1 lg:row-span-2'
           >
             <div className='flex items-start justify-between gap-2'>
               <div>
-                <p className='text-[2rem] font-bold leading-none tracking-tight'>
-                  {formatCurrency(result.estimatedValue)}
-                </p>
-                <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
-                  {formatCurrency(result.valuePerSqm)}/m²
-                </p>
+                {isRentalView && rentalEstimate ? (
+                  <>
+                    <p className='text-[2rem] font-bold leading-none tracking-tight'>
+                      {formatCurrency(rentalEstimate.monthlyRent)}
+                      <span className='text-lg font-semibold text-muted-foreground'>
+                        /mês
+                      </span>
+                    </p>
+                    <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
+                      {formatCurrency(rentalEstimate.rentPerSqm)}/m² · aluguel
+                    </p>
+                    <p className='mt-1 text-xs text-muted-foreground/80'>
+                      Valor de venda de referência:{' '}
+                      {formatCurrency(result.estimatedValue)} (
+                      {rentalEstimate.annualYieldPercent.toFixed(1)}% a.a.)
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className='text-[2rem] font-bold leading-none tracking-tight'>
+                      {formatCurrency(result.estimatedValue)}
+                    </p>
+                    <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
+                      {formatCurrency(result.valuePerSqm)}/m²
+                    </p>
+                  </>
+                )}
               </div>
               {growthPct != null && (
                 <FluxBadge>+{growthPct}%</FluxBadge>
@@ -326,7 +417,11 @@ export function EvaluationResultPanel({
             </div>
 
             <ValueBreakdownCircles
-              total={result.estimatedValue}
+              total={
+                isRentalView && rentalEstimate
+                  ? rentalEstimate.monthlyRent
+                  : result.estimatedValue
+              }
               location={locationScore}
               construction={conditionScore}
               market={marketScore}
@@ -453,6 +548,27 @@ export function EvaluationResultPanel({
             </BentoCard>
           )}
         </div>
+
+        {!isRentalView && saleScenarios && (
+          <BentoCard
+            title='Cenários de venda'
+            subtitle='Faixas de preço conforme tempo esperado para vender'
+            className='col-span-full'
+          >
+            <div className='mb-3 flex items-center gap-2 text-[11px] text-muted-foreground'>
+              <Clock className='size-3.5 shrink-0' />
+              <span>
+                Baseado no valor estimado de {formatCurrency(result.estimatedValue)} ·
+                ajustes de −10% (rápida), mercado (moderada) e +8% (lenta)
+              </span>
+            </div>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+              {saleScenarios.map((scenario) => (
+                <SaleScenarioCard key={scenario.id} scenario={scenario} />
+              ))}
+            </div>
+          </BentoCard>
+        )}
 
         {/* Row 2 — Bairro dark + critérios + comparáveis + insights */}
         <div className='grid grid-cols-1 gap-4 lg:grid-cols-4'>
@@ -720,6 +836,7 @@ export function EvaluationResultPanel({
         onOpenChange={setSaveDialogOpen}
         property={property}
         result={result}
+        mode={isBroker ? 'broker' : 'personal'}
         onSave={handleSaveToCrm}
       />
     </>

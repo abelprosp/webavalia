@@ -33,11 +33,12 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedMinhasAvaliacoesIndexRouteImport } from './routes/_authenticated/minhas-avaliacoes/index'
+import { Route as AuthenticatedMapaDeMercadoIndexRouteImport } from './routes/_authenticated/mapa-de-mercado/index'
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
-import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticated/crm/index'
 import { Route as AuthenticatedFoxAiIndexRouteImport } from './routes/_authenticated/fox-ai/index'
-import { Route as AuthenticatedFoxAiChatRouteImport } from './routes/_authenticated/fox-ai/chat'
+import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticated/crm/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAvaliacaoIndexRouteImport } from './routes/_authenticated/avaliacao/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
@@ -50,6 +51,7 @@ import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsCreditsRouteImport } from './routes/_authenticated/settings/credits'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
+import { Route as AuthenticatedFoxAiChatRouteImport } from './routes/_authenticated/fox-ai/chat'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
@@ -175,6 +177,18 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedMinhasAvaliacoesIndexRoute =
+  AuthenticatedMinhasAvaliacoesIndexRouteImport.update({
+    id: '/minhas-avaliacoes/',
+    path: '/minhas-avaliacoes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMapaDeMercadoIndexRoute =
+  AuthenticatedMapaDeMercadoIndexRouteImport.update({
+    id: '/mapa-de-mercado/',
+    path: '/mapa-de-mercado/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeadsIndexRoute = AuthenticatedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -186,19 +200,14 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedCrmIndexRoute = AuthenticatedCrmIndexRouteImport.update({
-  id: '/crm/',
-  path: '/crm/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedFoxAiIndexRoute = AuthenticatedFoxAiIndexRouteImport.update({
   id: '/fox-ai/',
   path: '/fox-ai/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFoxAiChatRoute = AuthenticatedFoxAiChatRouteImport.update({
-  id: '/fox-ai/chat',
-  path: '/fox-ai/chat',
+const AuthenticatedCrmIndexRoute = AuthenticatedCrmIndexRouteImport.update({
+  id: '/crm/',
+  path: '/crm/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
@@ -268,6 +277,11 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedFoxAiChatRoute = AuthenticatedFoxAiChatRouteImport.update({
+  id: '/fox-ai/chat',
+  path: '/fox-ai/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
@@ -320,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/credits': typeof AuthenticatedSettingsCreditsRoute
@@ -332,11 +347,12 @@ export interface FileRoutesByFullPath {
   '/apps/': typeof AuthenticatedAppsIndexRoute
   '/avaliacao/': typeof AuthenticatedAvaliacaoIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
-  '/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
-  '/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/crm/': typeof AuthenticatedCrmIndexRoute
+  '/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
+  '/mapa-de-mercado/': typeof AuthenticatedMapaDeMercadoIndexRoute
+  '/minhas-avaliacoes/': typeof AuthenticatedMinhasAvaliacoesIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
@@ -362,6 +378,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/credits': typeof AuthenticatedSettingsCreditsRoute
@@ -374,11 +391,12 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/avaliacao': typeof AuthenticatedAvaliacaoIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
-  '/fox-ai': typeof AuthenticatedFoxAiIndexRoute
-  '/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/crm': typeof AuthenticatedCrmIndexRoute
+  '/fox-ai': typeof AuthenticatedFoxAiIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
+  '/mapa-de-mercado': typeof AuthenticatedMapaDeMercadoIndexRoute
+  '/minhas-avaliacoes': typeof AuthenticatedMinhasAvaliacoesIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
@@ -411,6 +429,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/credits': typeof AuthenticatedSettingsCreditsRoute
@@ -423,11 +442,12 @@ export interface FileRoutesById {
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/avaliacao/': typeof AuthenticatedAvaliacaoIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
-  '/_authenticated/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
-  '/_authenticated/fox-ai/chat': typeof AuthenticatedFoxAiChatRoute
   '/_authenticated/crm/': typeof AuthenticatedCrmIndexRoute
+  '/_authenticated/fox-ai/': typeof AuthenticatedFoxAiIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
+  '/_authenticated/mapa-de-mercado/': typeof AuthenticatedMapaDeMercadoIndexRoute
+  '/_authenticated/minhas-avaliacoes/': typeof AuthenticatedMinhasAvaliacoesIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
@@ -458,6 +478,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/errors/$error'
+    | '/fox-ai/chat'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/credits'
@@ -470,11 +491,12 @@ export interface FileRouteTypes {
     | '/apps/'
     | '/avaliacao/'
     | '/chats/'
-    | '/fox-ai/'
-    | '/fox-ai/chat'
     | '/crm/'
+    | '/fox-ai/'
     | '/help-center/'
     | '/leads/'
+    | '/mapa-de-mercado/'
+    | '/minhas-avaliacoes/'
     | '/settings/'
     | '/tasks/'
     | '/users/'
@@ -500,6 +522,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/errors/$error'
+    | '/fox-ai/chat'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/credits'
@@ -512,11 +535,12 @@ export interface FileRouteTypes {
     | '/apps'
     | '/avaliacao'
     | '/chats'
-    | '/fox-ai'
-    | '/fox-ai/chat'
     | '/crm'
+    | '/fox-ai'
     | '/help-center'
     | '/leads'
+    | '/mapa-de-mercado'
+    | '/minhas-avaliacoes'
     | '/settings'
     | '/tasks'
     | '/users'
@@ -548,6 +572,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/fox-ai/chat'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/credits'
@@ -560,11 +585,12 @@ export interface FileRouteTypes {
     | '/_authenticated/apps/'
     | '/_authenticated/avaliacao/'
     | '/_authenticated/chats/'
-    | '/_authenticated/fox-ai/'
-    | '/_authenticated/fox-ai/chat'
     | '/_authenticated/crm/'
+    | '/_authenticated/fox-ai/'
     | '/_authenticated/help-center/'
     | '/_authenticated/leads/'
+    | '/_authenticated/mapa-de-mercado/'
+    | '/_authenticated/minhas-avaliacoes/'
     | '/_authenticated/settings/'
     | '/_authenticated/tasks/'
     | '/_authenticated/users/'
@@ -757,6 +783,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/minhas-avaliacoes/': {
+      id: '/_authenticated/minhas-avaliacoes/'
+      path: '/minhas-avaliacoes'
+      fullPath: '/minhas-avaliacoes/'
+      preLoaderRoute: typeof AuthenticatedMinhasAvaliacoesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mapa-de-mercado/': {
+      id: '/_authenticated/mapa-de-mercado/'
+      path: '/mapa-de-mercado'
+      fullPath: '/mapa-de-mercado/'
+      preLoaderRoute: typeof AuthenticatedMapaDeMercadoIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leads/': {
       id: '/_authenticated/leads/'
       path: '/leads'
@@ -771,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fox-ai/': {
+      id: '/_authenticated/fox-ai/'
+      path: '/fox-ai'
+      fullPath: '/fox-ai/'
+      preLoaderRoute: typeof AuthenticatedFoxAiIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/crm/': {
       id: '/_authenticated/crm/'
       path: '/crm'
@@ -783,20 +830,6 @@ declare module '@tanstack/react-router' {
       path: '/chats'
       fullPath: '/chats/'
       preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/fox-ai/': {
-      id: '/_authenticated/fox-ai/'
-      path: '/fox-ai'
-      fullPath: '/fox-ai/'
-      preLoaderRoute: typeof AuthenticatedFoxAiIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/fox-ai/chat': {
-      id: '/_authenticated/fox-ai/chat'
-      path: '/fox-ai/chat'
-      fullPath: '/fox-ai/chat'
-      preLoaderRoute: typeof AuthenticatedFoxAiChatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/avaliacao/': {
@@ -875,6 +908,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/account'
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/fox-ai/chat': {
+      id: '/_authenticated/fox-ai/chat'
+      path: '/fox-ai/chat'
+      fullPath: '/fox-ai/chat'
+      preLoaderRoute: typeof AuthenticatedFoxAiChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
@@ -966,14 +1006,16 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedFoxAiChatRoute: typeof AuthenticatedFoxAiChatRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedAvaliacaoIndexRoute: typeof AuthenticatedAvaliacaoIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
-  AuthenticatedFoxAiIndexRoute: typeof AuthenticatedFoxAiIndexRoute
-  AuthenticatedFoxAiChatRoute: typeof AuthenticatedFoxAiChatRoute
   AuthenticatedCrmIndexRoute: typeof AuthenticatedCrmIndexRoute
+  AuthenticatedFoxAiIndexRoute: typeof AuthenticatedFoxAiIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
+  AuthenticatedMapaDeMercadoIndexRoute: typeof AuthenticatedMapaDeMercadoIndexRoute
+  AuthenticatedMinhasAvaliacoesIndexRoute: typeof AuthenticatedMinhasAvaliacoesIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
@@ -983,14 +1025,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedFoxAiChatRoute: AuthenticatedFoxAiChatRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedAvaliacaoIndexRoute: AuthenticatedAvaliacaoIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
-  AuthenticatedFoxAiIndexRoute: AuthenticatedFoxAiIndexRoute,
-  AuthenticatedFoxAiChatRoute: AuthenticatedFoxAiChatRoute,
   AuthenticatedCrmIndexRoute: AuthenticatedCrmIndexRoute,
+  AuthenticatedFoxAiIndexRoute: AuthenticatedFoxAiIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedLeadsIndexRoute: AuthenticatedLeadsIndexRoute,
+  AuthenticatedMapaDeMercadoIndexRoute: AuthenticatedMapaDeMercadoIndexRoute,
+  AuthenticatedMinhasAvaliacoesIndexRoute:
+    AuthenticatedMinhasAvaliacoesIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }

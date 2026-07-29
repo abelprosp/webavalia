@@ -31,7 +31,6 @@ import {
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
 import {
   fetchLeads,
   updateLeadStatus,
@@ -136,8 +135,8 @@ export function Leads() {
         <div>
           <h2 className='text-2xl font-bold tracking-tight'>Leads</h2>
           <p className='text-muted-foreground'>
-            Proprietários interessados em vender e contatos recebidos pela
-            Avalia.
+            Proprietários interessados em alugar ou vender e contatos recebidos
+            pela Avalia.
           </p>
         </div>
 
@@ -219,7 +218,7 @@ export function Leads() {
                     <TableHead>Lead</TableHead>
                     <TableHead>Local</TableHead>
                     <TableHead>Interesse</TableHead>
-                    <TableHead>Valor est.</TableHead>
+                    <TableHead>Valor / aluguel</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className='text-right'>Ações</TableHead>
                   </TableRow>
@@ -246,9 +245,7 @@ export function Leads() {
                         <Badge variant='outline'>{lead.interest}</Badge>
                       </TableCell>
                       <TableCell>
-                        {lead.estimatedValue != null
-                          ? formatCurrency(lead.estimatedValue)
-                          : '—'}
+                        {lead.displayValue ?? '—'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(lead.status)}>

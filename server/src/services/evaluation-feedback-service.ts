@@ -1,6 +1,10 @@
 import { pool } from '../db/pool.js'
+import {
+  formatLeadBudget,
+  getLeadInterestLabel,
+  getListingIntentFromInput,
+} from '../utils/rent-estimate.js'
 import { getSetting } from './settings-service.js'
-import { config } from '../config.js'
 import { createLead } from './lead-service.js'
 
 type StoredPropertyInput = Record<string, unknown>
@@ -121,14 +125,15 @@ export async function publishEvaluationAsLead(input: {
     throw new Error('Esta opção está disponível apenas para proprietários.')
   }
 
+  const listingIntent = getListingIntentFromInput(evaluation.property_input)
   const estimatedValue = evaluation.evaluation_result.estimatedValue
   const budget =
     typeof estimatedValue === 'number'
-      ? estimatedValue.toLocaleString('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          maximumFractionDigits: 0,
-        })
+      ? formatLeadBudget(
+          listingIntent,
+          estimatedValue,
+          evaluation.property_input
+        )
       : undefined
 
   return createLead({
@@ -140,7 +145,7 @@ export async function publishEvaluationAsLead(input: {
       typeof evaluation.property_input.propertyType === 'string'
         ? evaluation.property_input.propertyType
         : undefined,
-    interest: 'Proprietário interessado em vender',
+    interest: getLeadInterestLabel(listingIntent),
     budget,
     location: getPublicLocation(evaluation.property_input),
     source: 'owner_evaluation',

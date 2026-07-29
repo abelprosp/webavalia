@@ -1,4 +1,8 @@
 import { pool } from '../db/pool.js'
+import {
+  formatLeadBudget,
+  getListingIntentFromInput,
+} from '../utils/rent-estimate.js'
 
 export const LEAD_UNLOCK_COST = 1
 
@@ -34,9 +38,15 @@ function mapLeadForUser(
   unlocked: boolean
 ) {
   const evaluationResult = row.evaluation_result ?? null
+  const propertyInput = row.property_input ?? null
   const estimatedValue =
     typeof evaluationResult?.estimatedValue === 'number'
       ? evaluationResult.estimatedValue
+      : null
+  const listingIntent = getListingIntentFromInput(propertyInput)
+  const displayValue =
+    estimatedValue != null
+      ? formatLeadBudget(listingIntent, estimatedValue, propertyInput)
       : null
 
   return {
@@ -59,7 +69,9 @@ function mapLeadForUser(
         : 'desbloqueado'
       : 'novo',
     unlocked,
+    listingIntent,
     estimatedValue,
+    displayValue,
     hasEvaluation: Boolean(row.evaluation_result),
     propertyInput: unlocked ? row.property_input : null,
     evaluationResult: unlocked ? row.evaluation_result : null,

@@ -17,9 +17,9 @@ import {
   Newspaper,
   Sparkles,
   MessageSquare,
+  Map,
 } from 'lucide-react'
-import { isAdmin, isBrokerAccount } from '@/lib/auth-api'
-import type { AuthUser } from '@/lib/auth-api'
+import { isAdmin, isBrokerAccount, type AuthUser } from '@/lib/auth-api'
 import { type NavGroup, type NavItem, type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -74,6 +74,11 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
   if (broker) {
     platformItems.push(
       {
+        title: 'Mapa de Mercado',
+        url: '/mapa-de-mercado',
+        icon: Map,
+      },
+      {
         title: 'Leads',
         url: '/leads',
         icon: Users,
@@ -85,6 +90,12 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
         icon: Contact,
       }
     )
+  } else {
+    platformItems.push({
+      title: 'Minhas avaliações',
+      url: '/minhas-avaliacoes',
+      icon: Contact,
+    })
   }
 
   const groups = [

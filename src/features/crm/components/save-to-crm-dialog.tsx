@@ -31,6 +31,7 @@ type SaveToCrmDialogProps = {
   onOpenChange: (open: boolean) => void
   property: EvaluationFormValues
   result: EvaluationResult
+  mode?: 'broker' | 'personal'
   onSave: (data: {
     clientName?: string
     notes?: string
@@ -43,8 +44,10 @@ export function SaveToCrmDialog({
   onOpenChange,
   property,
   result,
+  mode = 'broker',
   onSave,
 }: SaveToCrmDialogProps) {
+  const isPersonal = mode === 'personal'
   const [clientName, setClientName] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] =
@@ -52,9 +55,9 @@ export function SaveToCrmDialog({
 
   function handleSave() {
     onSave({
-      clientName: clientName || undefined,
+      clientName: isPersonal ? undefined : clientName || undefined,
       notes: notes || undefined,
-      status,
+      status: isPersonal ? 'novo' : status,
     })
     setClientName('')
     setNotes('')
@@ -68,10 +71,12 @@ export function SaveToCrmDialog({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <BookmarkPlus className='size-5 text-primary' />
-            Salvar no CRM
+            {isPersonal ? 'Salvar em minhas avaliações' : 'Salvar no CRM'}
           </DialogTitle>
           <DialogDescription>
-            Guarde esta avaliação para acompanhar o negócio com o cliente.
+            {isPersonal
+              ? 'Guarde esta avaliação para consultar depois.'
+              : 'Guarde esta avaliação para acompanhar o negócio com o cliente.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -88,42 +93,50 @@ export function SaveToCrmDialog({
             </p>
           </div>
 
-          <div className='space-y-2'>
-            <Label htmlFor='crm-client'>Nome do cliente (opcional)</Label>
-            <Input
-              id='crm-client'
-              placeholder='Ex.: Maria Silva'
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-            />
-          </div>
+          {!isPersonal && (
+            <>
+              <div className='space-y-2'>
+                <Label htmlFor='crm-client'>Nome do cliente (opcional)</Label>
+                <Input
+                  id='crm-client'
+                  placeholder='Ex.: Maria Silva'
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                />
+              </div>
 
-          <div className='space-y-2'>
-            <Label htmlFor='crm-status'>Status</Label>
-            <Select
-              value={status}
-              onValueChange={(v) =>
-                setStatus(v as (typeof crmStatuses)[number]['value'])
-              }
-            >
-              <SelectTrigger id='crm-status'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {crmStatuses.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className='space-y-2'>
+                <Label htmlFor='crm-status'>Status</Label>
+                <Select
+                  value={status}
+                  onValueChange={(v) =>
+                    setStatus(v as (typeof crmStatuses)[number]['value'])
+                  }
+                >
+                  <SelectTrigger id='crm-status'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {crmStatuses.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div className='space-y-2'>
             <Label htmlFor='crm-notes'>Observações (opcional)</Label>
             <Textarea
               id='crm-notes'
-              placeholder='Anotações sobre o cliente ou próximos passos...'
+              placeholder={
+                isPersonal
+                  ? 'Anotações sobre o imóvel ou a avaliação...'
+                  : 'Anotações sobre o cliente ou próximos passos...'
+              }
               className='min-h-20'
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -142,10 +155,16 @@ export function SaveToCrmDialog({
   )
 }
 
-export function CrmSavedToastAction() {
+export function CrmSavedToastAction({
+  mode = 'broker',
+}: {
+  mode?: 'broker' | 'personal'
+}) {
   return (
     <Button variant='outline' size='sm' asChild>
-      <Link to='/crm'>Ver no CRM</Link>
+      <Link to={mode === 'personal' ? '/minhas-avaliacoes' : '/crm'}>
+        {mode === 'personal' ? 'Ver minhas avaliações' : 'Ver no CRM'}
+      </Link>
     </Button>
   )
 }

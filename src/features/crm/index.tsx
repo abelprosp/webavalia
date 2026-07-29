@@ -54,7 +54,7 @@ function statusVariant(
   }
 }
 
-export function Crm() {
+export function Crm({ personalMode = false }: { personalMode?: boolean }) {
   const evaluations = useCrmStore((s) => s.evaluations)
   const [selected, setSelected] = useState<CrmEvaluation | null>(null)
 
@@ -84,9 +84,13 @@ export function Crm() {
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
         <div className='flex flex-wrap items-end justify-between gap-4'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>CRM</h2>
+            <h2 className='text-2xl font-bold tracking-tight'>
+              {personalMode ? 'Minhas avaliações' : 'CRM'}
+            </h2>
             <p className='text-muted-foreground'>
-              Avaliações salvas para acompanhar clientes e negociações.
+              {personalMode
+                ? 'Avaliações de imóveis que você salvou para consultar depois.'
+                : 'Avaliações salvas para acompanhar clientes e negociações.'}
             </p>
           </div>
           <Button asChild>
@@ -97,50 +101,61 @@ export function Crm() {
           </Button>
         </div>
 
-        <div className='grid gap-4 sm:grid-cols-4'>
+        <div
+          className={`grid gap-4 ${personalMode ? 'sm:grid-cols-1' : 'sm:grid-cols-4'}`}
+        >
           <Card>
             <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>Total salvas</CardTitle>
+              <CardTitle className='text-sm font-medium'>
+                {personalMode ? 'Total salvas' : 'Total salvas'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className='text-2xl font-bold'>{stats.total}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>Novas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{stats.novo}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>Em negociação</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{stats.emNegociacao}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>Fechadas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{stats.fechado}</div>
-            </CardContent>
-          </Card>
+          {!personalMode && (
+            <>
+              <Card>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-sm font-medium'>Novas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold'>{stats.novo}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-sm font-medium'>
+                    Em negociação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold'>{stats.emNegociacao}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-sm font-medium'>Fechadas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold'>{stats.fechado}</div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Bookmark className='size-5' />
-              Avaliações no CRM
+              {personalMode ? 'Avaliações salvas' : 'Avaliações no CRM'}
             </CardTitle>
             <CardDescription>
-              Clique em uma avaliação para ver detalhes, editar status ou
-              exportar PDF.
+              {personalMode
+                ? 'Clique em uma avaliação para ver detalhes ou exportar PDF.'
+                : 'Clique em uma avaliação para ver detalhes, editar status ou exportar PDF.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -150,8 +165,9 @@ export function Crm() {
                 <div>
                   <p className='font-medium'>Nenhuma avaliação salva</p>
                   <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-                    Após avaliar um imóvel, use &quot;Salvar no CRM&quot; para
-                    guardar o resultado aqui.
+                    {personalMode
+                      ? 'Após avaliar um imóvel, use "Salvar em minhas avaliações" para guardar o resultado aqui.'
+                      : 'Após avaliar um imóvel, use "Salvar no CRM" para guardar o resultado aqui.'}
                   </p>
                 </div>
                 <Button variant='outline' asChild>
@@ -166,11 +182,11 @@ export function Crm() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Imóvel</TableHead>
-                    <TableHead>Cliente</TableHead>
+                    {!personalMode && <TableHead>Cliente</TableHead>}
                     <TableHead>Tipo</TableHead>
                     <TableHead>Valor estimado</TableHead>
                     <TableHead>Score</TableHead>
-                    <TableHead>Status</TableHead>
+                    {!personalMode && <TableHead>Status</TableHead>}
                     <TableHead>Salva em</TableHead>
                     <TableHead className='text-end'>Ação</TableHead>
                   </TableRow>
@@ -189,11 +205,13 @@ export function Crm() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {evaluation.clientName ?? (
-                          <span className='text-muted-foreground'>—</span>
-                        )}
-                      </TableCell>
+                      {!personalMode && (
+                        <TableCell>
+                          {evaluation.clientName ?? (
+                            <span className='text-muted-foreground'>—</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         {getPropertyTypeLabel(evaluation.property.propertyType)}
                       </TableCell>
@@ -201,11 +219,13 @@ export function Crm() {
                         {formatCurrency(evaluation.result.estimatedValue)}
                       </TableCell>
                       <TableCell>{evaluation.result.score}/100</TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant(evaluation.status)}>
-                          {getCrmStatusLabel(evaluation.status)}
-                        </Badge>
-                      </TableCell>
+                      {!personalMode && (
+                        <TableCell>
+                          <Badge variant={statusVariant(evaluation.status)}>
+                            {getCrmStatusLabel(evaluation.status)}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell className='text-sm text-muted-foreground'>
                         {new Date(evaluation.savedAt).toLocaleDateString(
                           'pt-BR'
@@ -234,6 +254,7 @@ export function Crm() {
         evaluation={selected}
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
+        personalMode={personalMode}
       />
     </>
   )

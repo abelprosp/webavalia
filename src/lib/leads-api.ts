@@ -1,5 +1,7 @@
 import { api } from './api'
 
+export type LeadListingIntent = 'alugar' | 'vender'
+
 export type LeadItem = {
   id: string
   name: string
@@ -13,7 +15,9 @@ export type LeadItem = {
   receivedAt: string
   status: 'novo' | 'desbloqueado' | 'contatado'
   unlocked: boolean
+  listingIntent: LeadListingIntent
   estimatedValue: number | null
+  displayValue: string | null
   hasEvaluation: boolean
   propertyInput: Record<string, unknown> | null
   evaluationResult: Record<string, unknown> | null

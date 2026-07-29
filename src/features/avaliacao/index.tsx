@@ -74,6 +74,7 @@ import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
 import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
 import { PublishPropertyLead } from './components/publish-property-lead'
+import { ListingIntentSelector } from './components/listing-intent-selector'
 import {
   PhotoUpload,
   type EvaluationPhoto,
@@ -221,7 +222,7 @@ export function Avaliacao() {
   }
 
   async function onSubmit(values: EvaluationFormValues) {
-    if (credits <= 0) {
+    if (isBroker && credits <= 0) {
       toast.error(
         'Você não tem créditos suficientes. Compre créditos em Configurações → Créditos.'
       )
@@ -242,6 +243,7 @@ export function Avaliacao() {
         feedbackModeEnabled: modeEnabled,
         trialEvaluationsRemaining,
         credits: responseCredits,
+        pfCreditsEarned,
         gamification,
       } = await analyzeProperty(values, photos)
       setResult(evaluation)
@@ -251,6 +253,11 @@ export function Avaliacao() {
       updateCredits(responseCredits ?? trialEvaluationsRemaining)
       recordEvaluation()
       showGamificationUpdates(gamification)
+      if (pfCreditsEarned && pfCreditsEarned > 0) {
+        toast.success(
+          `Você ganhou +${pfCreditsEarned} crédito${pfCreditsEarned === 1 ? '' : 's'} por avaliar seu imóvel!`
+        )
+      }
       if (userId) {
         clearDraft(userId)
         setShowDraftBanner(false)
@@ -291,15 +298,28 @@ export function Avaliacao() {
             {credits != null && (
               <>
                 {' '}
-                Você tem{' '}
-                <strong>
-                  {credits} crédito{credits === 1 ? '' : 's'}
-                </strong>{' '}
-                disponível{credits === 1 ? '' : 'eis'}.
+                {isBroker ? (
+                  <>
+                    Você tem{' '}
+                    <strong>
+                      {credits} crédito{credits === 1 ? '' : 's'}
+                    </strong>{' '}
+                    disponível{credits === 1 ? '' : 'eis'}.
+                  </>
+                ) : (
+                  <>
+                    Você tem{' '}
+                    <strong>
+                      {credits} crédito{credits === 1 ? '' : 's'}
+                    </strong>
+                    . Avalie imóveis e disponibilize para venda ou aluguel para
+                    ganhar mais.
+                  </>
+                )}
               </>
             )}
           </p>
-          {credits === 0 && (
+          {isBroker && credits === 0 && (
             <p className='mt-2 text-sm text-destructive'>
               Você não tem créditos. Compre em Configurações → Créditos para
               continuar avaliando.
@@ -318,6 +338,8 @@ export function Avaliacao() {
           <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              <ListingIntentSelector control={form.control} />
+
               <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
@@ -939,7 +961,7 @@ export function Avaliacao() {
                 type='submit'
                 size='lg'
                 className='w-full rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                disabled={isEvaluating || credits === 0}
+                disabled={isEvaluating || (isBroker && credits === 0)}
               >
                 {isEvaluating ? (
                   <>
@@ -987,6 +1009,7 @@ export function Avaliacao() {
                 <PublishPropertyLead
                   key={evaluationId}
                   evaluationId={evaluationId}
+                  listingIntent={evaluatedProperty.listingIntent}
                 />
               )}
               {feedbackModeEnabled && evaluationId && !feedbackSubmitted && (

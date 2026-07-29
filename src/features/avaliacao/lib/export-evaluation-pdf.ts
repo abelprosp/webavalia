@@ -12,7 +12,10 @@ import {
   propertyTypes,
 } from '../data/criteria'
 import {
+  estimateMonthlyRent,
   formatCurrency,
+  getListingIntentLabel,
+  getSaleScenarios,
   type EvaluationFormValues,
   type EvaluationResult,
 } from '../data/evaluation-engine'
@@ -198,17 +201,55 @@ export async function exportEvaluationPdf({
   }
 
   y = addSectionTitle(doc, 'Resultado da avaliação', y)
-  y = addParagraph(
-    doc,
-    `Valor estimado: ${formatCurrency(result.estimatedValue)}`,
-    y,
-    { bold: true, fontSize: 12 }
-  )
-  y = addParagraph(
-    doc,
-    `${formatCurrency(result.valuePerSqm)}/m² · Score: ${result.score}/100 (${result.scoreLabel})`,
-    y
-  )
+  const listingIntent = property.listingIntent ?? 'vender'
+  y = addParagraph(doc, `Objetivo: ${getListingIntentLabel(listingIntent)}`, y)
+
+  if (listingIntent === 'alugar') {
+    const rental = estimateMonthlyRent(result.estimatedValue, property)
+    y = addParagraph(
+      doc,
+      `Aluguel estimado: ${formatCurrency(rental.monthlyRent)}/mês`,
+      y,
+      { bold: true, fontSize: 12 }
+    )
+    y = addParagraph(
+      doc,
+      `${formatCurrency(rental.rentPerSqm)}/m² · Valor de venda de referência: ${formatCurrency(result.estimatedValue)} · Score: ${result.score}/100 (${result.scoreLabel})`,
+      y
+    )
+  } else {
+    y = addParagraph(
+      doc,
+      `Valor estimado: ${formatCurrency(result.estimatedValue)}`,
+      y,
+      { bold: true, fontSize: 12 }
+    )
+    y = addParagraph(
+      doc,
+      `${formatCurrency(result.valuePerSqm)}/m² · Score: ${result.score}/100 (${result.scoreLabel})`,
+      y
+    )
+
+    const saleScenarios = getSaleScenarios(result, property.area)
+    y = addSectionTitle(doc, 'Cenários de venda', y)
+    y = addParagraph(
+      doc,
+      'Faixas de preço conforme o tempo esperado para vender, com base no valor estimado de mercado.',
+      y
+    )
+    for (const scenario of saleScenarios) {
+      const adjustmentLabel =
+        scenario.adjustmentPercent === 0
+          ? 'valor de mercado'
+          : `${scenario.adjustmentPercent > 0 ? '+' : ''}${scenario.adjustmentPercent}% vs. estimado`
+      y = addParagraph(
+        doc,
+        `${scenario.label} (${scenario.timeframe}): ${formatCurrency(scenario.value)} — ${formatCurrency(scenario.valuePerSqm)}/m² · ${adjustmentLabel}`,
+        y
+      )
+      y = addParagraph(doc, scenario.description, y)
+    }
+  }
   if (result.marketAnalysis.averagePricePerSqm != null) {
     y = addParagraph(
       doc,
