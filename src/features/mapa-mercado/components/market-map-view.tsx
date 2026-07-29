@@ -67,6 +67,7 @@ export function MarketMapView({
   return (
     <div className='relative h-full min-h-[320px] w-full overflow-hidden rounded-[1.75rem] border border-black/[0.04] shadow-[0_2px_24px_-4px_rgba(0,0,0,0.06)]'>
       <MapContainer
+        key={`${city.lat}-${city.lng}-${city.zoom}`}
         center={[city.lat, city.lng]}
         zoom={city.zoom}
         className='h-full w-full min-h-[320px] z-0'

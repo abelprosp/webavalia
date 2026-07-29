@@ -28,11 +28,48 @@ const EXCLUDED_PLACE_CLASSES = new Set([
   'office',
 ])
 
+const STATE_NAME_TO_UF: Record<string, string> = {
+  Acre: 'AC',
+  Alagoas: 'AL',
+  Amapá: 'AP',
+  Amazonas: 'AM',
+  Bahia: 'BA',
+  Ceará: 'CE',
+  'Distrito Federal': 'DF',
+  'Espírito Santo': 'ES',
+  Goiás: 'GO',
+  Maranhão: 'MA',
+  'Mato Grosso': 'MT',
+  'Mato Grosso do Sul': 'MS',
+  'Minas Gerais': 'MG',
+  Pará: 'PA',
+  Paraíba: 'PB',
+  Paraná: 'PR',
+  Pernambuco: 'PE',
+  Piauí: 'PI',
+  'Rio de Janeiro': 'RJ',
+  'Rio Grande do Norte': 'RN',
+  'Rio Grande do Sul': 'RS',
+  Rondônia: 'RO',
+  Roraima: 'RR',
+  'Santa Catarina': 'SC',
+  'São Paulo': 'SP',
+  Sergipe: 'SE',
+  Tocantins: 'TO',
+}
+
 function extractStateCode(address: Record<string, string>): string | null {
   const iso = address['ISO3166-2-l6']
   if (iso?.includes('-')) {
     return iso.split('-')[1]?.toUpperCase() ?? null
   }
+
+  const stateName = address.state?.trim()
+  if (stateName) {
+    if (stateName.length === 2) return stateName.toUpperCase()
+    return STATE_NAME_TO_UF[stateName] ?? null
+  }
+
   return null
 }
 
@@ -42,8 +79,32 @@ function extractCityName(address: Record<string, string>): string | null {
     address.town ??
     address.municipality ??
     address.village ??
+    address.county ??
     null
   )
+}
+
+function mapNominatimItem(item: {
+  lat: string
+  lon: string
+  class?: string
+  address?: Record<string, string>
+}): CitySearchResult | null {
+  const addr = item.address ?? {}
+  const city = extractCityName(addr)
+  const state = extractStateCode(addr)
+
+  if (!city || !state) return null
+  if (EXCLUDED_PLACE_CLASSES.has(item.class ?? '')) return null
+
+  return {
+    label: `${city}, ${state}`,
+    city,
+    state,
+    lat: Number(item.lat),
+    lng: Number(item.lon),
+    zoom: 13,
+  }
 }
 
 export async function searchCities(query: string): Promise<CitySearchResult[]> {
@@ -51,11 +112,11 @@ export async function searchCities(query: string): Promise<CitySearchResult[]> {
   if (trimmed.length < 2) return []
 
   const url = new URL('https://nominatim.openstreetmap.org/search')
-  url.searchParams.set('q', trimmed)
+  url.searchParams.set('q', `${trimmed}, Brasil`)
   url.searchParams.set('format', 'json')
   url.searchParams.set('addressdetails', '1')
   url.searchParams.set('countrycodes', 'br')
-  url.searchParams.set('limit', '12')
+  url.searchParams.set('limit', '15')
   url.searchParams.set('accept-language', 'pt-BR')
 
   const response = await fetch(url.toString(), { headers: NOMINATIM_HEADERS })
@@ -77,25 +138,13 @@ export async function searchCities(query: string): Promise<CitySearchResult[]> {
   const results: CitySearchResult[] = []
 
   for (const item of data) {
-    const addr = item.address ?? {}
-    const city = extractCityName(addr)
-    const state = extractStateCode(addr)
+    const mapped = mapNominatimItem(item)
+    if (!mapped) continue
 
-    if (!city || !state) continue
-    if (EXCLUDED_PLACE_CLASSES.has(item.class ?? '')) continue
-
-    const key = `${city}-${state}`.toLowerCase()
+    const key = mapped.label.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-
-    results.push({
-      label: `${city}, ${state}`,
-      city,
-      state,
-      lat: Number(item.lat),
-      lng: Number(item.lon),
-      zoom: 12,
-    })
+    results.push(mapped)
   }
 
   return results
@@ -124,11 +173,17 @@ export async function geocodeCep(cep: string): Promise<CitySearchResult & { cep:
     throw new Error('CEP não encontrado.')
   }
 
+  const city = viaCep.localidade
+  const state = viaCep.uf.toUpperCase()
+  const searchQuery = viaCep.bairro
+    ? `${viaCep.bairro}, ${city}, ${state}, Brasil`
+    : `${city}, ${state}, Brasil`
+
   const url = new URL('https://nominatim.openstreetmap.org/search')
-  url.searchParams.set('postalcode', digits)
-  url.searchParams.set('country', 'Brazil')
+  url.searchParams.set('q', searchQuery)
   url.searchParams.set('format', 'json')
   url.searchParams.set('addressdetails', '1')
+  url.searchParams.set('countrycodes', 'br')
   url.searchParams.set('limit', '1')
   url.searchParams.set('accept-language', 'pt-BR')
 
@@ -140,24 +195,22 @@ export async function geocodeCep(cep: string): Promise<CitySearchResult & { cep:
   const data = (await response.json()) as Array<{ lat: string; lon: string }>
 
   if (data.length > 0) {
-    const city = viaCep.localidade
-    const state = viaCep.uf.toUpperCase()
     return {
-      label: `${city}, ${state}`,
+      label: viaCep.bairro ? `${viaCep.bairro}, ${city}, ${state}` : `${city}, ${state}`,
       city,
       state,
       lat: Number(data[0]!.lat),
       lng: Number(data[0]!.lon),
-      zoom: 14,
+      zoom: 15,
       cep: viaCep.cep ?? digits,
     }
   }
 
-  const fallback = await searchCities(`${viaCep.localidade}, ${viaCep.uf}`)
+  const fallback = await searchCities(`${city}, ${state}`)
   const match = fallback.find(
     (item) =>
-      item.city.toLowerCase() === viaCep.localidade!.toLowerCase() &&
-      item.state.toUpperCase() === viaCep.uf!.toUpperCase()
+      item.city.toLowerCase() === city.toLowerCase() &&
+      item.state.toUpperCase() === state
   )
 
   if (!match) {
@@ -166,6 +219,7 @@ export async function geocodeCep(cep: string): Promise<CitySearchResult & { cep:
 
   return {
     ...match,
+    label: viaCep.bairro ? `${viaCep.bairro}, ${city}, ${state}` : match.label,
     zoom: 14,
     cep: viaCep.cep ?? digits,
   }
@@ -201,7 +255,7 @@ export async function reverseGeocode(
     addr.residential ??
     null
   const city = addr.city ?? addr.town ?? addr.municipality ?? null
-  const state = addr['ISO3166-2-l6']?.split('-')[1] ?? null
+  const state = extractStateCode(addr)
 
   const displayAddress = neighborhood
     ? `${neighborhood}${city ? `, ${city}` : ''}${state ? ` — ${state}` : ''}`

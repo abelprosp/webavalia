@@ -74,7 +74,7 @@ export function MapaMercado() {
 
   const handleCityChange = useCallback((city: MarketCity) => {
     setSelectedCity(city)
-    setClickPosition(null)
+    setClickPosition({ lat: city.lat, lng: city.lng })
     setResult(null)
     setError(null)
   }, [])
@@ -101,7 +101,7 @@ export function MapaMercado() {
         <div className='flex flex-1 flex-col gap-4 lg:grid lg:grid-cols-[280px_1fr_300px] lg:gap-5'>
           {/* Filtros — desktop */}
           <aside className='hidden lg:block'>
-            <div className='sticky top-20 rounded-[1.75rem] border border-black/[0.04] bg-card p-5 shadow-sm'>
+            <div className='sticky top-20 overflow-visible rounded-[1.75rem] border border-black/[0.04] bg-card p-5 shadow-sm'>
               <h2 className='mb-4 text-sm font-semibold'>Filtros</h2>
               <MarketMapFilters
                 filters={filters}

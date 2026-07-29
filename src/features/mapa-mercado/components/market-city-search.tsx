@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, MapPin, Search } from 'lucide-react'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { searchMarketCities } from '@/lib/market-map-api'
@@ -40,7 +41,12 @@ export function MarketCitySearch({
 
   useEffect(() => {
     const trimmed = query.trim()
-    if (trimmed.length < 2 || trimmed === selectedCity.label) {
+    if (trimmed.length < 2) {
+      setResults([])
+      return
+    }
+
+    if (trimmed.toLowerCase() === selectedCity.label.toLowerCase()) {
       setResults([])
       return
     }
@@ -50,13 +56,17 @@ export function MarketCitySearch({
       try {
         const cities = await searchMarketCities(trimmed)
         setResults(cities)
-        setOpen(cities.length > 0)
+        setOpen(true)
+        if (cities.length === 0) {
+          toast.message('Nenhuma cidade encontrada para essa busca.')
+        }
       } catch {
         setResults([])
+        toast.error('Erro ao buscar cidades. Tente novamente.')
       } finally {
         setLoading(false)
       }
-    }, 350)
+    }, 400)
 
     return () => window.clearTimeout(timeout)
   }, [query, selectedCity.label])
@@ -66,6 +76,7 @@ export function MarketCitySearch({
     setOpen(false)
     setResults([])
     onCityChange(city)
+    toast.success(`Mapa centralizado em ${city.label}`)
   }
 
   return (
@@ -76,7 +87,7 @@ export function MarketCitySearch({
         <Input
           id='market-city-search'
           value={query}
-          placeholder='Busque por cidade (ex.: Curitiba, PR)'
+          placeholder='Busque por cidade (ex.: Porto Alegre)'
           className='ps-9'
           onChange={(e) => {
             setQuery(e.target.value)
@@ -91,9 +102,9 @@ export function MarketCitySearch({
         )}
 
         {open && results.length > 0 && (
-          <ul className='absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-auto rounded-xl border bg-popover p-1 shadow-md'>
+          <ul className='absolute left-0 right-0 top-full z-[1000] mt-1 max-h-56 overflow-auto rounded-xl border bg-popover p-1 shadow-md'>
             {results.map((city) => (
-              <li key={city.label}>
+              <li key={`${city.city}-${city.state}`}>
                 <button
                   type='button'
                   className='flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted'

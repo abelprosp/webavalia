@@ -65,11 +65,22 @@ export function MarketMapResultPanel({
               <span className='text-base font-medium opacity-70'>/m²</span>
             </p>
             <p className='mt-1 text-[11px] opacity-70'>
-              {isRent ? 'Estimativa de aluguel por m²' : 'Estimativa de venda por m²'}
+              {isRent ? 'Estimativa de aluguel por m²' : 'Média de mercado por m²'}
             </p>
           </div>
         </div>
       </BentoCard>
+
+      {result.showTotalValue && result.estimatedTotalValue != null && (
+        <BentoCard variant='default' title='Valor total estimado'>
+          <p className='text-2xl font-bold tracking-tight'>
+            {formatCurrency(result.estimatedTotalValue)}
+          </p>
+          <p className='mt-1 text-[11px] text-muted-foreground'>
+            Estimativa do valor total do terreno/imóvel na região
+          </p>
+        </BentoCard>
+      )}
 
       <BentoCard variant='default' title='Confiança da estimativa'>
         <div className='flex flex-wrap items-center gap-2'>
@@ -81,7 +92,7 @@ export function MarketMapResultPanel({
         </div>
         {result.averagePricePerSqm != null && (
           <p className='mt-3 text-sm text-muted-foreground'>
-            Média de mercado:{' '}
+            Média dos comparáveis:{' '}
             <span className='font-semibold text-foreground'>
               {formatCurrency(result.averagePricePerSqm)}/m²
             </span>
@@ -89,7 +100,7 @@ export function MarketMapResultPanel({
         )}
         {result.priceRange && (
           <p className='mt-1 text-sm text-muted-foreground'>
-            Faixa: {formatCurrency(result.priceRange.min)} —{' '}
+            Faixa por m²: {formatCurrency(result.priceRange.min)} —{' '}
             {formatCurrency(result.priceRange.max)}/m²
           </p>
         )}

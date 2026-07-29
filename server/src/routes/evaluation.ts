@@ -14,7 +14,7 @@ import {
   searchCities,
   geocodeCep,
 } from '../services/geocoding-service.js'
-import { validatePhotos } from '../utils/photo-validation.js'
+import { resolveMarketMapPricing } from '../utils/market-map-pricing.js'
 import {
   refundTrialEvaluation,
   reserveTrialEvaluation,
@@ -349,10 +349,15 @@ router.post(
         listingIntent: parsed.data.listingIntent,
       })
 
-      const priceRange = result.marketAnalysis.priceRange
+      const pricing = resolveMarketMapPricing(result, {
+        requestedArea: parsed.data.area,
+        evaluationArea,
+        propertyType: parsed.data.propertyType,
+      })
+
       const comparablesCount = result.marketAnalysis.comparables.length
 
-      if (result.valuePerSqm <= 0 && comparablesCount === 0) {
+      if (pricing.valuePerSqm <= 0 && comparablesCount === 0) {
         return res.status(404).json({
           message:
             'Não encontramos dados suficientes para esta região. Tente outro ponto ou ajuste os filtros.',
@@ -360,9 +365,11 @@ router.post(
       }
 
       return res.json({
-        valuePerSqm: result.valuePerSqm,
-        averagePricePerSqm: result.marketAnalysis.averagePricePerSqm,
-        priceRange,
+        valuePerSqm: pricing.valuePerSqm,
+        averagePricePerSqm: pricing.averagePricePerSqm,
+        priceRange: pricing.priceRange,
+        estimatedTotalValue: pricing.estimatedTotalValue,
+        showTotalValue: pricing.showTotalValue,
         address,
         neighborhood: geo.neighborhood,
         score: result.score,

@@ -25,6 +25,8 @@ export type MarketMapResult = {
   valuePerSqm: number
   averagePricePerSqm: number | null
   priceRange: { min: number; max: number } | null
+  estimatedTotalValue?: number | null
+  showTotalValue?: boolean
   address: string
   neighborhood: string | null
   score: number
