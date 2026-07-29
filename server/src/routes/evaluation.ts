@@ -15,6 +15,7 @@ import {
   geocodeCep,
 } from '../services/geocoding-service.js'
 import { resolveMarketMapPricing } from '../utils/market-map-pricing.js'
+import { validatePhotos } from '../utils/photo-validation.js'
 import {
   refundTrialEvaluation,
   reserveTrialEvaluation,
