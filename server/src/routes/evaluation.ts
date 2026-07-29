@@ -352,7 +352,6 @@ router.post(
 
       const pricing = resolveMarketMapPricing(result, {
         requestedArea: parsed.data.area,
-        evaluationArea,
         propertyType: parsed.data.propertyType,
       })
 

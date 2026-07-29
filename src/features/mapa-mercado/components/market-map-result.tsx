@@ -77,7 +77,15 @@ export function MarketMapResultPanel({
             {formatCurrency(result.estimatedTotalValue)}
           </p>
           <p className='mt-1 text-[11px] text-muted-foreground'>
-            Estimativa do valor total do terreno/imóvel na região
+            Com base na metragem informada nos filtros
+          </p>
+        </BentoCard>
+      )}
+
+      {!result.showTotalValue && (
+        <BentoCard variant='muted' title='Valor total'>
+          <p className='text-sm text-muted-foreground'>
+            Informe a metragem nos filtros para ver o valor total estimado do terreno.
           </p>
         </BentoCard>
       )}
