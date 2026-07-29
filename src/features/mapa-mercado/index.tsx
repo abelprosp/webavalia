@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { queryMarketMapPoint, type MarketMapResult } from '@/lib/market-map-api'
+import { isLandOnlyPropertyType } from '@/features/avaliacao/data/criteria'
 import { DEFAULT_MARKET_CITY, type MarketCity } from './data/cities'
 import {
   MarketMapFilters,
@@ -22,7 +23,6 @@ import { MarketMapView } from './components/market-map-view'
 import { MarketMapResultPanel } from './components/market-map-result'
 
 const INITIAL_FILTERS: MarketMapFiltersState = {
-  cityKey: DEFAULT_MARKET_CITY.label,
   propertyType: 'apartamento',
   bedrooms: 2,
   area: 70,
@@ -47,13 +47,14 @@ export function MapaMercado() {
       setResult(null)
 
       try {
+        const isLand = isLandOnlyPropertyType(filters.propertyType)
         const data = await queryMarketMapPoint({
           lat,
           lng,
           city: selectedCity.city,
           state: selectedCity.state,
           propertyType: filters.propertyType,
-          bedrooms: filters.bedrooms,
+          ...(isLand ? {} : { bedrooms: filters.bedrooms }),
           area: filters.area,
         })
         setResult(data)
@@ -104,6 +105,7 @@ export function MapaMercado() {
               <h2 className='mb-4 text-sm font-semibold'>Filtros</h2>
               <MarketMapFilters
                 filters={filters}
+                selectedCity={selectedCity}
                 onChange={setFilters}
                 onCityChange={handleCityChange}
               />
@@ -127,6 +129,7 @@ export function MapaMercado() {
                   <div className='mt-4 pb-6'>
                     <MarketMapFilters
                       filters={filters}
+                      selectedCity={selectedCity}
                       onChange={setFilters}
                       onCityChange={handleCityChange}
                     />

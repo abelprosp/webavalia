@@ -6,11 +6,12 @@ import {
   createUserRateLimiter,
   evaluationRateLimiter,
 } from '../middleware/rate-limit.js'
-import { MARKET_MAP_EVALUATION_DEFAULTS } from '../constants/evaluation-defaults.js'
+import { MARKET_MAP_EVALUATION_DEFAULTS, isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 import { runPropertyEvaluation } from '../services/evaluation-service.js'
 import {
   composeMarketMapAddress,
   reverseGeocode,
+  searchCities,
 } from '../services/geocoding-service.js'
 import { validatePhotos } from '../utils/photo-validation.js'
 import {
@@ -52,7 +53,7 @@ const marketMapSchema = z.object({
   city: z.string().min(2),
   state: z.string().length(2),
   propertyType: z.string().min(1),
-  bedrooms: z.number().min(0),
+  bedrooms: z.number().min(0).optional(),
   area: z.number().min(10),
   listingIntent: z.enum(['alugar', 'vender']).default('vender'),
 })
@@ -269,6 +270,25 @@ router.post('/feedback', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+router.get(
+  '/market-map/cities',
+  requireAuth,
+  requireBrokerAccount,
+  async (req: AuthRequest, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+    if (query.length < 2) {
+      return res.json([])
+    }
+
+    try {
+      const cities = await searchCities(query)
+      return res.json(cities)
+    } catch {
+      return res.status(502).json({ message: 'Falha ao buscar cidades.' })
+    }
+  }
+)
+
 router.post(
   '/market-map',
   requireAuth,
@@ -302,7 +322,9 @@ router.post(
         address,
         propertyType: parsed.data.propertyType,
         area: parsed.data.area,
-        bedrooms: parsed.data.bedrooms,
+        bedrooms: isLandOnlyPropertyType(parsed.data.propertyType)
+          ? 0
+          : (parsed.data.bedrooms ?? 0),
         listingIntent: parsed.data.listingIntent,
       })
 

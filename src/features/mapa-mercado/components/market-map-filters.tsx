@@ -1,4 +1,4 @@
-import { propertyTypeGroups } from '@/features/avaliacao/data/criteria'
+import { propertyTypeGroups, isLandOnlyPropertyType } from '@/features/avaliacao/data/criteria'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -10,10 +10,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MARKET_CITIES, type MarketCity } from '../data/cities'
+import type { MarketCity } from '../data/cities'
+import { MarketCitySearch } from './market-city-search'
 
 export type MarketMapFiltersState = {
-  cityKey: string
   propertyType: string
   bedrooms: number
   area: number
@@ -21,45 +21,25 @@ export type MarketMapFiltersState = {
 
 type MarketMapFiltersProps = {
   filters: MarketMapFiltersState
+  selectedCity: MarketCity
   onChange: (filters: MarketMapFiltersState) => void
-  onCityChange?: (city: MarketCity) => void
+  onCityChange: (city: MarketCity) => void
 }
 
 export function MarketMapFilters({
   filters,
+  selectedCity,
   onChange,
   onCityChange,
 }: MarketMapFiltersProps) {
-  const selectedCity =
-    MARKET_CITIES.find((c) => c.label === filters.cityKey) ?? MARKET_CITIES[0]!
+  const isLand = isLandOnlyPropertyType(filters.propertyType)
 
   return (
     <div className='space-y-4'>
-      <div className='space-y-2'>
-        <Label htmlFor='market-city'>Cidade</Label>
-        <Select
-          value={filters.cityKey}
-          onValueChange={(cityKey) => {
-            const city = MARKET_CITIES.find((c) => c.label === cityKey)
-            onChange({ ...filters, cityKey })
-            if (city) onCityChange?.(city)
-          }}
-        >
-          <SelectTrigger id='market-city' className='w-full'>
-            <SelectValue placeholder='Selecione a cidade' />
-          </SelectTrigger>
-          <SelectContent>
-            {MARKET_CITIES.map((city) => (
-              <SelectItem key={city.label} value={city.label}>
-                {city.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className='text-[11px] text-muted-foreground'>
-          Mapa centralizado em {selectedCity.city} — {selectedCity.state}
-        </p>
-      </div>
+      <MarketCitySearch
+        selectedCity={selectedCity}
+        onCityChange={onCityChange}
+      />
 
       <div className='space-y-2'>
         <Label htmlFor='market-type'>Tipo de imóvel</Label>
@@ -87,25 +67,29 @@ export function MarketMapFilters({
         </Select>
       </div>
 
-      <div className='grid grid-cols-2 gap-3'>
+      <div className={isLand ? 'space-y-2' : 'grid grid-cols-2 gap-3'}>
+        {!isLand && (
+          <div className='space-y-2'>
+            <Label htmlFor='market-bedrooms'>Quartos</Label>
+            <Input
+              id='market-bedrooms'
+              type='number'
+              min={0}
+              max={10}
+              value={filters.bedrooms}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  bedrooms: Math.max(0, Number(e.target.value) || 0),
+                })
+              }
+            />
+          </div>
+        )}
         <div className='space-y-2'>
-          <Label htmlFor='market-bedrooms'>Quartos</Label>
-          <Input
-            id='market-bedrooms'
-            type='number'
-            min={0}
-            max={10}
-            value={filters.bedrooms}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                bedrooms: Math.max(0, Number(e.target.value) || 0),
-              })
-            }
-          />
-        </div>
-        <div className='space-y-2'>
-          <Label htmlFor='market-area'>Metragem (m²)</Label>
+          <Label htmlFor='market-area'>
+            {isLand ? 'Área do terreno (m²)' : 'Metragem (m²)'}
+          </Label>
           <Input
             id='market-area'
             type='number'
