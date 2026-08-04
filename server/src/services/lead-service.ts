@@ -133,12 +133,120 @@ export async function createLead(input: {
   return { lead: result.rows[0], created: true }
 }
 
+const ACTIVE_LEAD_STATUS_FILTER = `l.status <> 'indisponivel'`
+
+export async function getLeadByExternalId(externalId: string) {
+  const result = await pool.query<LeadRow>(
+    'SELECT * FROM leads WHERE external_id = $1',
+    [externalId]
+  )
+  return result.rows[0] ?? null
+}
+
+export async function countLeadUnlocks(leadId: string) {
+  const result = await pool.query<{ count: string }>(
+    'SELECT COUNT(*)::text AS count FROM lead_unlocks WHERE lead_id = $1',
+    [leadId]
+  )
+  return Number(result.rows[0]?.count ?? 0)
+}
+
+export async function withdrawLead(leadId: string) {
+  const result = await pool.query<LeadRow>(
+    `UPDATE leads
+     SET status = 'indisponivel',
+         raw_payload = raw_payload || $2::jsonb
+     WHERE id = $1 AND status <> 'indisponivel'
+     RETURNING *`,
+    [
+      leadId,
+      JSON.stringify({
+        withdrawnAt: new Date().toISOString(),
+      }),
+    ]
+  )
+
+  if (!result.rowCount) {
+    const existing = await pool.query<LeadRow>(
+      'SELECT * FROM leads WHERE id = $1',
+      [leadId]
+    )
+    if (!existing.rowCount) {
+      throw new Error('Lead não encontrado.')
+    }
+    if (existing.rows[0].status === 'indisponivel') {
+      const unlockCount = await countLeadUnlocks(leadId)
+      return { lead: existing.rows[0], alreadyWithdrawn: true, unlockCount }
+    }
+    throw new Error('Lead não encontrado.')
+  }
+
+  const unlockCount = await countLeadUnlocks(leadId)
+  return { lead: result.rows[0], alreadyWithdrawn: false, unlockCount }
+}
+
+export async function reactivateLead(
+  leadId: string,
+  input: {
+    phone: string
+    name?: string
+    email?: string
+    propertyType?: string
+    interest?: string
+    budget?: string
+    location?: string
+    propertyInput?: Record<string, unknown>
+    evaluationResult?: Record<string, unknown>
+    rawPayload?: Record<string, unknown>
+  }
+) {
+  const result = await pool.query<LeadRow>(
+    `UPDATE leads
+     SET status = 'novo',
+         phone = $2,
+         name = COALESCE($3, name),
+         email = COALESCE($4, email),
+         property_type = COALESCE($5, property_type),
+         interest = COALESCE($6, interest),
+         budget = COALESCE($7, budget),
+         location = COALESCE($8, location),
+         property_input = COALESCE($9::jsonb, property_input),
+         evaluation_result = COALESCE($10::jsonb, evaluation_result),
+         raw_payload = COALESCE($11::jsonb, raw_payload) || $12::jsonb
+     WHERE id = $1 AND status = 'indisponivel'
+     RETURNING *`,
+    [
+      leadId,
+      input.phone,
+      input.name ?? null,
+      input.email ?? null,
+      input.propertyType ?? null,
+      input.interest ?? null,
+      input.budget ?? null,
+      input.location ?? null,
+      input.propertyInput ? JSON.stringify(input.propertyInput) : null,
+      input.evaluationResult ? JSON.stringify(input.evaluationResult) : null,
+      input.rawPayload ? JSON.stringify(input.rawPayload) : null,
+      JSON.stringify({
+        reactivatedAt: new Date().toISOString(),
+      }),
+    ]
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Lead não encontrado ou já está ativo.')
+  }
+
+  return result.rows[0]
+}
+
 export async function listLeadsForUser(userId: string, limit = 50) {
   const result = await pool.query<LeadRow & { unlocked: boolean }>(
     `SELECT l.*, (lu.id IS NOT NULL) AS unlocked
      FROM leads l
      LEFT JOIN lead_unlocks lu
        ON lu.lead_id = l.id AND lu.user_id = $1
+     WHERE ${ACTIVE_LEAD_STATUS_FILTER}
      ORDER BY l.created_at DESC
      LIMIT $2`,
     [userId, limit]
@@ -155,7 +263,7 @@ export async function getLeadForUser(userId: string, leadId: string) {
      FROM leads l
      LEFT JOIN lead_unlocks lu
        ON lu.lead_id = l.id AND lu.user_id = $1
-     WHERE l.id = $2`,
+     WHERE l.id = $2 AND ${ACTIVE_LEAD_STATUS_FILTER}`,
     [userId, leadId]
   )
 
@@ -178,6 +286,10 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
 
     if (!leadResult.rowCount) {
       throw new Error('Lead não encontrado.')
+    }
+
+    if (leadResult.rows[0].status === 'indisponivel') {
+      throw new Error('Este imóvel não está mais disponível na plataforma.')
     }
 
     const existingUnlock = await client.query(

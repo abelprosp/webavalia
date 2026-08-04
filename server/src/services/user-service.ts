@@ -1,4 +1,5 @@
 import type { AccountType } from '../constants/account-type.js'
+import { TRIAL_EVALUATIONS_TOTAL } from '../utils/password-policy.js'
 import { getSetting } from './settings-service.js'
 
 export type UserRow = {
@@ -21,7 +22,10 @@ export type UserRow = {
 }
 
 export async function mapUserResponse(row: UserRow) {
-  const signupBonus = await getSetting<number>('trial_evaluations_total', 2)
+  const signupBonus =
+    row.account_type === 'pj'
+      ? TRIAL_EVALUATIONS_TOTAL
+      : await getSetting<number>('trial_evaluations_total', 2)
 
   return {
     id: row.id,

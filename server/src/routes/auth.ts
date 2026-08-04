@@ -13,7 +13,7 @@ import {
   hashPassword,
   verifyPasswordConstantTime,
 } from '../utils/password.js'
-import { passwordSchema } from '../utils/password-policy.js'
+import { passwordSchema, TRIAL_EVALUATIONS_TOTAL } from '../utils/password-policy.js'
 import { signToken } from '../utils/jwt.js'
 import { setAuthCookie, clearAuthCookie } from '../utils/auth-cookie.js'
 import { normalizeAuthTiming, normalizeEmail } from '../utils/auth-timing.js'
@@ -227,8 +227,10 @@ router.post(
       'default_lead_credits',
       0
     )
+    const signupCredits =
+      accountType === 'pj' ? TRIAL_EVALUATIONS_TOTAL : trialTotal
     const initialCredits =
-      trialTotal + (accountType === 'pf' ? 0 : defaultLeadCredits)
+      signupCredits + (accountType === 'pf' ? 0 : defaultLeadCredits)
 
     const result = await pool.query<UserRow>(
       `INSERT INTO users (

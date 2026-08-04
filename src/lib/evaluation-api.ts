@@ -65,6 +65,24 @@ export async function publishEvaluationAsLead(input: {
   return data
 }
 
+export async function getEvaluationLeadStatus(evaluationId: string) {
+  const { data } = await api.get<{
+    published: boolean
+    withdrawn: boolean
+    unlockCount: number
+  }>(`/evaluation/lead-status/${evaluationId}`)
+  return data
+}
+
+export async function unpublishEvaluationAsLead(evaluationId: string) {
+  const { data } = await api.post<{
+    withdrawn: boolean
+    alreadyWithdrawn: boolean
+    unlockCount: number
+  }>('/evaluation/unpublish-lead', { evaluationId })
+  return data
+}
+
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

@@ -65,6 +65,60 @@ export type AdminBlogPost = {
   updatedAt: string
 }
 
+export type AdminEvaluationListItem = {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  accountType: string
+  address: string
+  propertyType: string | null
+  estimatedValue: number | null
+  score: number | null
+  floodRiskLevel: string | null
+  hasEvaluationFeedback: boolean
+  evaluationFeedbackRating: 'good' | 'bad' | null
+  floodFeedbackCount: number
+  createdAt: string
+}
+
+export type AdminEvaluationDetail = AdminEvaluationListItem & {
+  propertyInput: Record<string, unknown>
+  evaluationResult: Record<string, unknown>
+  evaluationFeedback: {
+    id: string
+    rating: 'good' | 'bad'
+    comment: string
+    createdAt: string
+  } | null
+  floodFeedbacks: {
+    id: string
+    userId: string
+    userName: string
+    userEmail: string
+    gotWater: boolean
+    severity: 'baixo' | 'moderado' | 'alto' | null
+    comment: string | null
+    addressDisplay: string
+    createdAt: string
+  }[]
+}
+
+export type AdminFeedbackListItem = {
+  id: string
+  type: 'evaluation' | 'flood'
+  createdAt: string
+  userId: string
+  userName: string
+  userEmail: string
+  evaluationId: string | null
+  address: string | null
+  rating: 'good' | 'bad' | null
+  gotWater: boolean | null
+  severity: 'baixo' | 'moderado' | 'alto' | null
+  comment: string | null
+}
+
 export async function fetchAdminStats() {
   const { data } = await api.get<{ stats: AdminStats }>('/admin/stats')
   return data.stats
@@ -204,4 +258,34 @@ export async function updateAdminBlogPost(
 
 export async function deleteAdminBlogPost(id: string) {
   await api.delete(`/admin/blog/${id}`)
+}
+
+export async function fetchAdminEvaluations(params?: {
+  search?: string
+  limit?: number
+  offset?: number
+}) {
+  const { data } = await api.get<{
+    total: number
+    evaluations: AdminEvaluationListItem[]
+  }>('/admin/evaluations', { params })
+  return data
+}
+
+export async function fetchAdminEvaluation(id: string) {
+  const { data } = await api.get<{ evaluation: AdminEvaluationDetail }>(
+    `/admin/evaluations/${id}`
+  )
+  return data.evaluation
+}
+
+export async function fetchAdminFeedbacks(params?: {
+  limit?: number
+  offset?: number
+}) {
+  const { data } = await api.get<{
+    total: number
+    feedbacks: AdminFeedbackListItem[]
+  }>('/admin/feedbacks', { params })
+  return data
 }

@@ -1,10 +1,31 @@
-import { useState } from 'react'
-import { CheckCircle2, KeyRound, Loader2, Tag } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  CheckCircle2,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Tag,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { publishEvaluationAsLead } from '@/lib/evaluation-api'
+import {
+  getEvaluationLeadStatus,
+  publishEvaluationAsLead,
+  unpublishEvaluationAsLead,
+} from '@/lib/evaluation-api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getListingIntentLabel, type ListingIntent } from '@/features/avaliacao/data/evaluation-engine'
 import { useAuthStore } from '@/stores/auth-store'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -41,8 +62,37 @@ export function PublishPropertyLead({
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
+  const [loadingStatus, setLoadingStatus] = useState(true)
   const [published, setPublished] = useState(false)
+  const [unlockCount, setUnlockCount] = useState(0)
   const updateCredits = useAuthStore((s) => s.auth.updateCredits)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadStatus() {
+      setLoadingStatus(true)
+      try {
+        const status = await getEvaluationLeadStatus(evaluationId)
+        if (cancelled) return
+        setPublished(status.published)
+        setUnlockCount(status.unlockCount)
+      } catch {
+        if (!cancelled) {
+          setPublished(false)
+          setUnlockCount(0)
+        }
+      } finally {
+        if (!cancelled) setLoadingStatus(false)
+      }
+    }
+
+    void loadStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [evaluationId])
 
   async function handlePublish() {
     const phoneDigits = phone.replace(/\D/g, '')
@@ -63,6 +113,7 @@ export function PublishPropertyLead({
         consent: true,
       })
       setPublished(true)
+      setUnlockCount(0)
       if (result.credits != null) {
         updateCredits(result.credits)
       }
@@ -86,23 +137,104 @@ export function PublishPropertyLead({
     }
   }
 
+  async function handleWithdraw() {
+    setWithdrawing(true)
+    try {
+      const result = await unpublishEvaluationAsLead(evaluationId)
+      setPublished(false)
+      setUnlockCount(0)
+      if (result.unlockCount > 0) {
+        toast.success(
+          'Imóvel indisponibilizado. Corretores que já desbloquearam podem ainda ter seus dados.'
+        )
+      } else {
+        toast.success('Imóvel indisponibilizado e removido dos corretores.')
+      }
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, 'Não foi possível indisponibilizar o imóvel.')
+      )
+    } finally {
+      setWithdrawing(false)
+    }
+  }
+
   const intentLabel = getListingIntentLabel(listingIntent).toLowerCase()
   const IntentIcon = listingIntent === 'alugar' ? KeyRound : Tag
+
+  if (loadingStatus) {
+    return (
+      <Card className='border-primary/30'>
+        <CardContent className='flex items-center gap-2 py-6 text-sm text-muted-foreground'>
+          <Loader2 className='size-4 animate-spin' />
+          Verificando disponibilidade do imóvel…
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (published) {
     return (
       <Card className='border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30'>
-        <CardContent className='flex items-start gap-3 py-6'>
-          <CheckCircle2 className='mt-0.5 size-5 shrink-0 text-emerald-600' />
-          <div>
-            <p className='font-medium'>
-              Imóvel disponível para imobiliárias ({intentLabel})
-            </p>
-            <p className='mt-1 text-sm text-muted-foreground'>
-              Imobiliárias que atendem a região poderão encontrar este imóvel,
-              desbloquear a avaliação completa e entrar em contato com você.
-            </p>
+        <CardContent className='space-y-4 py-6'>
+          <div className='flex items-start gap-3'>
+            <CheckCircle2 className='mt-0.5 size-5 shrink-0 text-emerald-600' />
+            <div>
+              <p className='font-medium'>
+                Imóvel disponível para imobiliárias ({intentLabel})
+              </p>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                Imobiliárias que atendem a região poderão encontrar este imóvel,
+                desbloquear a avaliação completa e entrar em contato com você.
+              </p>
+              {unlockCount > 0 && (
+                <p className='mt-2 text-sm text-muted-foreground'>
+                  {unlockCount === 1
+                    ? '1 corretor já desbloqueou este imóvel.'
+                    : `${unlockCount} corretores já desbloquearam este imóvel.`}
+                </p>
+              )}
+            </div>
           </div>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={withdrawing}
+                className='border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive'
+              >
+                {withdrawing ? (
+                  <Loader2 className='size-4 animate-spin' />
+                ) : (
+                  <EyeOff className='size-4' />
+                )}
+                {withdrawing ? 'Indisponibilizando…' : 'Indisponibilizar imóvel'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Indisponibilizar imóvel?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O imóvel será removido da listagem de corretores e não poderá
+                  mais ser desbloqueado.{' '}
+                  {unlockCount > 0
+                    ? 'Corretores que já desbloquearam seus dados poderão ainda tê-los salvos.'
+                    : 'Você poderá disponibilizá-lo novamente depois, se quiser.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className='bg-destructive text-white hover:bg-destructive/90'
+                  onClick={() => void handleWithdraw()}
+                >
+                  Indisponibilizar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     )

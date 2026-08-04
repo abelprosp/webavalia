@@ -6,6 +6,7 @@ import {
   Settings2,
   Shield,
   Newspaper,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConfigDrawer } from '@/components/config-drawer'
@@ -27,6 +28,11 @@ const adminNavItems = [
     title: 'Usuários',
     href: '/admin/users',
     icon: Users,
+  },
+  {
+    title: 'Avaliações',
+    href: '/admin/evaluations',
+    icon: Sparkles,
   },
   {
     title: 'Planos',

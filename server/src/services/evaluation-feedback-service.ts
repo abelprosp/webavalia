@@ -5,7 +5,13 @@ import {
   getListingIntentFromInput,
 } from '../utils/rent-estimate.js'
 import { getSetting } from './settings-service.js'
-import { createLead } from './lead-service.js'
+import {
+  countLeadUnlocks,
+  createLead,
+  getLeadByExternalId,
+  reactivateLead,
+  withdrawLead,
+} from './lead-service.js'
 
 type StoredPropertyInput = Record<string, unknown>
 
@@ -157,7 +163,104 @@ export async function publishEvaluationAsLead(input: {
       consent: true,
       consentedAt: new Date().toISOString(),
     },
+  }).then(async (result) => {
+    if (
+      !result.created &&
+      result.lead?.status === 'indisponivel'
+    ) {
+      const reactivated = await reactivateLead(result.lead.id, {
+        phone: input.phone,
+        name: evaluation.name,
+        email: evaluation.email,
+        propertyType:
+          typeof evaluation.property_input.propertyType === 'string'
+            ? evaluation.property_input.propertyType
+            : undefined,
+        interest: getLeadInterestLabel(listingIntent),
+        budget,
+        location: getPublicLocation(evaluation.property_input),
+        propertyInput: evaluation.property_input,
+        evaluationResult: evaluation.evaluation_result,
+        rawPayload: {
+          evaluationId: input.evaluationId,
+          ownerUserId: input.userId,
+          consent: true,
+          consentedAt: new Date().toISOString(),
+        },
+      })
+      return { lead: reactivated, created: true }
+    }
+    return result
   })
+}
+
+async function assertPfEvaluationOwner(evaluationId: string, userId: string) {
+  const result = await pool.query<{ account_type: string }>(
+    `SELECT u.account_type
+     FROM property_evaluations e
+     JOIN users u ON u.id = e.user_id
+     WHERE e.id = $1 AND e.user_id = $2`,
+    [evaluationId, userId]
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Avaliação não encontrada.')
+  }
+
+  if (result.rows[0].account_type !== 'pf') {
+    throw new Error('Esta opção está disponível apenas para proprietários.')
+  }
+}
+
+export async function getEvaluationLeadStatus(input: {
+  evaluationId: string
+  userId: string
+}) {
+  await assertPfEvaluationOwner(input.evaluationId, input.userId)
+
+  const lead = await getLeadByExternalId(`evaluation-${input.evaluationId}`)
+  if (!lead) {
+    return {
+      published: false,
+      withdrawn: false,
+      unlockCount: 0,
+    }
+  }
+
+  const unlockCount = await countLeadUnlocks(lead.id)
+  return {
+    published: lead.status !== 'indisponivel',
+    withdrawn: lead.status === 'indisponivel',
+    unlockCount,
+  }
+}
+
+export async function withdrawEvaluationAsLead(input: {
+  evaluationId: string
+  userId: string
+}) {
+  await assertPfEvaluationOwner(input.evaluationId, input.userId)
+
+  const lead = await getLeadByExternalId(`evaluation-${input.evaluationId}`)
+  if (!lead) {
+    throw new Error('Este imóvel não está disponibilizado para corretores.')
+  }
+
+  const ownerUserId =
+    typeof lead.raw_payload?.ownerUserId === 'string'
+      ? lead.raw_payload.ownerUserId
+      : null
+
+  if (ownerUserId && ownerUserId !== input.userId) {
+    throw new Error('Avaliação não encontrada.')
+  }
+
+  const result = await withdrawLead(lead.id)
+  return {
+    withdrawn: true,
+    alreadyWithdrawn: result.alreadyWithdrawn,
+    unlockCount: result.unlockCount ?? 0,
+  }
 }
 
 type FeedbackLearningRow = {

@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Search } from 'lucide-react'
+import { Coins, Loader2, Search } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -41,6 +51,7 @@ import {
   updateAdminUser,
   type AdminUser,
 } from '@/lib/admin-api'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { getAccountTypeLabel } from '@/lib/account-type'
 
 export function AdminUsersPage() {
@@ -51,8 +62,10 @@ export function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<AdminUser | null>(null)
   const [creditAmount, setCreditAmount] = useState('10')
+  const [creditDescription, setCreditDescription] = useState('')
   const [trialAmount, setTrialAmount] = useState('3')
   const [saving, setSaving] = useState(false)
+  const [confirmCreditsOpen, setConfirmCreditsOpen] = useState(false)
 
   async function loadUsers() {
     setLoading(true)
@@ -100,16 +113,43 @@ export function AdminUsersPage() {
     }
   }
 
+  function getSelectedCredits(user: AdminUser) {
+    return user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining ?? 0
+  }
+
+  function parseCreditAmount() {
+    const amount = Number.parseInt(creditAmount, 10)
+    if (!Number.isFinite(amount) || amount === 0) {
+      return null
+    }
+    return amount
+  }
+
+  function openCreditsConfirm() {
+    const amount = parseCreditAmount()
+    if (amount == null) {
+      toast.error('Informe uma quantidade válida de créditos (diferente de zero).')
+      return
+    }
+    setConfirmCreditsOpen(true)
+  }
+
   async function handleAdjustCredits() {
     if (!selected) return
+    const amount = parseCreditAmount()
+    if (amount == null) {
+      toast.error('Informe uma quantidade válida de créditos (diferente de zero).')
+      return
+    }
+
     setSaving(true)
     try {
-      const amount = Number(creditAmount)
-      const credits = await adjustUserCredits(
-        selected.id,
-        amount,
-        'Ajuste manual pelo admin'
-      )
+      const description =
+        creditDescription.trim() ||
+        (amount > 0
+          ? `Créditos concedidos pelo admin (+${amount})`
+          : `Ajuste manual pelo admin (${amount})`)
+      const credits = await adjustUserCredits(selected.id, amount, description)
       setUsers((prev) =>
         prev.map((u) =>
           u.id === selected.id
@@ -128,9 +168,15 @@ export function AdminUsersPage() {
         leadCredits: credits,
         trialEvaluationsRemaining: credits,
       })
-      toast.success('Créditos atualizados.')
-    } catch {
-      toast.error('Erro ao ajustar créditos.')
+      setCreditDescription('')
+      setConfirmCreditsOpen(false)
+      toast.success(
+        amount > 0
+          ? `${amount} crédito(s) adicionado(s). Novo saldo: ${credits}.`
+          : `Créditos ajustados. Novo saldo: ${credits}.`
+      )
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Erro ao ajustar créditos.'))
     } finally {
       setSaving(false)
     }
@@ -161,8 +207,8 @@ export function AdminUsersPage() {
         trialEvaluationsRemaining: credits,
       })
       toast.success('Saldo de créditos definido.')
-    } catch {
-      toast.error('Erro ao definir créditos.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Erro ao definir créditos.'))
     } finally {
       setSaving(false)
     }
@@ -268,16 +314,13 @@ export function AdminUsersPage() {
                         onClick={() => {
                           setSelected(user)
                           setCreditAmount('10')
-                          setTrialAmount(
-                            String(
-                              user.credits ??
-                                user.leadCredits ??
-                                user.trialEvaluationsRemaining
-                            )
-                          )
+                          setCreditDescription('')
+                          setConfirmCreditsOpen(false)
+                          setTrialAmount(String(getSelectedCredits(user)))
                         }}
                       >
-                        Gerenciar
+                        <Coins className='mr-1.5 size-3.5' />
+                        Créditos
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -288,7 +331,60 @@ export function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+      <AlertDialog open={confirmCreditsOpen} onOpenChange={setConfirmCreditsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar concessão de créditos</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className='space-y-2 text-sm text-muted-foreground'>
+                {selected && (() => {
+                  const amount = parseCreditAmount() ?? 0
+                  const currentBalance = getSelectedCredits(selected)
+                  return (
+                    <>
+                      <p>
+                        Conceder{' '}
+                        <strong>{amount > 0 ? `+${amount}` : amount}</strong>{' '}
+                        crédito(s) para <strong>{selected.name}</strong> (
+                        {selected.email}).
+                      </p>
+                      <p>
+                        Saldo atual: {currentBalance} → novo saldo estimado:{' '}
+                        {Math.max(currentBalance + amount, 0)}
+                      </p>
+                      {creditDescription.trim() && (
+                        <p>Descrição: {creditDescription.trim()}</p>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleAdjustCredits()
+              }}
+            >
+              {saving ? 'Aplicando...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null)
+            setConfirmCreditsOpen(false)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selected?.name}</DialogTitle>
@@ -332,25 +428,45 @@ export function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className='space-y-2'>
-                <Label>Ajustar créditos (+/-)</Label>
-                <div className='flex gap-2'>
+              <div className='space-y-3 rounded-lg border p-4'>
+                <div>
+                  <Label>Adicionar créditos</Label>
+                  <p className='text-xs text-muted-foreground'>
+                    Saldo atual: {getSelectedCredits(selected)} crédito(s).
+                    Use valor negativo apenas para remover créditos.
+                  </p>
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='credit-amount'>Quantidade</Label>
                   <Input
+                    id='credit-amount'
                     type='number'
+                    min={1}
+                    step={1}
                     value={creditAmount}
                     onChange={(e) => setCreditAmount(e.target.value)}
+                    placeholder='Ex.: 10'
                   />
-                  <Button onClick={handleAdjustCredits} disabled={saving}>
-                    Aplicar
-                  </Button>
                 </div>
-                <p className='text-xs text-muted-foreground'>
-                  Saldo atual:{' '}
-                  {selected.credits ??
-                    selected.leadCredits ??
-                    selected.trialEvaluationsRemaining}{' '}
-                  créditos (avaliações e leads)
-                </p>
+                <div className='space-y-2'>
+                  <Label htmlFor='credit-description'>
+                    Descrição <span className='text-muted-foreground'>(opcional)</span>
+                  </Label>
+                  <Input
+                    id='credit-description'
+                    value={creditDescription}
+                    onChange={(e) => setCreditDescription(e.target.value)}
+                    placeholder='Ex.: Bônus de boas-vindas'
+                    maxLength={500}
+                  />
+                </div>
+                <Button
+                  className='w-full'
+                  onClick={openCreditsConfirm}
+                  disabled={saving}
+                >
+                  Conceder créditos
+                </Button>
               </div>
 
               <div className='space-y-2'>

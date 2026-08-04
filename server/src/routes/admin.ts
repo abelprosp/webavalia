@@ -11,6 +11,11 @@ import {
   getFeedbackStats,
 } from '../services/evaluation-feedback-service.js'
 import {
+  getAdminEvaluationById,
+  listAdminEvaluations,
+  listAdminFeedbacks,
+} from '../services/admin-evaluations-service.js'
+import {
   createPost,
   deletePost,
   getPostById,
@@ -198,8 +203,11 @@ router.patch('/users/:id', async (req: AuthRequest, res) => {
 router.post('/users/:id/credits', async (req: AuthRequest, res) => {
   const parsed = z
     .object({
-      amount: z.number().int(),
-      description: z.string().optional(),
+      amount: z
+        .number()
+        .int('Informe um número inteiro.')
+        .refine((value) => value !== 0, 'Informe um valor diferente de zero.'),
+      description: z.string().trim().max(500).optional(),
     })
     .safeParse(req.body)
 
@@ -389,6 +397,35 @@ router.patch('/settings', async (req, res) => {
 
   const settings = await updatePlatformSettings(parsed.data)
   return res.json({ settings })
+})
+
+router.get('/evaluations', async (req, res) => {
+  const search = String(req.query.search ?? '').trim()
+  const limit = Number(req.query.limit ?? 50)
+  const offset = Number(req.query.offset ?? 0)
+
+  const data = await listAdminEvaluations({
+    search: search || undefined,
+    limit,
+    offset,
+  })
+
+  return res.json(data)
+})
+
+router.get('/evaluations/:id', async (req, res) => {
+  const evaluation = await getAdminEvaluationById(getParamId(req.params.id))
+  if (!evaluation) {
+    return res.status(404).json({ message: 'Avaliação não encontrada.' })
+  }
+  return res.json({ evaluation })
+})
+
+router.get('/feedbacks', async (req, res) => {
+  const limit = Number(req.query.limit ?? 50)
+  const offset = Number(req.query.offset ?? 0)
+  const data = await listAdminFeedbacks({ limit, offset })
+  return res.json(data)
 })
 
 router.get('/transactions', async (req, res) => {

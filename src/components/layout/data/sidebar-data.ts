@@ -160,6 +160,11 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
           icon: Users,
         },
         {
+          title: 'Avaliações',
+          url: '/admin/evaluations',
+          icon: Sparkles,
+        },
+        {
           title: 'Planos',
           url: '/admin/plans',
           icon: CreditCard,

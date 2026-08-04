@@ -29,9 +29,11 @@ import {
 } from '../services/pf-credits-service.js'
 import {
   isEvaluationFeedbackModeEnabled,
+  getEvaluationLeadStatus,
   publishEvaluationAsLead,
   savePropertyEvaluation,
   submitEvaluationFeedback,
+  withdrawEvaluationAsLead,
 } from '../services/evaluation-feedback-service.js'
 import { submitLocationFloodFeedback } from '../services/location-flood-feedback-service.js'
 import {
@@ -125,6 +127,10 @@ const publishLeadSchema = z.object({
   consent: z.literal(true, {
     error: 'É necessário autorizar o compartilhamento dos dados.',
   }),
+})
+
+const evaluationIdParamSchema = z.object({
+  evaluationId: z.uuid(),
 })
 
 router.get('/config', requireAuth, async (_req, res) => {
@@ -493,6 +499,60 @@ router.post('/publish-lead', requireAuth, async (req: AuthRequest, res) => {
       ? 403
       : 500
     return res.status(status).json({ message })
+  }
+})
+
+router.get('/lead-status/:evaluationId', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = evaluationIdParamSchema.safeParse(req.params)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Avaliação inválida.',
+    })
+  }
+
+  try {
+    const status = await getEvaluationLeadStatus({
+      evaluationId: parsed.data.evaluationId,
+      userId: req.user!.id,
+    })
+    return res.json(status)
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro ao consultar status do imóvel.'
+    const httpStatus = /não encontrada|apenas para proprietários/i.test(message)
+      ? 403
+      : 500
+    return res.status(httpStatus).json({ message })
+  }
+})
+
+router.post('/unpublish-lead', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = evaluationIdParamSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Avaliação inválida.',
+    })
+  }
+
+  try {
+    const result = await withdrawEvaluationAsLead({
+      evaluationId: parsed.data.evaluationId,
+      userId: req.user!.id,
+    })
+    return res.json(result)
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro ao indisponibilizar o imóvel.'
+    const httpStatus = /não encontrada|apenas para proprietários|não está disponibilizado/i.test(
+      message
+    )
+      ? 403
+      : 500
+    return res.status(httpStatus).json({ message })
   }
 })
 
