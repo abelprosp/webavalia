@@ -333,6 +333,9 @@ export async function exportEvaluationPdf({
     const f = result.floodRiskAnalysis
     y = addSectionTitle(doc, 'Histórico de enchentes e risco hídrico', y)
     y = addParagraph(doc, `Risco: ${f.riskLevelLabel}`, y, { bold: true })
+    if (f.floodQuota) {
+      y = addParagraph(doc, `Cota de cheia: ${f.floodQuota}`, y)
+    }
     if (f.historicalEvents.length > 0) {
       y = addParagraph(doc, 'Eventos históricos:', y, { bold: true })
       y = addBulletList(doc, f.historicalEvents, y)

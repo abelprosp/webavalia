@@ -492,7 +492,28 @@ async function migrate() {
     }
   }
 
+  await ensureLocationFloodFeedbackTable()
+
   console.log('Migrations concluídas.')
+}
+
+async function ensureLocationFloodFeedbackTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS location_flood_feedback (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      evaluation_id UUID REFERENCES property_evaluations(id) ON DELETE SET NULL,
+      address_key VARCHAR(500) NOT NULL,
+      address_display TEXT NOT NULL,
+      got_water BOOLEAN NOT NULL,
+      severity VARCHAR(20) CHECK (severity IN ('baixo', 'moderado', 'alto') OR severity IS NULL),
+      comment TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS location_flood_feedback_address_key_idx
+      ON location_flood_feedback (address_key, created_at DESC);
+  `)
 }
 
 migrate()

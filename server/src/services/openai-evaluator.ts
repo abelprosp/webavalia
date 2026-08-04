@@ -67,15 +67,6 @@ const aiResponseSchema = z.object({
     concerns: z.array(z.string()),
     summary: z.string(),
   }),
-  floodRiskAnalysis: z.object({
-    riskLevel: z.enum(['baixo', 'moderado', 'alto', 'indeterminado']),
-    riskLevelLabel: z.string(),
-    historicalEvents: z.array(z.string()),
-    affectedAreas: z.array(z.string()),
-    mitigationMeasures: z.array(z.string()),
-    impactOnValue: z.string(),
-    summary: z.string(),
-  }),
   marketAppreciationAnalysis: z.object({
     trend: z.enum(['valorizacao', 'estavel', 'desvalorizacao', 'indeterminado']),
     trendLabel: z.string(),
@@ -282,10 +273,10 @@ Dados do imóvel:
 AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
 1. Integre TODAS as características informadas (tipo, área, terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão, valor pedido e observações) na homogeneização e no score final.
 2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
-3. Histórico de enchentes: identifique eventos, áreas afetadas, risco (baixo/moderado/alto/indeterminado) e impacto no valor — use resultados Serper; se não houver dados, declare indeterminado e explique limitação.
+3. Risco hídrico/enchentes: calculado separadamente pelo sistema — NÃO inclua floodRiskAnalysis na resposta.
 4. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
-5. O score (0-100) e criteriaScores devem refletir risco de enchente, perfil do bairro e tendência de valorização, além das características físicas do imóvel.
-6. Inclua em aiInsights conclusões acionáveis sobre risco hídrico, valorização e diferenciais do imóvel.
+5. O score (0-100) e criteriaScores devem refletir perfil do bairro e tendência de valorização, além das características físicas do imóvel.
+6. Inclua em aiInsights conclusões acionáveis sobre valorização e diferenciais do imóvel (risco hídrico será exibido em bloco separado quando houver dados).
 
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado do imóvel avaliando.
@@ -344,15 +335,7 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
     "concerns": ["string"],
     "summary": "string"
   },
-  "floodRiskAnalysis": {
-    "riskLevel": "baixo" | "moderado" | "alto" | "indeterminado",
-    "riskLevelLabel": "string",
-    "historicalEvents": ["string — enchentes/alagamentos documentados"],
-    "affectedAreas": ["string"],
-    "mitigationMeasures": ["string"],
-    "impactOnValue": "string",
-    "summary": "string"
-  },
+  "floodRiskAnalysis": omitido — calculado pelo sistema,
   "marketAppreciationAnalysis": {
     "trend": "valorizacao" | "estavel" | "desvalorizacao" | "indeterminado",
     "trendLabel": "string",

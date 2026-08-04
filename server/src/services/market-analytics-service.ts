@@ -119,7 +119,7 @@ function extractAppreciationTrend(
 
 function extractFloodRisk(result: Record<string, unknown>) {
   const analysis = result.floodRiskAnalysis as { riskLevel?: string } | undefined
-  return analysis?.riskLevel ?? 'indeterminado'
+  return analysis?.riskLevel ?? null
 }
 
 function buildInsights(data: {
@@ -323,7 +323,7 @@ export async function getPortfolioSnapshot(
     const trend = extractAppreciationTrend(result)
     if (trend) appreciationCounts[trend] = (appreciationCounts[trend] ?? 0) + 1
     const risk = extractFloodRisk(result)
-    riskCounts[risk] = (riskCounts[risk] ?? 0) + 1
+    if (risk) riskCounts[risk] = (riskCounts[risk] ?? 0) + 1
   }
 
   const dominantTrend = normalizeAppreciationTrend(

@@ -140,7 +140,7 @@ type EvaluationAIBase = {
   marketAnalysis: MarketAnalysis
   masterPlanAnalysis: MasterPlanAnalysis
   neighborhoodAnalysis: NeighborhoodAnalysis
-  floodRiskAnalysis: FloodRiskAnalysis
+  floodRiskAnalysis?: FloodRiskAnalysis
   marketAppreciationAnalysis: MarketAppreciationAnalysis
 }
 

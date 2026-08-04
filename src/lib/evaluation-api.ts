@@ -36,6 +36,21 @@ export async function submitEvaluationFeedback(input: {
   return data
 }
 
+export async function submitFloodExperienceFeedback(input: {
+  evaluationId?: string
+  address: string
+  gotWater: boolean
+  severity?: 'baixo' | 'moderado' | 'alto' | null
+  comment?: string
+}) {
+  const { data } = await api.post<{
+    message: string
+    floodRiskAnalysis: EvaluationResult['floodRiskAnalysis'] | null
+    reportCount: number
+  }>('/evaluation/flood-feedback', input)
+  return data
+}
+
 export async function publishEvaluationAsLead(input: {
   evaluationId: string
   phone: string

@@ -191,16 +191,23 @@ export async function searchNeighborhoodProfile(address: string) {
 
 export async function searchFloodRisk(address: string) {
   const location = extractLocationHint(address)
+  const parts = address
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const neighborhood = parts.length >= 3 ? parts[parts.length - 3] : parts[0] ?? location
 
   const queries = [
-    `enchente alagamento ${location} histórico`,
-    `risco inundação ${location} mapa áreas alagáveis`,
-    `cheia ${location} defesa civil prefeitura`,
-    `alagamento bairro ${location} chuva`,
+    `cota de cheia ${location} mapa inundação ANA`,
+    `enchente alagamento ${neighborhood} ${location} histórico`,
+    `área alagável ${location} defesa civil prefeitura mapa risco`,
+    `cheia ${location} rio nível cota histórico`,
+    `alagamento bairro ${neighborhood} ${location} chuva registro`,
+    `risco hídrico ${location} zoneamento inundação`,
   ]
 
   const results = await Promise.all(queries.map((q) => serperSearch(q, 5)))
-  return mergeSerperResults(results, 12)
+  return mergeSerperResults(results, 16)
 }
 
 export async function searchMarketAppreciation(

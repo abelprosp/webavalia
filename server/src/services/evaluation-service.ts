@@ -9,6 +9,7 @@ import {
   searchMasterPlan,
   searchNeighborhoodProfile,
 } from './serper.js'
+import { analyzeFloodRisk } from './flood-risk-service.js'
 
 export async function runPropertyEvaluation(input: EvaluationRequest) {
   const [
@@ -33,6 +34,8 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
     appreciationResults,
   })
 
+  const floodRiskAnalysis = await analyzeFloodRisk(input.address, floodResults)
+
   const withNbr = applyNbr14653ToEvaluation(
     aiResult,
     input,
@@ -43,6 +46,7 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
 
   return {
     ...withNbr,
+    floodRiskAnalysis: floodRiskAnalysis ?? undefined,
     saleScenarios:
       listingIntent === 'vender'
         ? computeSaleScenarios(withNbr.estimatedValue, input.area)

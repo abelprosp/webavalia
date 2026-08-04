@@ -33,6 +33,7 @@ import {
   savePropertyEvaluation,
   submitEvaluationFeedback,
 } from '../services/evaluation-feedback-service.js'
+import { submitLocationFloodFeedback } from '../services/location-flood-feedback-service.js'
 import {
   mapAchievementForResponse,
   processEvaluationGamification,
@@ -220,6 +221,66 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     const message =
       error instanceof Error ? error.message : 'Erro ao processar avaliação.'
     return res.status(500).json({ message })
+  }
+})
+
+const floodFeedbackSchema = z
+  .object({
+    evaluationId: z.uuid().optional(),
+    address: z.string().trim().min(5).max(500),
+    gotWater: z.boolean(),
+    severity: z.enum(['baixo', 'moderado', 'alto']).nullable().optional(),
+    comment: z.string().trim().max(2000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.gotWater && !data.severity) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['severity'],
+        message: 'Informe a intensidade do alagamento.',
+      })
+    }
+    if (data.gotWater && data.comment && data.comment.length > 0 && data.comment.length < 5) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['comment'],
+        message: 'Detalhe com ao menos 5 caracteres ou deixe em branco.',
+      })
+    }
+  })
+
+router.post('/flood-feedback', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = floodFeedbackSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  try {
+    const result = await submitLocationFloodFeedback({
+      userId: req.user!.id,
+      evaluationId: parsed.data.evaluationId,
+      address: parsed.data.address,
+      gotWater: parsed.data.gotWater,
+      severity: parsed.data.gotWater ? parsed.data.severity ?? 'baixo' : null,
+      comment: parsed.data.comment,
+    })
+
+    return res.status(201).json({
+      message: parsed.data.gotWater
+        ? 'Obrigado! Sua informação sobre alagamento será usada nas próximas avaliações deste endereço.'
+        : 'Obrigado! Registramos que este endereço não alaga — isso ajuda avaliações futuras.',
+      floodRiskAnalysis: result.floodRiskAnalysis,
+      reportCount: result.knowledge?.reportCount ?? 1,
+    })
+  } catch (error) {
+    return res.status(400).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Erro ao registrar informação de alagamento.',
+    })
   }
 })
 

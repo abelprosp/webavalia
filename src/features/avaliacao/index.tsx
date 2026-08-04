@@ -72,6 +72,7 @@ import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
 import { isBrokerAccount } from '@/lib/auth-api'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
+import { FloodExperienceFeedback } from './components/flood-experience-feedback'
 import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
 import { PublishPropertyLead } from './components/publish-property-lead'
 import { ListingIntentSelector } from './components/listing-intent-selector'
@@ -87,6 +88,7 @@ export function Avaliacao() {
   const [evaluationId, setEvaluationId] = useState<string | null>(null)
   const [feedbackModeEnabled, setFeedbackModeEnabled] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [floodFeedbackSubmitted, setFloodFeedbackSubmitted] = useState(false)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [evaluatingStep, setEvaluatingStep] = useState('')
   const [photos, setPhotos] = useState<EvaluationPhoto[]>([])
@@ -234,6 +236,7 @@ export function Avaliacao() {
     setEvaluatedProperty(null)
     setEvaluationId(null)
     setFeedbackSubmitted(false)
+    setFloodFeedbackSubmitted(false)
     setEvaluatingStep('Analisando mercado')
 
     try {
@@ -1005,6 +1008,18 @@ export function Avaliacao() {
                 result={result}
                 property={evaluatedProperty}
               />
+              {evaluatedProperty.address && !floodFeedbackSubmitted && (
+                <FloodExperienceFeedback
+                  evaluationId={evaluationId}
+                  address={evaluatedProperty.address}
+                  onUpdated={(floodRiskAnalysis) => {
+                    setResult((prev) =>
+                      prev ? { ...prev, floodRiskAnalysis: floodRiskAnalysis ?? undefined } : prev
+                    )
+                    setFloodFeedbackSubmitted(true)
+                  }}
+                />
+              )}
               {!isBroker && evaluationId && (
                 <PublishPropertyLead
                   key={evaluationId}

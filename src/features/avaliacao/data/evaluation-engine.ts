@@ -225,8 +225,9 @@ export type NeighborhoodAnalysis = {
 }
 
 export type FloodRiskAnalysis = {
-  riskLevel: 'baixo' | 'moderado' | 'alto' | 'indeterminado'
+  riskLevel: 'baixo' | 'moderado' | 'alto'
   riskLevelLabel: string
+  floodQuota?: string | null
   historicalEvents: string[]
   affectedAreas: string[]
   mitigationMeasures: string[]

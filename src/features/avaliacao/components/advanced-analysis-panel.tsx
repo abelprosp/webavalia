@@ -154,6 +154,14 @@ export function AdvancedAnalysisPanel({
             >
               Risco {flood.riskLevelLabel}
             </Badge>
+            {flood.floodQuota && (
+              <div>
+                <p className='text-xs font-medium text-muted-foreground'>
+                  Cota de cheia / referência hídrica
+                </p>
+                <p className='mt-0.5'>{flood.floodQuota}</p>
+              </div>
+            )}
             <BulletSection
               title='Eventos históricos'
               items={flood.historicalEvents}

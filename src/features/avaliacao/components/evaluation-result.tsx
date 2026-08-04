@@ -510,7 +510,9 @@ export function EvaluationResultPanel({
                 </MetricIcon>
               </div>
               <p className='mt-3 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground'>
-                {result.floodRiskAnalysis.summary}
+                {result.floodRiskAnalysis.floodQuota
+                  ? `Cota: ${result.floodRiskAnalysis.floodQuota}`
+                  : result.floodRiskAnalysis.summary}
               </p>
             </BentoCard>
           )}
