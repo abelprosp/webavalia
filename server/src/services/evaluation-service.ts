@@ -1,6 +1,7 @@
 import type { EvaluationRequest } from '../types/evaluation.js'
 import { getEvaluationArea } from '../constants/evaluation-defaults.js'
 import { computeSaleScenarios } from '../utils/sale-scenarios.js'
+import { sanitizeEvaluationComparables } from '../utils/comparable-location-filter.js'
 import { evaluateWithOpenAI } from './openai-evaluator.js'
 import { applyNbr14653ToEvaluation } from './nbr-14653-service.js'
 import {
@@ -30,8 +31,14 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
     appreciationResults,
   })
 
-  const withNbr = applyNbr14653ToEvaluation(
+  const sanitizedAiResult = sanitizeEvaluationComparables(
     aiResult,
+    input.address,
+    input.propertyType
+  )
+
+  const withNbr = applyNbr14653ToEvaluation(
+    sanitizedAiResult,
     input,
     marketResults.length
   )

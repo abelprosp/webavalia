@@ -18,6 +18,10 @@ import type {
   Nbr14653Analysis,
   NbrHomogenizedComparable,
 } from '../types/evaluation.js'
+import {
+  buildCrossNeighborhoodLimitation,
+  filterComparablesByNeighborhood,
+} from '../utils/comparable-location-filter.js'
 const FACTOR_PRODUCT_MIN = 0.75
 const FACTOR_PRODUCT_MAX = 1.25
 const HIGH_STANDARD_LEVELS = new Set(['alto-padrao', 'luxo'])
@@ -256,8 +260,19 @@ export function buildNbr14653Analysis(
   marketResultsCount: number
 ): Nbr14653Analysis {
   const aiNbr = aiResult.nbr14653
-  const comparables = aiNbr?.homogenizedComparables ?? []
   const isLand = isLandOnlyPropertyType(input.propertyType)
+  const rawComparables = aiNbr?.homogenizedComparables ?? []
+  const neighborhoodFilter = filterComparablesByNeighborhood(
+    rawComparables,
+    input.address,
+    { propertyType: input.propertyType }
+  )
+  const comparables =
+    neighborhoodFilter.filtered.length > 0
+      ? neighborhoodFilter.filtered
+      : isLand
+        ? []
+        : rawComparables
   const useMedian = isHighStandardProperty(input) || isLand
   const evaluationArea = getEvaluationArea(input)
   const minUnitPriceSqm = getMinUnitPriceSqm(input.propertyType)
@@ -343,6 +358,12 @@ export function buildNbr14653Analysis(
 
   const limitations = [
     ...(aiNbr?.limitations ?? []),
+    neighborhoodFilter.rejectedCount > 0
+      ? buildCrossNeighborhoodLimitation(
+          input.address,
+          neighborhoodFilter.usedCrossNeighborhoodFallback
+        )
+      : null,
     useMedian
       ? isLand
         ? 'Terreno/lote: valor unitário obtido pela mediana dos comparáveis homogeneizados, mais robusta que a média em amostras com dispersão elevada.'

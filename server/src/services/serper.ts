@@ -1,5 +1,15 @@
 import { config } from '../config.js'
 import type { EvaluationRequest } from '../types/evaluation.js'
+import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
+import {
+  extractCityFromAddress,
+  extractCityStateHint,
+  extractLocationHint,
+  extractNeighborhoodFromAddress,
+} from '../utils/address-parsing.js'
+import { filterComparablesByNeighborhood } from '../utils/comparable-location-filter.js'
+
+export { extractLocationHint } from '../utils/address-parsing.js'
 
 export type SerperResult = {
   title: string
@@ -37,19 +47,6 @@ export async function serperSearch(query: string, num = 8): Promise<SerperResult
 
   const data = (await response.json()) as SerperSearchResponse
   return data.organic ?? []
-}
-
-export function extractLocationHint(address: string) {
-  const parts = address
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-
-  if (parts.length >= 2) {
-    return parts.slice(-2).join(', ')
-  }
-
-  return address.trim()
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -100,6 +97,8 @@ function getPremiumSearchHint(input: EvaluationRequest) {
 }
 
 export async function searchMarketListings(input: EvaluationRequest) {
+  const cityState = extractCityStateHint(input.address)
+  const neighborhood = extractNeighborhoodFromAddress(input.address)
   const location = extractLocationHint(input.address)
   const typeLabel =
     PROPERTY_TYPE_LABELS[input.propertyType] ?? input.propertyType
@@ -111,12 +110,29 @@ export async function searchMarketListings(input: EvaluationRequest) {
       : input.furnishing === 'semi'
         ? 'semi mobiliado '
         : ''
+  const isLand = isLandOnlyPropertyType(input.propertyType)
 
-  const queries = [
-    `${premiumPrefix}${furnishedHint}${typeLabel} venda ${location} site:zapimoveis.com.br OR site:vivareal.com.br`,
+  const neighborhoodQueries = neighborhood
+    ? [
+        `${premiumPrefix}${furnishedHint}${typeLabel} venda bairro ${neighborhood} ${cityState} site:zapimoveis.com.br OR site:vivareal.com.br`,
+        `${premiumPrefix}${typeLabel} ${input.area}m² venda ${neighborhood} ${cityState}`,
+        `preço m² ${premiumPrefix}${typeLabel} ${neighborhood} ${cityState}`,
+        ...(isLand
+          ? [
+              `terreno lote ${neighborhood} ${cityState} venda preço`,
+              `lote ${input.area}m² ${neighborhood} ${cityState} à venda`,
+            ]
+          : []),
+      ]
+    : []
+
+  const cityWideQueries = [
+    `${premiumPrefix}${furnishedHint}${typeLabel} venda ${cityState} site:zapimoveis.com.br OR site:vivareal.com.br`,
     `${premiumPrefix}${typeLabel} ${input.area}m² venda ${location} preço`,
-    `preço m² ${premiumPrefix}${typeLabel} ${location}`,
+    `preço m² ${premiumPrefix}${typeLabel} ${cityState}`,
   ]
+
+  const queries = [...neighborhoodQueries, ...cityWideQueries]
 
   const results = await Promise.all(queries.map((q) => serperSearch(q, 6)))
   const seen = new Set<string>()
@@ -131,7 +147,13 @@ export async function searchMarketListings(input: EvaluationRequest) {
     }
   }
 
-  return merged.slice(0, 15)
+  const { filtered } = filterComparablesByNeighborhood(
+    merged.slice(0, 20),
+    input.address,
+    { propertyType: input.propertyType }
+  )
+
+  return filtered.slice(0, 15)
 }
 
 export async function searchMasterPlan(address: string) {
@@ -176,13 +198,21 @@ function mergeSerperResults(batches: SerperResult[][], limit: number) {
 }
 
 export async function searchNeighborhoodProfile(address: string) {
-  const location = extractLocationHint(address)
+  const neighborhood = extractNeighborhoodFromAddress(address)
+  const city = extractCityFromAddress(address)
+  const cityState = extractCityStateHint(address)
+  const location = neighborhood
+    ? `${neighborhood}, ${cityState}`
+    : extractLocationHint(address)
 
   const queries = [
     `bairro ${location} infraestrutura escolas hospitais transporte`,
     `${location} segurança qualidade de vida morar`,
     `${location} comércio serviços metrô ônibus acesso`,
     `perfil socioeconômico bairro ${location}`,
+    ...(neighborhood && city
+      ? [`${neighborhood} ${city} características imóveis mercado`]
+      : []),
   ]
 
   const results = await Promise.all(queries.map((q) => serperSearch(q, 5)))
@@ -191,11 +221,8 @@ export async function searchNeighborhoodProfile(address: string) {
 
 export async function searchFloodRisk(address: string) {
   const location = extractLocationHint(address)
-  const parts = address
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  const neighborhood = parts.length >= 3 ? parts[parts.length - 3] : parts[0] ?? location
+  const neighborhood =
+    extractNeighborhoodFromAddress(address) ?? extractLocationHint(address)
 
   const queries = [
     `cota de cheia ${location} mapa inundação ANA`,

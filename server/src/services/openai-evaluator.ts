@@ -10,6 +10,10 @@ import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
 import { isHighStandardProperty } from './nbr-14653-service.js'
 import { getBuildingAgeLabel } from '../constants/building-age.js'
 import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
+import {
+  extractCityFromAddress,
+  extractNeighborhoodFromAddress,
+} from '../utils/address-parsing.js'
 
 const aiResponseSchema = z.object({
   estimatedValue: z.number(),
@@ -242,6 +246,19 @@ export async function evaluateWithOpenAI(
   }
 
   const isLand = isLandOnlyPropertyType(input.propertyType)
+  const propertyNeighborhood = extractNeighborhoodFromAddress(input.address)
+  const propertyCity = extractCityFromAddress(input.address)
+
+  const locationRuleBlock = propertyNeighborhood
+    ? `
+REGRA CRÍTICA DE LOCALIZAÇÃO (OBRIGATÓRIA):
+- Bairro do imóvel avaliando: ${propertyNeighborhood}${propertyCity ? ` (${propertyCity})` : ''}
+- Use APENAS comparáveis do MESMO bairro (${propertyNeighborhood}).
+- NUNCA inclua comparáveis de bairros diferentes na mesma cidade (ex.: Igrejinha quando o imóvel está em Moinhos).
+- Se não houver comparáveis no mesmo bairro, informe essa limitação em nbr14653.limitations e reduza a amostra — NÃO substitua por bairros distintos sem aviso explícito.
+${isLand ? '- TERRENO/LOTE: rejeite rigorosamente comparáveis de bairros distintos; preços de terreno variam drasticamente entre bairros.' : ''}
+`
+    : ''
 
   const propertyBlock = isLand
     ? `
@@ -283,7 +300,7 @@ Dados do imóvel:
     ? `
 REGRAS ESPECÍFICAS PARA TERRENO/LOTE:
 1. A área relevante é SEMPRE a área do terreno (${input.area} m²) — ignore área construída.
-2. Busque comparáveis do mesmo tipo (terreno, lote, loteamento) na mesma região.
+2. Busque comparáveis do mesmo tipo (terreno, lote, loteamento) no MESMO BAIRRO (${propertyNeighborhood ?? 'identificado no endereço'}) e mesma cidade.
 3. Valores unitários de terreno costumam ficar entre R$ 80/m² e R$ 15.000/m² conforme localização — NÃO use faixas de imóveis edificados.
 4. ATENÇÃO A PREÇOS DE TERRENO: anúncios podem informar preço TOTAL (ex.: R$ 450.000 por 500 m²) ou preço POR M² (ex.: R$ 900/m²). declaredPrice = preço total do anúncio; unitPriceSqm = R$/m² do terreno (total ÷ área do lote quando necessário).
 5. estimatedValue DEVE ser exatamente valuePerSqm × ${input.area} m². Nunca retorne estimatedValue igual ao valor unitário por m².
@@ -299,7 +316,7 @@ REGRAS ESPECÍFICAS PARA TERRENO/LOTE:
     '5. ATENÇÃO A PREÇOS DE TERRENO: distinga preço total do lote vs. R$/m². declaredPrice = valor total do anúncio; unitPriceSqm = R$/m² do terreno. estimatedValue = valuePerSqm × área do terreno avaliando.'
 
   const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
-
+${locationRuleBlock}
 AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
 1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão'}, valor pedido e observações) na homogeneização e no score final.
 2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
@@ -310,7 +327,7 @@ ${landMethodologyBlock}
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado ${isLand ? 'do terreno avaliando' : 'do imóvel avaliando'}.
 2. Método principal: Comparativo Direto de Dados de Mercado (preferencial conforme norma).
-3. Selecione de 3 a 6 ${isLand ? 'terrenos/lotes' : 'imóveis'} comparáveis reais da pesquisa Serper.
+3. Selecione de 3 a 6 ${isLand ? 'terrenos/lotes' : 'imóveis'} comparáveis reais da pesquisa Serper, prioritariamente do bairro ${propertyNeighborhood ?? 'do endereço informado'}.
 4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,85 e 1,15 por fator) para: localização, área${isLand ? ' do lote, zoneamento, infraestrutura viária' : ', terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades'} e mercado. O produto combinado dos fatores de cada comparável deve ficar entre 0,75 e 1,25.
 ${isLand ? landPriceRule : builtPriceRule}
 6. Calcule o valor unitário homogeneizado de cada comparável.${isLand ? '' : ' Some valor de móveis alto padrão ao valor final se informado.'}
@@ -423,7 +440,7 @@ Os campos estimatedValue e valuePerSqm DEVEM ser consistentes com nbr14653.calcu
 Use os resultados Serper para comparáveis reais. Valores em reais (BRL). Textos em português do Brasil.${feedbackLearning}`
 
   const userText = `${propertyBlock}
-
+${propertyNeighborhood ? `\nBairro de referência obrigatório para comparáveis: ${propertyNeighborhood}${propertyCity ? `, ${propertyCity}` : ''}\n` : ''}
 --- PESQUISA DE MERCADO (imobiliárias locais via Serper) ---
 ${formatSerperResults(marketResults)}
 
