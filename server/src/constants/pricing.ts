@@ -1,13 +1,13 @@
 export const PRICING = {
   leadCreditPack: {
     credits: 1,
-    priceCents: 799,
+    priceCents: 1499,
     label: '1 crédito',
   },
   evaluationPlan: {
-    trialEvaluations: 40,
-    priceCents: 9700,
-    label: 'Plano Mensal — 40 créditos',
-    description: '40 créditos mensais para avaliações IA e desbloqueio de leads',
+    trialEvaluations: 24,
+    priceCents: 24700,
+    label: 'Plano Mensal — 24 créditos',
+    description: '24 créditos mensais para avaliações IA e desbloqueio de leads',
   },
 } as const

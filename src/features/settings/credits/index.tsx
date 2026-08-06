@@ -197,7 +197,7 @@ export function CreditsSettings() {
   }
 
   const creditsPerUnit = pricing?.leadCreditPack.credits ?? 1
-  const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 799
+  const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 1499
   const leadCreditsTotal = creditsPerUnit * quantity
   const leadPriceTotal = pricePerUnit * quantity
 
@@ -264,16 +264,16 @@ export function CreditsSettings() {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Sparkles className='size-5' />
-              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 40 créditos'}
+              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 24 créditos'}
             </CardTitle>
             <CardDescription>
               {pricing?.evaluationPlan.description ??
-                '40 créditos mensais para avaliações IA e leads'}
+                '24 créditos mensais para avaliações IA e leads'}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
             <div className='text-3xl font-bold text-primary'>
-              {pricing?.evaluationPlan.priceLabel ?? 'R$ 97,00'}
+              {pricing?.evaluationPlan.priceLabel ?? 'R$ 247,00'}
               <span className='ml-2 text-base font-normal text-muted-foreground'>
                 / mês
               </span>
@@ -287,7 +287,7 @@ export function CreditsSettings() {
                       Assinatura ativa
                     </p>
                     <p className='mt-1 text-emerald-800/80 dark:text-emerald-200/80'>
-                      Você recebe 40 créditos todo mês. Os créditos já
+                      Você recebe 24 créditos todo mês. Os créditos já
                       creditados permanecem na conta após o cancelamento.
                     </p>
                   </div>
@@ -381,7 +381,7 @@ export function CreditsSettings() {
                 {pricing?.leadCreditPack.label ?? 'Pacote avulso de créditos'}
               </CardTitle>
               <CardDescription>
-                {pricing?.leadCreditPack.priceLabel ?? 'R$ 7,99'} por crédito —
+                {pricing?.leadCreditPack.priceLabel ?? 'R$ 14,99'} por crédito —
                 pagamento via PIX. Também entram no saldo unificado.
               </CardDescription>
             </CardHeader>

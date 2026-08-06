@@ -464,10 +464,28 @@ async function migrate() {
     await pool.query(
       `INSERT INTO plans (name, description, price_cents, lead_credits, trial_evaluations, is_active, sort_order)
        VALUES
-         ('Starter', '10 créditos para desbloquear leads', 4990, 10, 3, true, 1),
-         ('Profissional', '25 créditos — plano mais popular', 9990, 25, 5, true, 2),
-         ('Agência', '50 créditos para equipes', 17990, 50, 10, true, 3),
-         ('Enterprise', '100 créditos + suporte prioritário', 29990, 100, 20, true, 4)`
+         ('Plano Mensal', '24 créditos mensais para avaliações IA e desbloqueio de leads', 24700, 24, 24, true, 1)`
+    )
+  } else {
+    await pool.query(
+      `UPDATE plans
+       SET is_active = false, updated_at = NOW()
+       WHERE price_cents != 24700 OR lead_credits != 24`
+    )
+    await pool.query(
+      `INSERT INTO plans (name, description, price_cents, lead_credits, trial_evaluations, is_active, sort_order)
+       SELECT
+         'Plano Mensal',
+         '24 créditos mensais para avaliações IA e desbloqueio de leads',
+         24700,
+         24,
+         24,
+         true,
+         1
+       WHERE NOT EXISTS (
+         SELECT 1 FROM plans
+         WHERE price_cents = 24700 AND lead_credits = 24 AND is_active = true
+       )`
     )
   }
 

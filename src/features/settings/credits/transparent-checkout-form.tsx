@@ -353,7 +353,7 @@ export function TransparentCheckoutForm({
             Processando…
           </>
         ) : (
-          `Assinar por ${pricing?.evaluationPlan.priceLabel ?? 'R$ 97,00'}/mês`
+          `Assinar por ${pricing?.evaluationPlan.priceLabel ?? 'R$ 247,00'}/mês`
         )}
       </Button>
     </form>
