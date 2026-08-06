@@ -3,7 +3,8 @@ import { config } from '../config.js'
 
 export const AUTH_COOKIE_NAME = 'avalia_session'
 
-const MAX_AGE_SECONDS = 24 * 60 * 60
+/** Alinhado ao JWT — sessão persistente por 30 dias. */
+const MAX_AGE_SECONDS = 30 * 24 * 60 * 60
 
 export function setAuthCookie(res: Response, token: string) {
   const parts = [

@@ -93,7 +93,7 @@ export const config = {
     process.env.DATABASE_URL ??
     'postgresql://avalia:avalia123@localhost:5433/avalia_imob',
   jwtSecret: process.env.JWT_SECRET ?? 'avalia-imob-dev-secret-change-me',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
   corsOrigin: resolveCorsOrigin(),
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',

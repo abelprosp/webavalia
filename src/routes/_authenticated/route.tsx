@@ -8,19 +8,17 @@ export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
     const { auth } = useAuthStore.getState()
 
-    if (!auth.user) {
-      try {
-        const user = await fetchMe()
-        auth.setUser(user)
-      } catch {
-        auth.reset({ skipServer: true })
-        throw redirect({
-          to: '/sign-in',
-          search: {
-            redirect: getAuthRedirectPath(location),
-          },
-        })
-      }
+    try {
+      const user = await fetchMe()
+      auth.setUser(user)
+    } catch {
+      auth.reset({ skipServer: true })
+      throw redirect({
+        to: '/sign-in',
+        search: {
+          redirect: getAuthRedirectPath(location),
+        },
+      })
     }
   },
   component: AuthenticatedLayout,

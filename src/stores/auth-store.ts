@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { syncCreditsFromUser } from '@/stores/credits-store'
+import { syncCreditsFromUser, useCreditsStore } from '@/stores/credits-store'
 import { logoutRequest } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
 
@@ -63,6 +63,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       if (!options?.skipServer) {
         void logoutRequest().catch(() => undefined)
       }
+      useCreditsStore.getState().reset()
       set((state) => ({
         ...state,
         auth: { ...state.auth, user: null },
