@@ -22,6 +22,12 @@ import {
 } from '@/features/crm/components/save-to-crm-dialog'
 import { Button } from '@/components/ui/button'
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
   getFinishLevelLabel,
   getFurnishingLabel,
   getStandardLevelLabel,
@@ -372,6 +378,14 @@ export function EvaluationResultPanel({
           </div>
         </div>
 
+        <Tabs defaultValue='resumo' className='space-y-4'>
+          <TabsList>
+            <TabsTrigger value='resumo'>Resumo</TabsTrigger>
+            <TabsTrigger value='mercado'>Mercado</TabsTrigger>
+            <TabsTrigger value='tecnico'>Técnico</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='resumo' className='space-y-4'>
         {/* Row 1 — Hero + métricas */}
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           <BentoCard
@@ -551,6 +565,9 @@ export function EvaluationResultPanel({
           </BentoCard>
         )}
 
+          </TabsContent>
+
+          <TabsContent value='mercado' className='space-y-4'>
         {/* Row 2 — Bairro dark + critérios + comparáveis + insights */}
         <div className='grid grid-cols-1 gap-4 lg:grid-cols-4'>
           {result.neighborhoodAnalysis && (
@@ -559,7 +576,7 @@ export function EvaluationResultPanel({
               title='Pesquisa avançada do bairro'
               subtitle={result.neighborhoodAnalysis.qualityOfLife.slice(0, 55)}
               className='min-h-[280px] lg:col-span-2'
-              showMenu
+              showMenu={false}
             >
               <div className='grid gap-4 sm:grid-cols-2'>
                 <div>
@@ -615,7 +632,7 @@ export function EvaluationResultPanel({
               title='Imóveis comparáveis'
               subtitle={`${marketAnalysis.comparables.length} referências de mercado`}
               className='lg:col-span-2'
-              showMenu
+              showMenu={false}
             >
               <div className='space-y-2'>
                 {marketAnalysis.comparables.map((item, i) => (
@@ -654,7 +671,7 @@ export function EvaluationResultPanel({
             title='Insights da IA'
             subtitle={`${result.aiInsights.length} conclusões`}
             className='lg:col-span-2'
-            showMenu
+            showMenu={false}
           >
             <ul className='space-y-2'>
               {result.aiInsights.map((insight, i) => (
@@ -669,13 +686,16 @@ export function EvaluationResultPanel({
           </BentoCard>
         </div>
 
+          </TabsContent>
+
+          <TabsContent value='tecnico' className='space-y-4'>
         {/* Row 3 — Fotos + análise avançada + plano diretor */}
         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
           {(result.photoCount > 0 || result.photoPreviews.length > 0) && (
             <BentoCard
               title='Fotos analisadas'
               subtitle={`${result.photoCount || result.photoPreviews.length} imagem(ns)`}
-              showMenu
+              showMenu={false}
             >
               {result.photoPreviews.length > 0 ? (
                 <div className='grid grid-cols-2 gap-2'>
@@ -706,7 +726,7 @@ export function EvaluationResultPanel({
               title='Análise avançada'
               subtitle='Valorização e bairro'
               className='md:col-span-1 lg:col-span-1'
-              showMenu
+              showMenu={false}
             >
               <div className='space-y-2'>
                 {result.neighborhoodAnalysis && (
@@ -739,7 +759,7 @@ export function EvaluationResultPanel({
             title='Plano Diretor'
             subtitle='Usos e restrições'
             className='md:col-span-1 lg:col-span-1'
-            showMenu
+            showMenu={false}
           >
             <div className='grid gap-4 sm:grid-cols-2'>
               <div>
@@ -801,6 +821,8 @@ export function EvaluationResultPanel({
             </p>
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {!previewMode && (

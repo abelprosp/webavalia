@@ -1,13 +1,25 @@
-import { MapPin, Sparkles, User } from 'lucide-react'
+import { MapPin, MoreHorizontal, Sparkles, User } from 'lucide-react'
 import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { CrmDeal } from '@/lib/crm-api'
 import { getUrgencyLabel } from '@/lib/crm-api'
 
 type DealCardProps = {
   deal: CrmDeal
+  currentStageId: string
+  otherStages: { id: string; name: string }[]
   onClick: () => void
+  onMove: (dealId: string, stageId: string) => void
 }
 
 const urgencyVariant = {
@@ -16,8 +28,15 @@ const urgencyVariant = {
   baixa: 'outline',
 } as const
 
-export function DealCard({ deal, onClick }: DealCardProps) {
+export function DealCard({
+  deal,
+  currentStageId,
+  otherStages,
+  onClick,
+  onMove,
+}: DealCardProps) {
   const score = deal.leadScore
+  const moveTargets = otherStages.filter((s) => s.id !== currentStageId)
 
   return (
     <Card
@@ -30,7 +49,36 @@ export function DealCard({ deal, onClick }: DealCardProps) {
       onClick={onClick}
     >
       <div className='space-y-2'>
-        <p className='text-sm font-semibold leading-snug'>{deal.title}</p>
+        <div className='flex items-start justify-between gap-2'>
+          <p className='text-sm font-semibold leading-snug'>{deal.title}</p>
+          {moveTargets.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='size-7 shrink-0'
+                  aria-label={`Mover negócio: ${deal.title}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className='size-4' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end' onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuLabel>Mover para</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {moveTargets.map((stage) => (
+                  <DropdownMenuItem
+                    key={stage.id}
+                    onClick={() => onMove(deal.id, stage.id)}
+                  >
+                    {stage.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
         {deal.clientName && (
           <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>

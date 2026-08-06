@@ -179,6 +179,9 @@ function SignUpForm() {
             <button
               key={option.value}
               type='button'
+              role='radio'
+              aria-checked={accountType === option.value}
+              aria-pressed={accountType === option.value}
               onClick={() => {
                 setAccountType(option.value)
                 setDocument('')

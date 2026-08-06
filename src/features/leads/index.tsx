@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   Eye,
   Inbox,
-  Loader2,
   Lock,
   MapPin,
   MessageCircle,
   Phone,
   Search,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,7 @@ import {
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   fetchLeads,
   updateLeadStatus,
@@ -198,10 +200,7 @@ export function Leads() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className='flex items-center justify-center gap-2 py-12 text-muted-foreground'>
-                <Loader2 className='size-5 animate-spin' />
-                Carregando leads...
-              </div>
+              <PageSkeleton rows={6} />
             ) : visibleLeads.length === 0 ? (
               <div className='flex flex-col items-center gap-3 py-12 text-center'>
                 <Inbox className='size-8 text-muted-foreground' />
@@ -210,9 +209,80 @@ export function Leads() {
                     ? 'Nenhuma oportunidade disponível no momento.'
                     : 'Nenhuma oportunidade encontrada nessa região.'}
                 </p>
+                {leads.length === 0 && (
+                  <Button asChild>
+                    <Link to='/avaliacao'>
+                      <Sparkles className='size-4' />
+                      Ir avaliar e publicar
+                    </Link>
+                  </Button>
+                )}
               </div>
             ) : (
-              <Table>
+              <>
+                <div className='space-y-3 md:hidden'>
+                  {visibleLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      className='rounded-xl border bg-card p-4 shadow-sm'
+                    >
+                      <div className='flex items-start justify-between gap-2'>
+                        <div>
+                          <p className='font-medium'>{lead.name}</p>
+                          <p className='mt-0.5 flex items-center gap-1 text-xs text-muted-foreground'>
+                            <MapPin className='size-3' />
+                            <span className='line-clamp-1'>{lead.location}</span>
+                          </p>
+                        </div>
+                        <Badge variant={statusVariant(lead.status)}>
+                          {statusLabel(lead.status)}
+                        </Badge>
+                      </div>
+                      <div className='mt-3 flex flex-wrap items-center gap-2 text-sm'>
+                        <Badge variant='outline'>{lead.interest}</Badge>
+                        <span className='font-medium'>{lead.displayValue ?? '—'}</span>
+                      </div>
+                      <div className='mt-3 flex gap-2'>
+                        {lead.unlocked ? (
+                          <>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              className='flex-1'
+                              onClick={() => setDetailLead(lead)}
+                              aria-label={`Ver lead desbloqueado: ${lead.name}`}
+                            >
+                              <Eye className='size-4' />
+                              Ver lead
+                            </Button>
+                            {lead.status !== 'contatado' && (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => void markContacted(lead)}
+                              >
+                                <Phone className='size-4' />
+                                Contatado
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            variant='default'
+                            size='sm'
+                            className='w-full'
+                            onClick={() => setUnlockLead(lead)}
+                          >
+                            <Lock className='size-4' />
+                            Desbloquear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Table className='hidden md:table'>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Lead</TableHead>
@@ -260,6 +330,7 @@ export function Leads() {
                                 variant='ghost'
                                 size='icon'
                                 onClick={() => setDetailLead(lead)}
+                                aria-label={`Ver lead desbloqueado: ${lead.name}`}
                               >
                                 <Eye className='size-4' />
                               </Button>
@@ -289,7 +360,8 @@ export function Leads() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </>
             )}
           </CardContent>
         </Card>

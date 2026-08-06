@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
 import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -6,31 +5,36 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SignOutDialog } from '@/components/sign-out-dialog'
+import { ProfileMenuItems } from '@/components/layout/profile-menu-items'
 
 export function ProfileDropdown() {
   const [open, setOpen] = useDialogState()
   const user = useAuthStore((s) => s.auth.user)
-  const initials = user?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() ?? 'AI'
+  const initials =
+    user?.name
+      ?.trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() ?? 'AI'
 
   return (
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+          <Button
+            variant='ghost'
+            className='relative h-8 w-8 rounded-full'
+            aria-label='Menu do perfil'
+          >
             <Avatar className='h-8 w-8'>
-              <AvatarImage src='/avatars/01.png' alt='@shadcn' />
+              <AvatarImage src='/avatars/01.png' alt={user?.name ?? 'Usuário'} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </Button>
@@ -47,27 +51,7 @@ export function ProfileDropdown() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem asChild>
-              <Link to='/settings'>
-                Perfil
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to='/settings/credits'>
-                Créditos
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to='/settings'>
-                Configurações
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant='destructive' onClick={() => setOpen(true)}>
-            Sair
-          </DropdownMenuItem>
+          <ProfileMenuItems onSignOut={() => setOpen(true)} showIcons={false} />
         </DropdownMenuContent>
       </DropdownMenu>
 

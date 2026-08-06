@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Inbox, RefreshCw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   fetchPipelineBoard,
   moveDealStage,
@@ -40,7 +42,7 @@ export function PipelineBoard() {
     void loadBoard()
   }, [loadBoard])
 
-  async function handleDrop(stageId: string, dealId: string) {
+  async function handleMove(dealId: string, stageId: string) {
     try {
       await moveDealStage(dealId, stageId)
       await loadBoard()
@@ -53,14 +55,13 @@ export function PipelineBoard() {
   }
 
   if (loading) {
-    return (
-      <div className='flex min-h-[320px] items-center justify-center'>
-        <Loader2 className='size-6 animate-spin text-muted-foreground' />
-      </div>
-    )
+    return <PageSkeleton rows={4} />
   }
 
   if (!board) return null
+
+  const stageSummaries = board.stages.map((s) => ({ id: s.id, name: s.name }))
+  const totalDeals = board.stages.reduce((acc, s) => acc + s.deals.length, 0)
 
   return (
     <>
@@ -68,7 +69,7 @@ export function PipelineBoard() {
         <div>
           <h2 className='text-base font-semibold'>{board.pipeline.name}</h2>
           <p className='text-sm text-muted-foreground'>
-            Arraste os cards entre etapas · Lead Scoring por IA
+            Arraste os cards ou use &quot;Mover para&quot; · Lead Scoring por IA
           </p>
         </div>
         <Button variant='outline' size='sm' onClick={() => void loadBoard()}>
@@ -77,45 +78,78 @@ export function PipelineBoard() {
         </Button>
       </div>
 
-      <div className='flex gap-4 overflow-x-auto pb-4'>
-        {board.stages.map((stage) => (
-          <div
-            key={stage.id}
-            className={`min-w-[280px] flex-1 rounded-[1.25rem] border p-3 transition ${
-              dragOverStageId === stage.id
-                ? 'border-flux-lime bg-flux-lime/10'
-                : stageColorClass[stage.color] ?? 'border-black/[0.06] bg-muted/20'
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDragOverStageId(stage.id)
-            }}
-            onDragLeave={() => setDragOverStageId(null)}
-            onDrop={(e) => {
-              e.preventDefault()
-              const dealId = e.dataTransfer.getData('dealId')
-              if (dealId) void handleDrop(stage.id, dealId)
-            }}
-          >
-            <div className='mb-3 flex items-center justify-between'>
-              <h3 className='text-sm font-semibold'>{stage.name}</h3>
-              <span className='rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground'>
-                {stage.deals.length}
-              </span>
-            </div>
-
-            <div className='space-y-2'>
-              {stage.deals.map((deal: CrmDeal) => (
-                <DealCard
-                  key={deal.id}
-                  deal={deal}
-                  onClick={() => setSelectedDealId(deal.id)}
-                />
-              ))}
-            </div>
+      {totalDeals === 0 ? (
+        <div className='flex flex-col items-center gap-3 rounded-[1.75rem] border border-dashed py-16 text-center'>
+          <Inbox className='size-10 text-muted-foreground' />
+          <div>
+            <p className='font-medium'>Pipeline vazio</p>
+            <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
+              Avalie imóveis e salve no CRM, ou desbloqueie leads para começar a
+              mover negócios entre etapas.
+            </p>
           </div>
-        ))}
-      </div>
+          <div className='flex flex-wrap justify-center gap-2'>
+            <Button asChild>
+              <Link to='/avaliacao'>
+                <Sparkles className='size-4' />
+                Nova avaliação
+              </Link>
+            </Button>
+            <Button variant='outline' asChild>
+              <Link to='/leads'>Ver leads</Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className='flex gap-4 overflow-x-auto pb-4'>
+          {board.stages.map((stage) => (
+            <div
+              key={stage.id}
+              className={`min-w-[280px] flex-1 rounded-[1.25rem] border p-3 transition ${
+                dragOverStageId === stage.id
+                  ? 'border-flux-lime bg-flux-lime/10'
+                  : stageColorClass[stage.color] ?? 'border-black/[0.06] bg-muted/20'
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setDragOverStageId(stage.id)
+              }}
+              onDragLeave={() => setDragOverStageId(null)}
+              onDrop={(e) => {
+                e.preventDefault()
+                const dealId = e.dataTransfer.getData('dealId')
+                if (dealId) void handleMove(dealId, stage.id)
+              }}
+            >
+              <div className='mb-3 flex items-center justify-between'>
+                <h3 className='text-sm font-semibold'>{stage.name}</h3>
+                <span className='rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground'>
+                  {stage.deals.length}
+                </span>
+              </div>
+
+              <div className='space-y-2'>
+                {stage.deals.length === 0 ? (
+                  <p className='rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground'>
+                    Arraste um negócio para cá
+                  </p>
+                ) : (
+                  stage.deals.map((deal: CrmDeal) => (
+                    <DealCard
+                      key={deal.id}
+                      deal={deal}
+                      currentStageId={stage.id}
+                      otherStages={stageSummaries}
+                      onClick={() => setSelectedDealId(deal.id)}
+                      onMove={handleMove}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <DealDetailSheet
         dealId={selectedDealId}

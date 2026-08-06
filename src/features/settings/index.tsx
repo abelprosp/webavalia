@@ -1,12 +1,10 @@
 import { Outlet } from '@tanstack/react-router'
-import { Monitor, Bell, Palette, Wrench, UserCog, Coins } from 'lucide-react'
+import { Palette, UserCog, Coins } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { SidebarNav } from './components/sidebar-nav'
 
 const sidebarNavItems = [
@@ -16,12 +14,7 @@ const sidebarNavItems = [
     icon: <UserCog size={18} />,
   },
   {
-    title: 'Conta',
-    href: '/settings/account',
-    icon: <Wrench size={18} />,
-  },
-  {
-    title: 'Créditos',
+    title: 'Créditos e planos',
     href: '/settings/credits',
     icon: <Coins size={18} />,
   },
@@ -30,33 +23,26 @@ const sidebarNavItems = [
     href: '/settings/appearance',
     icon: <Palette size={18} />,
   },
-  {
-    title: 'Notificações',
-    href: '/settings/notifications',
-    icon: <Bell size={18} />,
-  },
-  {
-    title: 'Exibição',
-    href: '/settings/display',
-    icon: <Monitor size={18} />,
-  },
 ]
 
 export function Settings() {
   return (
     <>
-      {/* ===== Top Heading ===== */}
       <Header>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
+        <HeaderActions />
       </Header>
 
       <Main fixed>
+        <Breadcrumbs
+          items={[
+            { label: 'Início', href: '/' },
+            { label: 'Configurações' },
+          ]}
+          className='mb-2'
+        />
         <div className='space-y-0.5'>
           <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>
-            Settings
+            Configurações
           </h1>
           <p className='text-muted-foreground'>
             Gerencie sua conta, créditos e preferências da Avalia Imob.

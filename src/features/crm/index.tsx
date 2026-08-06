@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -189,6 +190,13 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+        <Breadcrumbs
+          items={[
+            { label: 'Início', href: '/' },
+            { label: personalMode ? 'Minhas avaliações' : 'CRM' },
+          ]}
+          className='mb-1'
+        />
         <div className='flex flex-wrap items-end justify-between gap-4'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>
@@ -262,6 +270,9 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
               <TabsTrigger value='pipeline' className='gap-2'>
                 <Kanban className='size-4' />
                 Pipeline
+                <span className='hidden text-xs text-muted-foreground sm:inline'>
+                  (principal)
+                </span>
               </TabsTrigger>
               <TabsTrigger value='evaluations' className='gap-2'>
                 <Bookmark className='size-4' />

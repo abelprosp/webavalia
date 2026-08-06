@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ComingSoon } from '@/components/coming-soon'
+import { redirectOrphanRoute } from '@/lib/redirect-orphan-route'
 
 export const Route = createFileRoute('/_authenticated/help-center/')({
-  component: ComingSoon,
+  beforeLoad: redirectOrphanRoute,
 })

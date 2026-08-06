@@ -71,6 +71,7 @@ import { useCreditsStore } from '@/stores/credits-store'
 import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
 import { isBrokerAccount } from '@/lib/auth-api'
 import { EvaluationResultPanel } from './components/evaluation-result'
+import { EvaluationWizardSteps } from './components/evaluation-wizard-steps'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
 import { FloodExperienceFeedback } from './components/flood-experience-feedback'
 import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
@@ -107,6 +108,7 @@ export function Avaliacao() {
   const [cepLookup, setCepLookup] = useState<CepLookupResult | null>(null)
   const [cepLoading, setCepLoading] = useState(false)
   const [showDraftBanner, setShowDraftBanner] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null)
 
   useEffect(() => {
@@ -338,9 +340,12 @@ export function Avaliacao() {
         )}
 
         <div className='flex flex-col gap-6'>
+          {!result && <EvaluationWizardSteps currentStep={wizardStep} />}
           <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              {wizardStep === 1 && (
+                <>
               <ListingIntentSelector control={form.control} />
 
               <Card className='rounded-[1.75rem] border-0 shadow-sm'>
@@ -696,7 +701,10 @@ export function Avaliacao() {
                   />
                 </CardContent>
               </Card>
+                </>
+              )}
 
+              {wizardStep === 2 && (
               <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
@@ -943,7 +951,9 @@ export function Avaliacao() {
                   )}
                 </CardContent>
               </Card>
+              )}
 
+              {wizardStep === 3 && (
               <Card className='rounded-[1.75rem] border-0 shadow-sm'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
@@ -959,11 +969,40 @@ export function Avaliacao() {
                   <PhotoUpload photos={photos} onChange={setPhotos} />
                 </CardContent>
               </Card>
+              )}
 
+              <div className='sticky bottom-0 z-10 -mx-1 flex gap-2 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80'>
+                {wizardStep > 1 && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='flex-1 rounded-full'
+                    onClick={() => setWizardStep((s) => s - 1)}
+                  >
+                    Voltar
+                  </Button>
+                )}
+                {wizardStep < 3 ? (
+                  <Button
+                    type='button'
+                    className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
+                    onClick={async () => {
+                      const fieldsByStep: (keyof EvaluationFormValues)[][] = [
+                        ['listingIntent', 'cep', 'address', 'propertyType', 'area'],
+                        ['standardLevel', 'conservation'],
+                        [],
+                      ]
+                      const valid = await form.trigger(fieldsByStep[wizardStep - 1])
+                      if (valid) setWizardStep((s) => s + 1)
+                    }}
+                  >
+                    Continuar
+                  </Button>
+                ) : (
               <Button
                 type='submit'
                 size='lg'
-                className='w-full rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
+                className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
                 disabled={isEvaluating || (isBroker && credits === 0)}
               >
                 {isEvaluating ? (
@@ -978,6 +1017,8 @@ export function Avaliacao() {
                   </>
                 )}
               </Button>
+                )}
+              </div>
             </form>
           </Form>
 

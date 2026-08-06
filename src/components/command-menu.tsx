@@ -33,10 +33,10 @@ export function CommandMenu() {
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder='Type a command or search...' />
+      <CommandInput placeholder='Digite um comando ou busque…' />
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
           {navGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items.map((navItem, i) => {
@@ -58,18 +58,18 @@ export function CommandMenu() {
 
                 if ('items' in navItem && navItem.items) {
                   return navItem.items.map((subItem, j) => (
-                  <CommandItem
-                    key={`${navItem.title}-${subItem.url}-${j}`}
-                    value={`${navItem.title}-${subItem.url}`}
-                    onSelect={() => {
-                      runCommand(() => navigate({ to: subItem.url }))
-                    }}
-                  >
-                    <div className='flex size-4 items-center justify-center'>
-                      <ArrowRight className='size-2 text-muted-foreground/80' />
-                    </div>
-                    {navItem.title} <ChevronRight /> {subItem.title}
-                  </CommandItem>
+                    <CommandItem
+                      key={`${navItem.title}-${subItem.url}-${j}`}
+                      value={`${navItem.title}-${subItem.url}`}
+                      onSelect={() => {
+                        runCommand(() => navigate({ to: subItem.url }))
+                      }}
+                    >
+                      <div className='flex size-4 items-center justify-center'>
+                        <ArrowRight className='size-2 text-muted-foreground/80' />
+                      </div>
+                      {navItem.title} <ChevronRight /> {subItem.title}
+                    </CommandItem>
                   ))
                 }
 
@@ -78,17 +78,17 @@ export function CommandMenu() {
             </CommandGroup>
           ))}
           <CommandSeparator />
-          <CommandGroup heading='Theme'>
+          <CommandGroup heading='Tema'>
             <CommandItem onSelect={() => runCommand(() => setTheme('light'))}>
-              <Sun /> <span>Light</span>
+              <Sun /> <span>Claro</span>
             </CommandItem>
             <CommandItem onSelect={() => runCommand(() => setTheme('dark'))}>
               <Moon className='scale-90' />
-              <span>Dark</span>
+              <span>Escuro</span>
             </CommandItem>
             <CommandItem onSelect={() => runCommand(() => setTheme('system'))}>
               <Laptop />
-              <span>System</span>
+              <span>Sistema</span>
             </CommandItem>
           </CommandGroup>
         </ScrollArea>

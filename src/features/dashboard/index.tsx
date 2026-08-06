@@ -3,6 +3,7 @@ import {
   Building2,
   Coins,
   Home,
+  Kanban,
   MessageCircle,
   Sparkles,
   Users,
@@ -18,6 +19,7 @@ import {
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { FirstRunBanner } from '@/components/onboarding/first-run-banner'
 import { isBrokerAccount } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
@@ -29,7 +31,6 @@ import { RecentLeads } from './components/recent-leads'
 import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
 import { useGamificationStats } from '@/features/gamification/hooks/use-gamification-stats'
 import { DashboardFoxAiInsights } from '@/features/fox-ai/components/dashboard-fox-ai-insights'
-import { MarketInsightsPanel } from '@/features/fox-ai/components/market-insights-panel'
 
 export function Dashboard() {
   const user = useAuthStore((s) => s.auth.user)
@@ -65,10 +66,10 @@ export function Dashboard() {
       <Main>
         <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
           <div>
-            <h1 className='text-2xl font-bold tracking-tight'>Dashboard</h1>
+            <h1 className='text-2xl font-bold tracking-tight'>Início</h1>
             <p className='text-muted-foreground'>
               {isBroker
-                ? 'Visão geral da sua operação na Avalia Imob'
+                ? 'Hub do funil: avaliar → leads → CRM'
                 : 'Acompanhe suas avaliações de imóveis com IA'}
             </p>
           </div>
@@ -77,18 +78,20 @@ export function Dashboard() {
               <Button variant='outline' asChild>
                 <Link to='/leads'>
                   <Users className='size-4' />
-                  Ver leads
+                  Oportunidades
                 </Link>
               </Button>
             )}
             <Button asChild>
               <Link to='/avaliacao'>
                 <Sparkles className='size-4' />
-                Nova avaliação
+                Avaliar imóvel
               </Link>
             </Button>
           </div>
         </div>
+
+        {isBroker && <FirstRunBanner />}
 
         <div className='mb-6'>
           <GamificationPanel stats={gamificationStats} loading={gamificationLoading} />
@@ -99,7 +102,58 @@ export function Dashboard() {
         >
           {isBroker ? (
             <>
-              <Card>
+              <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
+                <Card className='h-full'>
+                  <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                    <CardTitle className='text-sm font-medium'>
+                      Créditos disponíveis
+                    </CardTitle>
+                    <Coins className='size-4 text-muted-foreground' />
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{credits}</div>
+                    <p className='text-xs text-muted-foreground'>
+                      Para avaliações IA e leads
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link to='/leads' className='block transition-opacity hover:opacity-90'>
+                <Card className='h-full'>
+                  <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                    <CardTitle className='text-sm font-medium'>
+                      Oportunidades
+                    </CardTitle>
+                    <MessageCircle className='size-4 text-muted-foreground' />
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{leads.length}</div>
+                    <p className='text-xs text-muted-foreground'>
+                      Leads captados pela Avalia
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link to='/leads' className='block transition-opacity hover:opacity-90'>
+                <Card className='h-full'>
+                  <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                    <CardTitle className='text-sm font-medium'>
+                      Desbloqueados
+                    </CardTitle>
+                    <Users className='size-4 text-muted-foreground' />
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{unlockedCount}</div>
+                    <p className='text-xs text-muted-foreground'>
+                      Prontos para contato
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </>
+          ) : (
+            <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
+              <Card className='h-full'>
                 <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                   <CardTitle className='text-sm font-medium'>
                     Créditos disponíveis
@@ -109,72 +163,31 @@ export function Dashboard() {
                 <CardContent>
                   <div className='text-2xl font-bold'>{credits}</div>
                   <p className='text-xs text-muted-foreground'>
-                    Para avaliações IA e leads
+                    Para avaliações com IA
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Leads captados
-                  </CardTitle>
-                  <MessageCircle className='size-4 text-muted-foreground' />
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>{leads.length}</div>
-                  <p className='text-xs text-muted-foreground'>
-                    Via WhatsApp Avalia
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Leads desbloqueados
-                  </CardTitle>
-                  <Users className='size-4 text-muted-foreground' />
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>{unlockedCount}</div>
-                  <p className='text-xs text-muted-foreground'>
-                    Prontos para contato
-                  </p>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card>
+            </Link>
+          )}
+
+          <Link to='/avaliacao' className='block transition-opacity hover:opacity-90'>
+            <Card className='h-full'>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                 <CardTitle className='text-sm font-medium'>
-                  Créditos disponíveis
+                  Avaliações realizadas
                 </CardTitle>
-                <Coins className='size-4 text-muted-foreground' />
+                <Building2 className='size-4 text-muted-foreground' />
               </CardHeader>
               <CardContent>
-                <div className='text-2xl font-bold'>{credits}</div>
+                <div className='text-2xl font-bold'>{evaluationsTotal}</div>
                 <p className='text-xs text-muted-foreground'>
-                  Para avaliações com IA
+                  {evaluationsThisMonth > 0
+                    ? `+${evaluationsThisMonth} este mês`
+                    : 'Nenhuma este mês'}
                 </p>
               </CardContent>
             </Card>
-          )}
-
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Avaliações realizadas
-              </CardTitle>
-              <Building2 className='size-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{evaluationsTotal}</div>
-              <p className='text-xs text-muted-foreground'>
-                {evaluationsThisMonth > 0
-                  ? `+${evaluationsThisMonth} este mês`
-                  : 'Nenhuma este mês'}
-              </p>
-            </CardContent>
-          </Card>
+          </Link>
         </div>
 
         <div className='mt-6 grid grid-cols-1 gap-4 lg:grid-cols-7'>
@@ -204,20 +217,21 @@ export function Dashboard() {
           )}
         </div>
 
-        <div className='mb-6'>
-          <DashboardFoxAiInsights dashboardContext={dashboardContext} />
-        </div>
-
-        <div className='mb-6'>
-          <MarketInsightsPanel />
-        </div>
+        {isBroker && (
+          <div className='mb-6 mt-6'>
+            <DashboardFoxAiInsights dashboardContext={dashboardContext} />
+          </div>
+        )}
 
         <Card className='mt-6'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Home className='size-5' />
-              Ações rápidas
+              Funil da operação
             </CardTitle>
+            <CardDescription>
+              Siga a ordem recomendada para maximizar conversões
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div
@@ -226,22 +240,30 @@ export function Dashboard() {
               <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
                 <Link to='/avaliacao'>
                   <Sparkles className='size-6' />
-                  <span>Avaliar imóvel com IA</span>
+                  <span>1. Avaliar imóvel</span>
                 </Link>
               </Button>
               {isBroker && (
-                <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
-                  <Link to='/leads'>
-                    <Users className='size-6' />
-                    <span>Desbloquear leads</span>
-                  </Link>
-                </Button>
+                <>
+                  <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                    <Link to='/leads'>
+                      <Users className='size-6' />
+                      <span>2. Desbloquear leads</span>
+                    </Link>
+                  </Button>
+                  <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                    <Link to='/crm'>
+                      <Kanban className='size-6' />
+                      <span>3. Gerenciar no CRM</span>
+                    </Link>
+                  </Button>
+                </>
               )}
               <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
                 <Link to='/settings/credits'>
                   <Coins className='size-6' />
                   <span>
-                    {isBroker ? 'Comprar créditos' : 'Assinar avaliações'}
+                    {isBroker ? 'Créditos e planos' : 'Assinar avaliações'}
                   </span>
                 </Link>
               </Button>

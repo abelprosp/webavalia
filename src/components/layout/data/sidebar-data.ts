@@ -2,15 +2,10 @@ import {
   Building2,
   Coins,
   LayoutDashboard,
-  Settings,
   UserCog,
-  Wrench,
   Palette,
-  Bell,
-  Monitor,
   Home,
   Users,
-  Contact,
   Shield,
   CreditCard,
   Settings2,
@@ -18,6 +13,8 @@ import {
   Sparkles,
   MessageSquare,
   Map,
+  Kanban,
+  FileText,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount, type AuthUser } from '@/lib/auth-api'
 import { type NavGroup, type NavItem, type SidebarData } from '../types'
@@ -43,103 +40,82 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
 
   const platformItems: NavItem[] = [
     {
-      title: 'Dashboard',
+      title: 'Início',
       url: '/',
       icon: LayoutDashboard,
     },
     {
-      title: 'Avaliação de Imóveis',
+      title: 'Avaliar imóvel',
       url: '/avaliacao',
       icon: Home,
-    },
-    {
-      title: 'FoxAi',
-      icon: Sparkles,
-      badge: 'IA',
-      items: [
-        {
-          title: 'Central FoxAi',
-          url: '/fox-ai',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'Chat FoxAi',
-          url: '/fox-ai/chat',
-          icon: MessageSquare,
-        },
-      ],
     },
   ]
 
   if (broker) {
     platformItems.push(
       {
-        title: 'Mapa de Mercado',
-        url: '/mapa-de-mercado',
-        icon: Map,
-      },
-      {
-        title: 'Leads',
+        title: 'Oportunidades (Leads)',
         url: '/leads',
         icon: Users,
       },
       {
-        title: 'CRM',
+        title: 'Pipeline (CRM)',
         url: '/crm',
-        icon: Contact,
+        icon: Kanban,
+      },
+      {
+        title: 'Mapa de mercado',
+        url: '/mapa-de-mercado',
+        icon: Map,
+      },
+      {
+        title: 'Assistente IA',
+        icon: Sparkles,
+        badge: 'IA',
+        items: [
+          {
+            title: 'Central FoxAi',
+            url: '/fox-ai',
+            icon: LayoutDashboard,
+          },
+          {
+            title: 'Chat FoxAi',
+            url: '/fox-ai/chat',
+            icon: MessageSquare,
+          },
+        ],
       }
     )
   } else {
     platformItems.push({
       title: 'Minhas avaliações',
       url: '/minhas-avaliacoes',
-      icon: Contact,
+      icon: FileText,
     })
   }
 
-  const groups = [
+  const groups: NavGroup[] = [
     {
       title: 'Plataforma',
       items: platformItems,
     },
     {
-      title: 'Configurações',
+      title: 'Conta',
       items: [
         {
-          title: 'Settings',
-          icon: Settings,
-          items: [
-            {
-              title: 'Perfil',
-              url: '/settings',
-              icon: UserCog,
-            },
-            {
-              title: 'Conta',
-              url: '/settings/account',
-              icon: Wrench,
-            },
-            {
-              title: 'Créditos',
-              url: '/settings/credits',
-              icon: Coins,
-            },
-            {
-              title: 'Aparência',
-              url: '/settings/appearance',
-              icon: Palette,
-            },
-            {
-              title: 'Notificações',
-              url: '/settings/notifications',
-              icon: Bell,
-            },
-            {
-              title: 'Exibição',
-              url: '/settings/display',
-              icon: Monitor,
-            },
-          ],
+          title: 'Créditos e planos',
+          url: '/settings/credits',
+          icon: Coins,
+        },
+        {
+          title: 'Perfil',
+          url: '/settings',
+          icon: UserCog,
+        },
+        {
+          title: 'Aparência',
+          url: '/settings/appearance',
+          icon: Palette,
         },
       ],
     },
