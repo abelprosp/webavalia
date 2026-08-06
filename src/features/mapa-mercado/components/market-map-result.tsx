@@ -84,14 +84,6 @@ export function MarketMapResultPanel({
         </BentoCard>
       )}
 
-      {!result.showTotalValue && (
-        <BentoCard variant='muted' title='Valor total'>
-          <p className='text-sm text-muted-foreground'>
-            Informe a metragem nos filtros para ver o valor total estimado do terreno.
-          </p>
-        </BentoCard>
-      )}
-
       <BentoCard variant='default' title='Confiança da estimativa'>
         <div className='flex flex-wrap items-center gap-2'>
           <FluxBadge variant='lavender'>{result.scoreLabel}</FluxBadge>
@@ -100,16 +92,8 @@ export function MarketMapResultPanel({
             {result.comparablesCount === 1 ? 'l' : 'is'}
           </span>
         </div>
-        {result.averagePricePerSqm != null && (
-          <p className='mt-3 text-sm text-muted-foreground'>
-            Média homogeneizada:{' '}
-            <span className='font-semibold text-foreground'>
-              {formatCurrency(result.averagePricePerSqm)}/m²
-            </span>
-          </p>
-        )}
         {result.priceRange && (
-          <p className='mt-1 text-sm text-muted-foreground'>
+          <p className='mt-3 text-sm text-muted-foreground'>
             Faixa por m²: {formatCurrency(result.priceRange.min)} —{' '}
             {formatCurrency(result.priceRange.max)}/m²
           </p>

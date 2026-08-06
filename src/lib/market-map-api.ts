@@ -23,7 +23,6 @@ export type MarketCitySearchResult = {
 
 export type MarketMapResult = {
   valuePerSqm: number
-  averagePricePerSqm: number | null
   priceRange: { min: number; max: number } | null
   estimatedTotalValue?: number | null
   showTotalValue?: boolean

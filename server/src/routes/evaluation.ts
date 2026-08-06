@@ -433,7 +433,6 @@ router.post(
 
       return res.json({
         valuePerSqm: pricing.valuePerSqm,
-        averagePricePerSqm: pricing.averagePricePerSqm,
         priceRange: pricing.priceRange,
         estimatedTotalValue: pricing.estimatedTotalValue,
         showTotalValue: pricing.showTotalValue,
