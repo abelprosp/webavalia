@@ -218,10 +218,9 @@ export function CreditsSettings() {
               Seu saldo
             </CardTitle>
             <CardDescription>
-              Cada conta recebe {signupBonus} créditos ao se cadastrar e +1 ao
-              concluir a primeira avaliação. Depois, compre mais créditos. 1
-              crédito = 1 avaliação IA
-              {isBroker ? ' ou 1 desbloqueio de lead' : ''}.
+              {isBroker
+                ? `Cada conta recebe ${signupBonus} créditos ao se cadastrar e +1 ao enviar feedback após uma avaliação. Depois, compre mais créditos. 1 crédito = 1 avaliação IA ou 1 desbloqueio de lead.`
+                : `Cada conta recebe ${signupBonus} créditos ao se cadastrar e +1 ao concluir a primeira avaliação. Depois, compre mais créditos. 1 crédito = 1 avaliação IA.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -449,9 +448,9 @@ export function CreditsSettings() {
               </p>
             )}
             <p>
-              Cada conta começa com créditos grátis. Ao concluir a primeira
-              avaliação, você ganha +1 crédito. Depois disso, compre pacotes
-              avulsos via PIX ou assine o plano mensal.
+              {isBroker
+                ? 'Cada conta começa com créditos grátis. Ao enviar feedback após uma avaliação, você ganha +1 crédito bônus. Depois disso, compre pacotes avulsos via PIX ou assine o plano mensal.'
+                : 'Cada conta começa com créditos grátis. Ao concluir a primeira avaliação, você ganha +1 crédito. Depois disso, compre pacotes avulsos via PIX ou assine o plano mensal.'}
             </p>
           </CardContent>
         </Card>

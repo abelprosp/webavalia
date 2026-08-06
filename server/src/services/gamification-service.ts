@@ -23,7 +23,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     key: 'first_evaluation',
     title: 'Primeira avaliação',
     description: 'Realizou sua primeira avaliação com IA',
-    rewardEvaluations: 1,
+    rewardEvaluations: 0,
   },
   {
     key: 'evaluations_5',
@@ -41,7 +41,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     key: 'first_feedback',
     title: 'Mentor da IA',
     description: 'Enviou o primeiro feedback para calibrar a IA',
-    rewardEvaluations: 0,
+    rewardEvaluations: 1,
   },
   {
     key: 'feedback_5',
@@ -294,12 +294,20 @@ async function grantAchievementRewards(
   userId: string,
   keys: AchievementKey[]
 ): Promise<{ totalReward: number; trialEvaluationsRemaining: number | null }> {
+  const userResult = await pool.query<{ account_type: string }>(
+    'SELECT account_type FROM users WHERE id = $1',
+    [userId]
+  )
+  const isBroker = userResult.rows[0]?.account_type === 'pj'
+
   let totalReward = 0
   let trialEvaluationsRemaining: number | null = null
 
   for (const key of keys) {
     const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)
     if (!def || def.rewardEvaluations <= 0) continue
+    // PF recebe créditos pelo pf-credits-service, não por conquistas.
+    if (!isBroker) continue
 
     trialEvaluationsRemaining = await addTrialEvaluations(
       userId,

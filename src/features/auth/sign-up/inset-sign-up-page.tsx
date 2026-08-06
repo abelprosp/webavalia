@@ -60,8 +60,9 @@ function SignUpPanel() {
             Criar conta
           </h1>
           <p className='text-sm text-muted-foreground'>
-            Escolha o tipo de conta e ganhe {TRIAL_EVALUATIONS_TOTAL} avaliações
-            grátis com IA para testar a plataforma.
+            Escolha o tipo de conta. Você começa com {TRIAL_EVALUATIONS_TOTAL}{' '}
+            avaliações grátis com IA e pode ganhar mais 1 bônus ao usar a
+            plataforma.
           </p>
         </div>
 

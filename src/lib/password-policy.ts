@@ -1,4 +1,7 @@
-export const TRIAL_EVALUATIONS_TOTAL = 3
+/** Créditos iniciais no cadastro. Corretores (PJ) podem ganhar +1 ao dar feedback. */
+export const TRIAL_EVALUATIONS_TOTAL = 2
+
+export const TRIAL_EVALUATIONS_MAX = 3
 
 export function validatePassword(password: string): string | null {
   if (password.length < 8) {

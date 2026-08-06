@@ -447,7 +447,7 @@ async function migrate() {
      ON CONFLICT (key) DO NOTHING`
   )
 
-  // Funil gratuito: 2 no cadastro + 1 na primeira tarefa; sem créditos extras por feedback
+  // Funil gratuito PJ: 2 no cadastro + 1 bônus no primeiro feedback
   await pool.query(
     `UPDATE platform_settings
      SET value = '{"value": 2}'::jsonb, updated_at = NOW()
