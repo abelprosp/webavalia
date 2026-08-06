@@ -1,5 +1,9 @@
 import { pool } from '../db/pool.js'
 import {
+  sanitizeEvaluationResultForPreview,
+  sanitizePropertyInputForPreview,
+} from '../utils/lead-preview.js'
+import {
   formatLeadBudget,
   getListingIntentFromInput,
 } from '../utils/rent-estimate.js'
@@ -39,15 +43,39 @@ function mapLeadForUser(
 ) {
   const evaluationResult = row.evaluation_result ?? null
   const propertyInput = row.property_input ?? null
+  const listingIntent = getListingIntentFromInput(propertyInput)
   const estimatedValue =
     typeof evaluationResult?.estimatedValue === 'number'
       ? evaluationResult.estimatedValue
       : null
-  const listingIntent = getListingIntentFromInput(propertyInput)
   const displayValue =
     estimatedValue != null
       ? formatLeadBudget(listingIntent, estimatedValue, propertyInput)
       : null
+  const publicLocation = row.location ?? '—'
+  const previewPropertyInput = unlocked
+    ? propertyInput
+    : sanitizePropertyInputForPreview(propertyInput, publicLocation) ??
+      (evaluationResult
+        ? sanitizePropertyInputForPreview(
+            {
+              listingIntent,
+              propertyType: row.property_type ?? 'apartamento',
+              area: 70,
+              bedrooms: 0,
+              bathrooms: 0,
+              parking: 0,
+              buildingAge: 'mais-10',
+              conservation: 'bom',
+              standardLevel: 'padrao',
+              furnishing: 'sem',
+              finishLevel: 'padrao',
+              condominiumLevel: 'nao-aplica',
+              amenities: [],
+            },
+            publicLocation
+          )
+        : null)
 
   return {
     id: row.id,
@@ -73,8 +101,10 @@ function mapLeadForUser(
     estimatedValue,
     displayValue,
     hasEvaluation: Boolean(row.evaluation_result),
-    propertyInput: unlocked ? row.property_input : null,
-    evaluationResult: unlocked ? row.evaluation_result : null,
+    propertyInput: previewPropertyInput,
+    evaluationResult: unlocked
+      ? row.evaluation_result
+      : sanitizeEvaluationResultForPreview(row.evaluation_result),
   }
 }
 

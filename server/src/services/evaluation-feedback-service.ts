@@ -23,6 +23,31 @@ export async function isEvaluationFeedbackModeEnabled() {
   return getSetting<boolean>('evaluation_feedback_mode', true)
 }
 
+type PhotoPayload = {
+  mimeType?: string
+  data?: string
+}
+
+function extractPhotoPreviews(photos: unknown): string[] {
+  if (!Array.isArray(photos)) return []
+
+  return photos
+    .slice(0, 5)
+    .map((photo) => {
+      if (typeof photo !== 'object' || photo === null) return null
+      const { mimeType, data } = photo as PhotoPayload
+      if (
+        typeof mimeType === 'string' &&
+        typeof data === 'string' &&
+        data.length > 0
+      ) {
+        return `data:${mimeType};base64,${data}`
+      }
+      return null
+    })
+    .filter((url): url is string => Boolean(url))
+}
+
 function sanitizePropertyInput(input: Record<string, unknown>) {
   const { photos, ...rest } = input
   return {
@@ -36,6 +61,12 @@ export async function savePropertyEvaluation(input: {
   propertyInput: Record<string, unknown>
   evaluationResult: Record<string, unknown>
 }) {
+  const photoPreviews = extractPhotoPreviews(input.propertyInput.photos)
+  const evaluationResult = {
+    ...input.evaluationResult,
+    ...(photoPreviews.length > 0 ? { photoPreviews } : {}),
+  }
+
   const result = await pool.query<{ id: string }>(
     `INSERT INTO property_evaluations (user_id, property_input, evaluation_result)
      VALUES ($1, $2::jsonb, $3::jsonb)
@@ -43,7 +74,7 @@ export async function savePropertyEvaluation(input: {
     [
       input.userId,
       JSON.stringify(sanitizePropertyInput(input.propertyInput)),
-      JSON.stringify(input.evaluationResult),
+      JSON.stringify(evaluationResult),
     ]
   )
 

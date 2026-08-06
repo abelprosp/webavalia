@@ -42,6 +42,8 @@ import { BentoCard, FluxBadge, MetricIcon } from './bento-card'
 type EvaluationResultPanelProps = {
   result: EvaluationResult
   property: EvaluationFormValues
+  previewMode?: boolean
+  publicLocation?: string
 }
 
 function getPropertyHighlights(property: EvaluationFormValues) {
@@ -252,6 +254,8 @@ function AppreciationBars() {
 export function EvaluationResultPanel({
   result,
   property,
+  previewMode = false,
+  publicLocation,
 }: EvaluationResultPanelProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -302,9 +306,17 @@ export function EvaluationResultPanel({
     )
   }
 
+  const locationLabel = publicLocation ?? property.address
+
   return (
     <>
       <div className='space-y-5'>
+        {previewMode && (
+          <div className='rounded-2xl border border-dashed border-flux-lavender/40 bg-flux-lavender/5 px-4 py-3 text-sm text-muted-foreground'>
+            Prévia da avaliação. Desbloqueie o lead para ver contato, e-mail e
+            endereço completo.
+          </div>
+        )}
         {/* Header */}
         <div className='flex flex-wrap items-end justify-between gap-4'>
           <div>
@@ -318,7 +330,7 @@ export function EvaluationResultPanel({
               {isRentalView ? 'Avaliação de aluguel' : 'Visão da avaliação'}
             </h2>
             <p className='mt-0.5 max-w-lg text-sm text-muted-foreground'>
-              {property.address}
+              {locationLabel}
             </p>
             <p className='text-xs text-muted-foreground/70'>
               Objetivo: {getListingIntentLabel(property.listingIntent ?? 'vender')} ·{' '}
@@ -329,29 +341,33 @@ export function EvaluationResultPanel({
             </p>
           </div>
           <div className='flex flex-wrap items-center gap-2'>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
-              onClick={() => setSaveDialogOpen(true)}
-            >
-              <BookmarkPlus className='size-3.5' />
-              {isBroker ? 'Salvar no CRM' : 'Salvar em minhas avaliações'}
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
-              onClick={handleExportPdf}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className='size-3.5 animate-spin' />
-              ) : (
-                <FileDown className='size-3.5' />
-              )}
-              Exportar PDF
-            </Button>
+            {!previewMode && (
+              <>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
+                  onClick={() => setSaveDialogOpen(true)}
+                >
+                  <BookmarkPlus className='size-3.5' />
+                  {isBroker ? 'Salvar no CRM' : 'Salvar em minhas avaliações'}
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='h-9 rounded-full border-black/[0.08] bg-card px-4 shadow-sm'
+                  onClick={handleExportPdf}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className='size-3.5 animate-spin' />
+                  ) : (
+                    <FileDown className='size-3.5' />
+                  )}
+                  Exportar PDF
+                </Button>
+              </>
+            )}
             <FluxBadge className='h-9 px-4 text-sm'>{result.scoreLabel}</FluxBadge>
           </div>
         </div>
@@ -655,26 +671,32 @@ export function EvaluationResultPanel({
 
         {/* Row 3 — Fotos + análise avançada + plano diretor */}
         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
-          {result.photoCount > 0 && (
+          {(result.photoCount > 0 || result.photoPreviews.length > 0) && (
             <BentoCard
               title='Fotos analisadas'
-              subtitle={`${result.photoCount} imagem(ns)`}
+              subtitle={`${result.photoCount || result.photoPreviews.length} imagem(ns)`}
               showMenu
             >
-              <div className='grid grid-cols-2 gap-2'>
-                {result.photoPreviews.slice(0, 4).map((url, i) => (
-                  <div
-                    key={url}
-                    className='aspect-square overflow-hidden rounded-2xl bg-muted ring-1 ring-black/[0.04]'
-                  >
-                    <img
-                      src={url}
-                      alt={`Foto ${i + 1}`}
-                      className='size-full object-cover'
-                    />
-                  </div>
-                ))}
-              </div>
+              {result.photoPreviews.length > 0 ? (
+                <div className='grid grid-cols-2 gap-2'>
+                  {result.photoPreviews.slice(0, 4).map((url, i) => (
+                    <div
+                      key={url}
+                      className='aspect-square overflow-hidden rounded-2xl bg-muted ring-1 ring-black/[0.04]'
+                    >
+                      <img
+                        src={url}
+                        alt={`Foto ${i + 1}`}
+                        className='size-full object-cover'
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className='text-sm text-muted-foreground'>
+                  {result.photoCount} foto(s) enviadas na avaliação.
+                </p>
+              )}
             </BentoCard>
           )}
 
@@ -781,14 +803,16 @@ export function EvaluationResultPanel({
         )}
       </div>
 
-      <SaveToCrmDialog
-        open={saveDialogOpen}
-        onOpenChange={setSaveDialogOpen}
-        property={property}
-        result={result}
-        mode={isBroker ? 'broker' : 'personal'}
-        onSave={handleSaveToCrm}
-      />
+      {!previewMode && (
+        <SaveToCrmDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          property={property}
+          result={result}
+          mode={isBroker ? 'broker' : 'personal'}
+          onSave={handleSaveToCrm}
+        />
+      )}
     </>
   )
 }
