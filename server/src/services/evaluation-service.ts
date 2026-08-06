@@ -1,28 +1,25 @@
 import type { EvaluationRequest } from '../types/evaluation.js'
+import { getEvaluationArea } from '../constants/evaluation-defaults.js'
 import { computeSaleScenarios } from '../utils/sale-scenarios.js'
 import { evaluateWithOpenAI } from './openai-evaluator.js'
 import { applyNbr14653ToEvaluation } from './nbr-14653-service.js'
 import {
-  searchFloodRisk,
   searchMarketAppreciation,
   searchMarketListings,
   searchMasterPlan,
   searchNeighborhoodProfile,
 } from './serper.js'
-import { analyzeFloodRisk } from './flood-risk-service.js'
 
 export async function runPropertyEvaluation(input: EvaluationRequest) {
   const [
     marketResults,
     masterPlanResults,
     neighborhoodResults,
-    floodResults,
     appreciationResults,
   ] = await Promise.all([
     searchMarketListings(input),
     searchMasterPlan(input.address),
     searchNeighborhoodProfile(input.address),
-    searchFloodRisk(input.address),
     searchMarketAppreciation(input),
   ])
 
@@ -30,11 +27,8 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
     marketResults,
     masterPlanResults,
     neighborhoodResults,
-    floodResults,
     appreciationResults,
   })
-
-  const floodRiskAnalysis = await analyzeFloodRisk(input.address, floodResults)
 
   const withNbr = applyNbr14653ToEvaluation(
     aiResult,
@@ -43,13 +37,13 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
   )
 
   const listingIntent = input.listingIntent ?? 'vender'
+  const evaluationArea = getEvaluationArea(input)
 
   return {
     ...withNbr,
-    floodRiskAnalysis: floodRiskAnalysis ?? undefined,
     saleScenarios:
       listingIntent === 'vender'
-        ? computeSaleScenarios(withNbr.estimatedValue, input.area)
+        ? computeSaleScenarios(withNbr.estimatedValue, evaluationArea)
         : undefined,
     evaluatedAt: new Date().toISOString(),
     photoCount: input.photos?.length ?? 0,
@@ -57,7 +51,6 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
       marketResultsCount: marketResults.length,
       masterPlanResultsCount: masterPlanResults.length,
       neighborhoodResultsCount: neighborhoodResults.length,
-      floodResultsCount: floodResults.length,
       appreciationResultsCount: appreciationResults.length,
     },
   }

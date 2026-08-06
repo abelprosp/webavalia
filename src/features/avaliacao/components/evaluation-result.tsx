@@ -7,7 +7,6 @@ import {
   FileDown,
   Loader2,
   BookmarkPlus,
-  Droplets,
   MapPinned,
   Sparkles,
   Building2,
@@ -250,19 +249,6 @@ function AppreciationBars() {
   )
 }
 
-function getFloodRiskColor(level: string) {
-  switch (level) {
-    case 'baixo':
-      return 'bg-emerald-100 text-emerald-600'
-    case 'moderado':
-      return 'bg-amber-100 text-amber-600'
-    case 'alto':
-      return 'bg-red-100 text-red-500'
-    default:
-      return 'bg-muted text-muted-foreground'
-  }
-}
-
 export function EvaluationResultPanel({
   result,
   property,
@@ -494,29 +480,6 @@ export function EvaluationResultPanel({
             </div>
           </BentoCard>
 
-          {result.floodRiskAnalysis && (
-            <BentoCard title='Risco hídrico' subtitle='Histórico de enchentes'>
-              <div className='flex items-start justify-between gap-3'>
-                <div>
-                  <p className='text-2xl font-bold capitalize tracking-tight'>
-                    {result.floodRiskAnalysis.riskLevelLabel}
-                  </p>
-                  <p className='mt-0.5 text-[11px] text-muted-foreground'>
-                    {result.floodRiskAnalysis.historicalEvents.length} evento(s) registrado(s)
-                  </p>
-                </div>
-                <MetricIcon className={getFloodRiskColor(result.floodRiskAnalysis.riskLevel)}>
-                  <Droplets className='size-5' />
-                </MetricIcon>
-              </div>
-              <p className='mt-3 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground'>
-                {result.floodRiskAnalysis.floodQuota
-                  ? `Cota: ${result.floodRiskAnalysis.floodQuota}`
-                  : result.floodRiskAnalysis.summary}
-              </p>
-            </BentoCard>
-          )}
-
           <BentoCard title='Score do bairro' subtitle='Localização e infraestrutura'>
             <p className='text-[2rem] font-bold leading-none tracking-tight'>
               {Math.round((locationScore / 5) * 100)}%
@@ -715,27 +678,15 @@ export function EvaluationResultPanel({
             </BentoCard>
           )}
 
-          {(result.floodRiskAnalysis ||
-            result.marketAppreciationAnalysis ||
+          {(result.marketAppreciationAnalysis ||
             result.neighborhoodAnalysis) && (
             <BentoCard
               title='Análise avançada'
-              subtitle='Enchentes, valorização e bairro'
+              subtitle='Valorização e bairro'
               className='md:col-span-1 lg:col-span-1'
               showMenu
             >
               <div className='space-y-2'>
-                {result.floodRiskAnalysis && (
-                  <div className='rounded-2xl bg-muted/35 p-3.5'>
-                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
-                      <Droplets className='size-3.5 text-blue-500' />
-                      Risco hídrico
-                    </p>
-                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
-                      {result.floodRiskAnalysis.impactOnValue}
-                    </p>
-                  </div>
-                )}
                 {result.neighborhoodAnalysis && (
                   <div className='rounded-2xl bg-muted/35 p-3.5'>
                     <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
@@ -821,9 +772,6 @@ export function EvaluationResultPanel({
               {result.sources.masterPlanResultsCount} plano diretor
               {result.sources.neighborhoodResultsCount != null && (
                 <> · {result.sources.neighborhoodResultsCount} bairro</>
-              )}
-              {result.sources.floodResultsCount != null && (
-                <> · {result.sources.floodResultsCount} enchentes</>
               )}
               {result.sources.appreciationResultsCount != null && (
                 <> · {result.sources.appreciationResultsCount} valorização</>

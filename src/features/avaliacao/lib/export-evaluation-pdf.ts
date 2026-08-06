@@ -329,29 +329,6 @@ export async function exportEvaluationPdf({
     y = addParagraph(doc, n.summary, y)
   }
 
-  if (result.floodRiskAnalysis) {
-    const f = result.floodRiskAnalysis
-    y = addSectionTitle(doc, 'Histórico de enchentes e risco hídrico', y)
-    y = addParagraph(doc, `Risco: ${f.riskLevelLabel}`, y, { bold: true })
-    if (f.floodQuota) {
-      y = addParagraph(doc, `Cota de cheia: ${f.floodQuota}`, y)
-    }
-    if (f.historicalEvents.length > 0) {
-      y = addParagraph(doc, 'Eventos históricos:', y, { bold: true })
-      y = addBulletList(doc, f.historicalEvents, y)
-    }
-    if (f.affectedAreas.length > 0) {
-      y = addParagraph(doc, 'Áreas afetadas:', y, { bold: true })
-      y = addBulletList(doc, f.affectedAreas, y)
-    }
-    if (f.mitigationMeasures.length > 0) {
-      y = addParagraph(doc, 'Medidas de mitigação:', y, { bold: true })
-      y = addBulletList(doc, f.mitigationMeasures, y)
-    }
-    y = addParagraph(doc, `Impacto no valor: ${f.impactOnValue}`, y)
-    y = addParagraph(doc, f.summary, y)
-  }
-
   if (result.marketAppreciationAnalysis) {
     const a = result.marketAppreciationAnalysis
     y = addSectionTitle(doc, 'Valorização e tendência de mercado', y)

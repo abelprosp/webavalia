@@ -12,13 +12,12 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { submitFloodExperienceFeedback } from '@/lib/evaluation-api'
 import { getApiErrorMessage } from '@/lib/api-error'
-import type { FloodRiskAnalysis } from '@/features/avaliacao/data/evaluation-engine'
 import { cn } from '@/lib/utils'
 
 type FloodExperienceFeedbackProps = {
   evaluationId?: string | null
   address: string
-  onUpdated?: (floodRiskAnalysis: FloodRiskAnalysis | null) => void
+  onUpdated?: () => void
 }
 
 type FloodChoice = 'none' | 'baixo' | 'moderado' | 'alto'
@@ -73,7 +72,7 @@ export function FloodExperienceFeedback({
         comment: comment.trim() || undefined,
       })
 
-      onUpdated?.(result.floodRiskAnalysis ?? null)
+      onUpdated?.()
       setSubmitted(true)
       toast.success(result.message)
     } catch (error) {
@@ -108,7 +107,7 @@ export function FloodExperienceFeedback({
         </CardTitle>
         <CardDescription>
           Sua experiência local treina a IA para avaliações futuras neste
-          endereço. Se nunca alagou, deixamos o risco hídrico em branco.
+          endereço.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>

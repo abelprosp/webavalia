@@ -1,34 +1,18 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  Droplets,
   MapPinned,
   TrendingUp,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type {
-  FloodRiskAnalysis,
   MarketAppreciationAnalysis,
   NeighborhoodAnalysis,
 } from '../data/evaluation-engine'
 
 type AdvancedAnalysisPanelProps = {
   neighborhood?: NeighborhoodAnalysis
-  flood?: FloodRiskAnalysis
   appreciation?: MarketAppreciationAnalysis
-}
-
-function getFloodRiskBadgeClass(level: FloodRiskAnalysis['riskLevel']) {
-  switch (level) {
-    case 'baixo':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
-    case 'moderado':
-      return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
-    case 'alto':
-      return 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'
-    default:
-      return ''
-  }
 }
 
 function getAppreciationBadgeClass(
@@ -73,10 +57,9 @@ function BulletSection({
 
 export function AdvancedAnalysisPanel({
   neighborhood,
-  flood,
   appreciation,
 }: AdvancedAnalysisPanelProps) {
-  if (!neighborhood && !flood && !appreciation) return null
+  if (!neighborhood && !appreciation) return null
 
   return (
     <div className='space-y-6'>
@@ -136,55 +119,6 @@ export function AdvancedAnalysisPanel({
             )}
             <p className='border-t pt-3 leading-relaxed text-muted-foreground'>
               {neighborhood.summary}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {flood && (
-        <div>
-          <h4 className='mb-3 flex items-center gap-2 text-sm font-medium'>
-            <Droplets className='size-4' />
-            Histórico de enchentes e risco hídrico
-          </h4>
-          <div className='space-y-4 rounded-lg border bg-muted/20 p-4 text-sm'>
-            <Badge
-              variant='outline'
-              className={getFloodRiskBadgeClass(flood.riskLevel)}
-            >
-              Risco {flood.riskLevelLabel}
-            </Badge>
-            {flood.floodQuota && (
-              <div>
-                <p className='text-xs font-medium text-muted-foreground'>
-                  Cota de cheia / referência hídrica
-                </p>
-                <p className='mt-0.5'>{flood.floodQuota}</p>
-              </div>
-            )}
-            <BulletSection
-              title='Eventos históricos'
-              items={flood.historicalEvents}
-              emptyLabel='Nenhum evento documentado nas fontes consultadas'
-            />
-            <BulletSection
-              title='Áreas afetadas'
-              items={flood.affectedAreas}
-              emptyLabel='Áreas específicas não identificadas nas fontes'
-            />
-            <BulletSection
-              title='Medidas de mitigação'
-              items={flood.mitigationMeasures}
-              emptyLabel='Nenhuma medida identificada nas fontes'
-            />
-            <div>
-              <p className='text-xs font-medium text-muted-foreground'>
-                Impacto no valor
-              </p>
-              <p className='mt-0.5'>{flood.impactOnValue}</p>
-            </div>
-            <p className='border-t pt-3 leading-relaxed text-muted-foreground'>
-              {flood.summary}
             </p>
           </div>
         </div>

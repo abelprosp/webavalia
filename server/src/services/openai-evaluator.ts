@@ -9,6 +9,7 @@ import type { SerperResult } from './serper.js'
 import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
 import { isHighStandardProperty } from './nbr-14653-service.js'
 import { getBuildingAgeLabel } from '../constants/building-age.js'
+import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 
 const aiResponseSchema = z.object({
   estimatedValue: z.number(),
@@ -221,7 +222,6 @@ type EvaluationSearchResults = {
   marketResults: SerperResult[]
   masterPlanResults: SerperResult[]
   neighborhoodResults: SerperResult[]
-  floodResults: SerperResult[]
   appreciationResults: SerperResult[]
 }
 
@@ -233,7 +233,6 @@ export async function evaluateWithOpenAI(
     marketResults,
     masterPlanResults,
     neighborhoodResults,
-    floodResults,
     appreciationResults,
   } = searchResults
   if (!config.openaiApiKey) {
@@ -242,7 +241,19 @@ export async function evaluateWithOpenAI(
     )
   }
 
-  const propertyBlock = `
+  const isLand = isLandOnlyPropertyType(input.propertyType)
+
+  const propertyBlock = isLand
+    ? `
+Dados do terreno/lote:
+- CEP: ${input.cep || 'não informado'}
+- Endereço: ${input.address}
+- Tipo: ${input.propertyType} (somente terreno — sem edificação)
+- Área do terreno: ${input.area} m²
+- Valor pedido: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
+- Observações: ${input.notes || 'nenhuma'}
+`
+    : `
 Dados do imóvel:
 - CEP: ${input.cep || 'não informado'}
 - Endereço: ${input.address}
@@ -266,36 +277,54 @@ Dados do imóvel:
 `
 
   const feedbackLearning = await buildFeedbackLearningPrompt()
-  const useMedian = isHighStandardProperty(input)
+  const useMedian = isHighStandardProperty(input) || isLand
+
+  const landMethodologyBlock = isLand
+    ? `
+REGRAS ESPECÍFICAS PARA TERRENO/LOTE:
+1. A área relevante é SEMPRE a área do terreno (${input.area} m²) — ignore área construída.
+2. Busque comparáveis do mesmo tipo (terreno, lote, loteamento) na mesma região.
+3. Valores unitários de terreno costumam ficar entre R$ 80/m² e R$ 15.000/m² conforme localização — NÃO use faixas de imóveis edificados.
+4. ATENÇÃO A PREÇOS DE TERRENO: anúncios podem informar preço TOTAL (ex.: R$ 450.000 por 500 m²) ou preço POR M² (ex.: R$ 900/m²). declaredPrice = preço total do anúncio; unitPriceSqm = R$/m² do terreno (total ÷ área do lote quando necessário).
+5. estimatedValue DEVE ser exatamente valuePerSqm × ${input.area} m². Nunca retorne estimatedValue igual ao valor unitário por m².
+6. Homogeneize por: localização, área do lote, zoneamento/plano diretor, topografia, infraestrutura viária e serviços, formato do lote e mercado local. Não aplique fatores de conservação, mobília ou acabamento.
+7. marketAnalysis.averagePricePerSqm = média/mediana dos R$/m² dos terrenos comparáveis homogeneizados.
+`
+    : ''
+
+  const builtPriceRule =
+    '5. ATENÇÃO A PREÇOS: anúncios frequentemente informam valor POR M² (ex.: R$ 8.500/m²). Não divida novamente pela área nesses casos. declaredPrice deve refletir o preço total do anúncio; unitPriceSqm e homogenizedUnitPriceSqm devem estar em R$/m² coerentes com a região (tipicamente acima de R$ 1.500/m² em cidades médias/grandes).'
+
+  const landPriceRule =
+    '5. ATENÇÃO A PREÇOS DE TERRENO: distinga preço total do lote vs. R$/m². declaredPrice = valor total do anúncio; unitPriceSqm = R$/m² do terreno. estimatedValue = valuePerSqm × área do terreno avaliando.'
 
   const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
 
 AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
-1. Integre TODAS as características informadas (tipo, área, terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão, valor pedido e observações) na homogeneização e no score final.
+1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão'}, valor pedido e observações) na homogeneização e no score final.
 2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
-3. Risco hídrico/enchentes: calculado separadamente pelo sistema — NÃO inclua floodRiskAnalysis na resposta.
-4. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
-5. O score (0-100) e criteriaScores devem refletir perfil do bairro e tendência de valorização, além das características físicas do imóvel.
-6. Inclua em aiInsights conclusões acionáveis sobre valorização e diferenciais do imóvel (risco hídrico será exibido em bloco separado quando houver dados).
-
+3. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
+4. O score (0-100) e criteriaScores devem refletir perfil do bairro e tendência de valorização, além das características ${isLand ? 'do terreno e zoneamento' : 'físicas do imóvel'}.
+5. Inclua em aiInsights conclusões acionáveis sobre valorização e diferenciais ${isLand ? 'do terreno' : 'do imóvel'}.
+${landMethodologyBlock}
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
-1. Objetivo: determinação do valor de mercado do imóvel avaliando.
+1. Objetivo: determinação do valor de mercado ${isLand ? 'do terreno avaliando' : 'do imóvel avaliando'}.
 2. Método principal: Comparativo Direto de Dados de Mercado (preferencial conforme norma).
-3. Selecione de 3 a 6 imóveis comparáveis reais da pesquisa Serper.
-4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,85 e 1,15 por fator) para: localização, área, terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades e mercado. O produto combinado dos fatores de cada comparável deve ficar entre 0,75 e 1,25.
-5. ATENÇÃO A PREÇOS: anúncios frequentemente informam valor POR M² (ex.: R$ 8.500/m²). Não divida novamente pela área nesses casos. declaredPrice deve refletir o preço total do anúncio; unitPriceSqm e homogenizedUnitPriceSqm devem estar em R$/m² coerentes com a região (tipicamente acima de R$ 1.500/m² em cidades médias/grandes).
-6. Calcule o valor unitário homogeneizado de cada comparável. Some valor de móveis alto padrão ao valor final se informado.
+3. Selecione de 3 a 6 ${isLand ? 'terrenos/lotes' : 'imóveis'} comparáveis reais da pesquisa Serper.
+4. Para cada comparável, aplique fatores de homogeneização (multiplicadores entre 0,85 e 1,15 por fator) para: localização, área${isLand ? ' do lote, zoneamento, infraestrutura viária' : ', terreno, conservação, padrão, idade, layout, vagas, condomínio, vista, amenidades'} e mercado. O produto combinado dos fatores de cada comparável deve ficar entre 0,75 e 1,25.
+${isLand ? landPriceRule : builtPriceRule}
+6. Calcule o valor unitário homogeneizado de cada comparável.${isLand ? '' : ' Some valor de móveis alto padrão ao valor final se informado.'}
 7. ${
     useMedian
-      ? 'IMÓVEL DE ALTO PADRÃO: use MEDIANA (não média) dos valores unitários homogeneizados — mais realista em segmentos com dispersão de preços. O campo marketAnalysis.averagePricePerSqm deve ser a mediana R$/m² dos comparáveis do mesmo padrão. nbr14653.calculationMemory.homogenizedAveragePriceSqm = mediana unitária. Valor final = mediana × área (+ móveis).'
-      : 'Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área do imóvel (+ móveis se houver).'
+      ? `${isLand ? 'TERRENO' : 'IMÓVEL DE ALTO PADRÃO'}: use MEDIANA (não média) dos valores unitários homogeneizados — mais realista em segmentos com dispersão de preços. O campo marketAnalysis.averagePricePerSqm deve ser a mediana R$/m² dos comparáveis do mesmo padrão. nbr14653.calculationMemory.homogenizedAveragePriceSqm = mediana unitária. Valor final = mediana × área do ${isLand ? 'terreno' : 'imóvel'}${isLand ? '' : ' (+ móveis)'}.`
+      : `Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área ${isLand ? 'do terreno' : 'do imóvel'}${isLand ? '' : ' (+ móveis se houver)'}.`
   }
 8. Calibração: se houver valor pedido, o estimatedValue deve ficar em faixa plausível (em geral entre 75% e 115% do valor pedido, salvo evidência forte em contrário). Não subestime sistematicamente.
-9. Risco de enchente: desconto máximo de 5% (baixo), 10% (moderado) ou 15% (alto com histórico documentado) — nunca mais que isso sem evidência excepcional.
-10. Registre memória de cálculo passo a passo e limitações da amostra.
+9. Registre memória de cálculo passo a passo e limitações da amostra.
+10. CONSISTÊNCIA OBRIGATÓRIA: estimatedValue = valuePerSqm × ${input.area} m² (área ${isLand ? 'do terreno' : 'útil/construída'}). Os três campos (estimatedValue, valuePerSqm, nbr14653.calculationMemory.finalValue) devem ser coerentes entre si.
 
 Analise também o Plano Diretor/zoneamento urbano.
-Estime pontuações de critérios (1 a 5) ponderando localização (inclui bairro e risco hídrico), infraestrutura, conservação, layout, mercado (inclui valorização) e documentação.
+Estime pontuações de critérios (1 a 5) ponderando localização (inclui bairro), infraestrutura, conservação, layout, mercado (inclui valorização) e documentação.
 Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutura:
 {
   "estimatedValue": number,
@@ -335,7 +364,7 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
     "concerns": ["string"],
     "summary": "string"
   },
-  "floodRiskAnalysis": omitido — calculado pelo sistema,
+  "floodRiskAnalysis": omitido,
   "marketAppreciationAnalysis": {
     "trend": "valorizacao" | "estavel" | "desvalorizacao" | "indeterminado",
     "trendLabel": "string",
@@ -404,9 +433,6 @@ ${formatSerperResults(masterPlanResults)}
 --- PESQUISA AVANÇADA DO BAIRRO (via Serper) ---
 ${formatSerperResults(neighborhoodResults)}
 
---- HISTÓRICO DE ENCHENTES E RISCO HÍDRICO (via Serper) ---
-${formatSerperResults(floodResults)}
-
 --- VALORIZAÇÃO E TENDÊNCIA DE MERCADO (via Serper) ---
 ${formatSerperResults(appreciationResults)}
 
@@ -415,7 +441,7 @@ ${input.photos?.length ? `Foram enviadas ${input.photos.length} foto(s) do imóv
 ${input.askingPrice ? `O valor pedido pelo proprietário é R$ ${input.askingPrice.toLocaleString('pt-BR')} — use como referência de calibração do mercado local.` : ''}
 ${feedbackLearning ? `\n${feedbackLearning}\n` : ''}
 
-Gere a avaliação avançada completa, integrando bairro, enchentes, valorização e todas as características do imóvel. Priorize precisão do valor de mercado — evite estimativas sistematicamente baixas.`
+Gere a avaliação avançada completa, integrando bairro, valorização e todas as características do imóvel. Priorize precisão do valor de mercado — evite estimativas sistematicamente baixas.`
 
   const userContent: Array<
     | { type: 'text'; text: string }

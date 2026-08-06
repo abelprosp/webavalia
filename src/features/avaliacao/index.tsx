@@ -1012,12 +1012,7 @@ export function Avaliacao() {
                 <FloodExperienceFeedback
                   evaluationId={evaluationId}
                   address={evaluatedProperty.address}
-                  onUpdated={(floodRiskAnalysis) => {
-                    setResult((prev) =>
-                      prev ? { ...prev, floodRiskAnalysis: floodRiskAnalysis ?? undefined } : prev
-                    )
-                    setFloodFeedbackSubmitted(true)
-                  }}
+                  onUpdated={() => setFloodFeedbackSubmitted(true)}
                 />
               )}
               {!isBroker && evaluationId && (

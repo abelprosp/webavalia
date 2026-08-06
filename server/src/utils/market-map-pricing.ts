@@ -1,7 +1,10 @@
-import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
+import {
+  getMinUnitPriceSqm,
+  isLandOnlyPropertyType,
+  LAND_PROPERTY_MAX_UNIT_PRICE_SQM,
+} from '../constants/evaluation-defaults.js'
 
-const MIN_PLAUSIBLE_SQM = 150
-const MAX_PLAUSIBLE_SQM = 15_000
+const BUILT_MAX_PLAUSIBLE_SQM = 15_000
 
 type ComparableListing = {
   price: string
@@ -33,34 +36,53 @@ function parsePriceBrl(price: string) {
   return Number.isFinite(value) && value > 0 ? value : null
 }
 
-function inferUnitPriceSqm(price: string, areaSqm: number | null) {
+function inferUnitPriceSqm(
+  price: string,
+  areaSqm: number | null,
+  minPlausibleSqm: number,
+  maxPlausibleSqm: number
+) {
   const parsed = parsePriceBrl(price)
   if (!parsed) return null
 
   const looksPerSqm =
     /\/\s*m[²2]|por\s*m[²2]|\/m2/i.test(price) ||
-    (parsed >= MIN_PLAUSIBLE_SQM && parsed <= MAX_PLAUSIBLE_SQM && (!areaSqm || parsed < areaSqm * 0.6))
+    (parsed >= minPlausibleSqm &&
+      parsed <= maxPlausibleSqm &&
+      (!areaSqm || parsed < areaSqm * 0.6))
 
   if (looksPerSqm) return parsed
   if (!areaSqm || areaSqm <= 0) return null
 
   const unitFromTotal = parsed / areaSqm
-  if (unitFromTotal >= MIN_PLAUSIBLE_SQM && unitFromTotal <= MAX_PLAUSIBLE_SQM) {
+  if (
+    unitFromTotal >= minPlausibleSqm &&
+    unitFromTotal <= maxPlausibleSqm
+  ) {
     return unitFromTotal
   }
 
-  if (parsed >= MIN_PLAUSIBLE_SQM && parsed <= MAX_PLAUSIBLE_SQM) {
+  if (parsed >= minPlausibleSqm && parsed <= maxPlausibleSqm) {
     return parsed
   }
 
   return null
 }
 
-function extractComparableUnitPrices(comparables: ComparableListing[]) {
+function extractComparableUnitPrices(
+  comparables: ComparableListing[],
+  minPlausibleSqm: number,
+  maxPlausibleSqm: number
+) {
   const prices: number[] = []
 
   for (const comparable of comparables) {
-    const unit = inferUnitPriceSqm(comparable.price, parseAreaSqm(comparable.area))
+    const unit = inferUnitPriceSqm(
+      comparable.price,
+      parseAreaSqm(comparable.area),
+      minPlausibleSqm,
+      maxPlausibleSqm
+    )
     if (unit != null) prices.push(unit)
   }
 
@@ -76,9 +98,13 @@ function median(values: number[]) {
     : (sorted[mid - 1]! + sorted[mid]!) / 2
 }
 
-function clampPlausibleSqm(value: number | null | undefined) {
+function clampPlausibleSqm(
+  value: number | null | undefined,
+  minPlausibleSqm: number,
+  maxPlausibleSqm: number
+) {
   if (value == null || !Number.isFinite(value)) return null
-  if (value < MIN_PLAUSIBLE_SQM || value > MAX_PLAUSIBLE_SQM) return null
+  if (value < minPlausibleSqm || value > maxPlausibleSqm) return null
   return value
 }
 
@@ -92,9 +118,25 @@ export function resolveMarketMapPricing(
   const { requestedArea, propertyType } = options
   const userSpecifiedArea = requestedArea > 0
   const isLand = isLandOnlyPropertyType(propertyType)
-  const unitPrices = extractComparableUnitPrices(result.marketAnalysis.comparables)
-  const marketAvg = clampPlausibleSqm(result.marketAnalysis.averagePricePerSqm)
-  const nbrPerSqm = clampPlausibleSqm(result.valuePerSqm)
+  const minPlausibleSqm = getMinUnitPriceSqm(propertyType)
+  const maxPlausibleSqm = isLand
+    ? LAND_PROPERTY_MAX_UNIT_PRICE_SQM
+    : BUILT_MAX_PLAUSIBLE_SQM
+  const unitPrices = extractComparableUnitPrices(
+    result.marketAnalysis.comparables,
+    minPlausibleSqm,
+    maxPlausibleSqm
+  )
+  const marketAvg = clampPlausibleSqm(
+    result.marketAnalysis.averagePricePerSqm,
+    minPlausibleSqm,
+    maxPlausibleSqm
+  )
+  const nbrPerSqm = clampPlausibleSqm(
+    result.valuePerSqm,
+    minPlausibleSqm,
+    maxPlausibleSqm
+  )
 
   const medianUnit = median(unitPrices)
   let valuePerSqm = medianUnit ?? marketAvg ?? nbrPerSqm ?? 0

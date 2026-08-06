@@ -1,4 +1,10 @@
 import {
+  getEvaluationArea,
+  getMinUnitPriceSqm,
+  isLandOnlyPropertyType,
+  LAND_PROPERTY_MAX_UNIT_PRICE_SQM,
+} from '../constants/evaluation-defaults.js'
+import {
   inferSpecificationGrade,
   NBR_14653_DISCLAIMER,
   NBR_14653_PURPOSE,
@@ -12,8 +18,6 @@ import type {
   Nbr14653Analysis,
   NbrHomogenizedComparable,
 } from '../types/evaluation.js'
-
-const MIN_PLAUSIBLE_UNIT_PRICE_SQM = 1_500
 const FACTOR_PRODUCT_MIN = 0.75
 const FACTOR_PRODUCT_MAX = 1.25
 const HIGH_STANDARD_LEVELS = new Set(['alto-padrao', 'luxo'])
@@ -83,15 +87,17 @@ function clampFactorProduct(factors: NbrHomogenizedComparable['factors']) {
 function inferUnitPriceSqm(
   declaredPrice: string,
   areaSqm: number | null,
-  marketAvgPerSqm: number | null
+  marketAvgPerSqm: number | null,
+  minUnitPriceSqm: number,
+  maxUnitPriceSqm: number
 ) {
   const price = parsePriceBrl(declaredPrice)
   if (!price) return null
 
   const priceLooksPerSqm =
     /\/\s*m[²2]|por\s*m[²2]|\/m2/i.test(declaredPrice) ||
-    (price >= MIN_PLAUSIBLE_UNIT_PRICE_SQM &&
-      price <= 80_000 &&
+    (price >= minUnitPriceSqm &&
+      price <= maxUnitPriceSqm &&
       (!areaSqm || price < areaSqm * 0.5))
 
   if (priceLooksPerSqm) {
@@ -103,33 +109,66 @@ function inferUnitPriceSqm(
   const unitFromTotal = price / areaSqm
 
   if (marketAvgPerSqm && unitFromTotal < marketAvgPerSqm * 0.35) {
-    if (price >= marketAvgPerSqm * 0.45 && price <= marketAvgPerSqm * 3) {
+    if (
+      price >= marketAvgPerSqm * 0.45 &&
+      price <= marketAvgPerSqm * 3
+    ) {
       return price
     }
   }
 
-  if (unitFromTotal < MIN_PLAUSIBLE_UNIT_PRICE_SQM && price >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+  if (unitFromTotal < minUnitPriceSqm && price >= minUnitPriceSqm) {
     return price
+  }
+
+  if (unitFromTotal < minUnitPriceSqm || unitFromTotal > maxUnitPriceSqm) {
+    return null
   }
 
   return unitFromTotal
 }
 
+function isPlausibleUnitPrice(
+  value: number,
+  minUnitPriceSqm: number,
+  maxUnitPriceSqm: number
+) {
+  return value >= minUnitPriceSqm && value <= maxUnitPriceSqm
+}
+
 function resolveComparableUnitPrice(
   item: NbrHomogenizedComparable,
-  marketAvgPerSqm: number | null
+  marketAvgPerSqm: number | null,
+  minUnitPriceSqm: number,
+  maxUnitPriceSqm: number
 ) {
-  if (item.homogenizedUnitPriceSqm != null && item.homogenizedUnitPriceSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+  if (
+    item.homogenizedUnitPriceSqm != null &&
+    isPlausibleUnitPrice(
+      item.homogenizedUnitPriceSqm,
+      minUnitPriceSqm,
+      maxUnitPriceSqm
+    )
+  ) {
     return item.homogenizedUnitPriceSqm
   }
 
-  if (item.unitPriceSqm != null && item.unitPriceSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+  if (
+    item.unitPriceSqm != null &&
+    isPlausibleUnitPrice(item.unitPriceSqm, minUnitPriceSqm, maxUnitPriceSqm)
+  ) {
     const factorProduct = clampFactorProduct(item.factors)
     return item.unitPriceSqm * factorProduct
   }
 
   const area = item.areaSqm ?? parseAreaSqm(item.area ?? undefined)
-  const unitPrice = inferUnitPriceSqm(item.declaredPrice, area, marketAvgPerSqm)
+  const unitPrice = inferUnitPriceSqm(
+    item.declaredPrice,
+    area,
+    marketAvgPerSqm,
+    minUnitPriceSqm,
+    maxUnitPriceSqm
+  )
   if (unitPrice == null) return null
 
   const factorProduct = clampFactorProduct(item.factors)
@@ -145,6 +184,8 @@ function calibrateFinalValue(input: {
   askingPrice?: number
   highEndFurnitureValue?: number
   marketAvgPerSqm: number | null
+  minUnitPriceSqm: number
+  isLand: boolean
 }) {
   const {
     calculatedValue,
@@ -155,16 +196,24 @@ function calibrateFinalValue(input: {
     askingPrice,
     highEndFurnitureValue,
     marketAvgPerSqm,
+    minUnitPriceSqm,
+    isLand,
   } = input
 
   const furnitureValue = highEndFurnitureValue ?? 0
   const aiBaseValue = Math.max(0, aiEstimatedValue - furnitureValue)
 
-  let baseValue = calculatedValue
   let valuePerSqm = calculatedValuePerSqm
 
   const marketFloor =
-    marketAvgPerSqm != null ? roundCurrency(marketAvgPerSqm * area * 0.72) : null
+    marketAvgPerSqm != null
+      ? roundCurrency(marketAvgPerSqm * area * (isLand ? 0.65 : 0.72))
+      : null
+
+  let baseValue =
+    valuePerSqm > 0
+      ? roundCurrency(valuePerSqm * area)
+      : calculatedValue
 
   if (marketFloor != null && baseValue < marketFloor) {
     baseValue = marketFloor
@@ -181,14 +230,19 @@ function calibrateFinalValue(input: {
     valuePerSqm = roundCurrency(baseValue / area)
   }
 
-  if (aiBaseValue > baseValue * 1.35 && aiValuePerSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
-    baseValue = roundCurrency(baseValue * 0.45 + aiBaseValue * 0.55)
-    valuePerSqm = roundCurrency(baseValue / area)
+  if (
+    aiBaseValue > baseValue * 1.35 &&
+    aiValuePerSqm >= minUnitPriceSqm
+  ) {
+    valuePerSqm = roundCurrency(
+      valuePerSqm * 0.45 + aiValuePerSqm * 0.55
+    )
+    baseValue = roundCurrency(valuePerSqm * area)
   }
 
-  if (valuePerSqm < MIN_PLAUSIBLE_UNIT_PRICE_SQM && aiValuePerSqm >= MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
-    baseValue = roundCurrency(aiValuePerSqm * area)
+  if (valuePerSqm < minUnitPriceSqm && aiValuePerSqm >= minUnitPriceSqm) {
     valuePerSqm = roundCurrency(aiValuePerSqm)
+    baseValue = roundCurrency(valuePerSqm * area)
   }
 
   const finalValue = baseValue + furnitureValue
@@ -203,7 +257,11 @@ export function buildNbr14653Analysis(
 ): Nbr14653Analysis {
   const aiNbr = aiResult.nbr14653
   const comparables = aiNbr?.homogenizedComparables ?? []
-  const useMedian = isHighStandardProperty(input)
+  const isLand = isLandOnlyPropertyType(input.propertyType)
+  const useMedian = isHighStandardProperty(input) || isLand
+  const evaluationArea = getEvaluationArea(input)
+  const minUnitPriceSqm = getMinUnitPriceSqm(input.propertyType)
+  const maxUnitPriceSqm = isLand ? LAND_PROPERTY_MAX_UNIT_PRICE_SQM : 80_000
   const marketAvgPerSqm = aiResult.marketAnalysis.averagePricePerSqm
   const grade = inferSpecificationGrade(
     Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)
@@ -211,8 +269,16 @@ export function buildNbr14653Analysis(
 
   const unitPrices = comparables
     .map((item) => {
-      const unitPrice = resolveComparableUnitPrice(item, marketAvgPerSqm)
-      if (unitPrice == null || unitPrice < MIN_PLAUSIBLE_UNIT_PRICE_SQM) {
+      const unitPrice = resolveComparableUnitPrice(
+        item,
+        marketAvgPerSqm,
+        minUnitPriceSqm,
+        maxUnitPriceSqm
+      )
+      if (
+        unitPrice == null ||
+        !isPlausibleUnitPrice(unitPrice, minUnitPriceSqm, maxUnitPriceSqm)
+      ) {
         return null
       }
       return { value: unitPrice, weight: item.weight }
@@ -230,25 +296,27 @@ export function buildNbr14653Analysis(
       ? median(unitPrices.map((item) => item.value))
       : marketAvgPerSqm
 
-  const rawCalculatedValue =
-    homogenizedAverage != null
-      ? roundCurrency(homogenizedAverage * input.area)
-      : aiResult.estimatedValue
-
   const rawCalculatedValuePerSqm =
     homogenizedAverage != null
       ? roundCurrency(homogenizedAverage)
       : aiResult.valuePerSqm
+
+  const rawCalculatedValue =
+    rawCalculatedValuePerSqm > 0
+      ? roundCurrency(rawCalculatedValuePerSqm * evaluationArea)
+      : aiResult.estimatedValue
 
   const calibrated = calibrateFinalValue({
     calculatedValue: rawCalculatedValue,
     calculatedValuePerSqm: rawCalculatedValuePerSqm,
     aiEstimatedValue: aiResult.estimatedValue,
     aiValuePerSqm: aiResult.valuePerSqm,
-    area: input.area,
+    area: evaluationArea,
     askingPrice: input.askingPrice,
     highEndFurnitureValue: input.highEndFurnitureValue,
     marketAvgPerSqm: marketReferencePerSqm,
+    minUnitPriceSqm,
+    isLand,
   })
 
   const calculatedValue = calibrated.finalValue
@@ -260,7 +328,9 @@ export function buildNbr14653Analysis(
     '1. Definição do objetivo: determinação do valor de mercado (NBR 14653-1).',
     `2. Seleção de amostra: ${Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)} elemento(s) comparável(is) de mercado.`,
     useMedian
-      ? '3. Tratamento técnico: homogeneização dos comparáveis e agregação por mediana (imóvel de alto padrão — reduz distorção por outliers).'
+      ? isLand
+        ? '3. Tratamento técnico: homogeneização dos comparáveis de terreno e agregação por mediana (reduz distorção por outliers na amostra).'
+        : '3. Tratamento técnico: homogeneização dos comparáveis e agregação por mediana (imóvel de alto padrão — reduz distorção por outliers).'
       : '3. Tratamento técnico: aplicação de fatores de homogeneização aos atributos diferenciais (localização, área, conservação, padrão, idade, layout e mercado).',
     homogenizedAverage != null
       ? `4. Valor unitário homogeneizado (${aggregateLabel}): ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
@@ -268,13 +338,15 @@ export function buildNbr14653Analysis(
     input.highEndFurnitureValue
       ? `5. Acréscimo de móveis alto padrão: ${input.highEndFurnitureValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
       : null,
-    `6. Valor final do imóvel: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${input.area} m²${input.highEndFurnitureValue ? ' + móveis' : ''} = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+    `6. Valor final ${isLand ? 'do terreno' : 'do imóvel'}: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${evaluationArea} m²${input.highEndFurnitureValue ? ' + móveis' : ''} = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
   ].filter((step): step is string => step != null)
 
   const limitations = [
     ...(aiNbr?.limitations ?? []),
     useMedian
-      ? 'Imóvel de alto padrão: valor unitário obtido pela mediana dos comparáveis homogeneizados, mais robusta que a média em amostras com dispersão elevada.'
+      ? isLand
+        ? 'Terreno/lote: valor unitário obtido pela mediana dos comparáveis homogeneizados, mais robusta que a média em amostras com dispersão elevada.'
+        : 'Imóvel de alto padrão: valor unitário obtido pela mediana dos comparáveis homogeneizados, mais robusta que a média em amostras com dispersão elevada.'
       : null,
     marketResultsCount < 5
       ? 'Amostra de mercado limitada às fontes digitais disponíveis na data da avaliação.'
