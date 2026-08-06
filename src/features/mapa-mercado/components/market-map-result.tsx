@@ -65,7 +65,9 @@ export function MarketMapResultPanel({
               <span className='text-base font-medium opacity-70'>/m²</span>
             </p>
             <p className='mt-1 text-[11px] opacity-70'>
-              {isRent ? 'Estimativa de aluguel por m²' : 'Média de mercado por m²'}
+              {isRent
+                ? 'Estimativa de aluguel por m²'
+                : 'Estimativa NBR 14653 por m²'}
             </p>
           </div>
         </div>
@@ -100,7 +102,7 @@ export function MarketMapResultPanel({
         </div>
         {result.averagePricePerSqm != null && (
           <p className='mt-3 text-sm text-muted-foreground'>
-            Média dos comparáveis:{' '}
+            Média homogeneizada:{' '}
             <span className='font-semibold text-foreground'>
               {formatCurrency(result.averagePricePerSqm)}/m²
             </span>
