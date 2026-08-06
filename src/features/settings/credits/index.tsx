@@ -40,6 +40,8 @@ import {
 import { PixPaymentDialog } from './pix-payment-dialog'
 import { TransparentCheckoutForm } from './transparent-checkout-form'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import { CreditsComingSoon } from './credits-coming-soon'
 
 function formatChargeDate(value: string) {
   return new Date(value).toLocaleDateString('pt-BR', {
@@ -77,6 +79,10 @@ function formatCpfCnpj(value: string) {
 }
 
 export function CreditsSettings() {
+  if (!CREDITS_AND_PLANS_ENABLED) {
+    return <CreditsComingSoon />
+  }
+
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
   const setUser = useAuthStore((s) => s.auth.setUser)

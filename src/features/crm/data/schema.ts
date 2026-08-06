@@ -1,6 +1,7 @@
-import type {
-  EvaluationFormValues,
-  EvaluationResult,
+import {
+  type EvaluationFormValues,
+  type EvaluationResult,
+  normalizeEvaluationResult,
 } from '@/features/avaliacao/data/evaluation-engine'
 
 export const crmStatuses = [
@@ -39,10 +40,10 @@ export function serializeEvaluationResult(
 export function deserializeEvaluationResult(
   result: SerializedEvaluationResult
 ): EvaluationResult {
-  return {
+  return normalizeEvaluationResult({
     ...result,
     evaluatedAt: new Date(result.evaluatedAt),
-  }
+  })
 }
 
 export function getCrmStatusLabel(status: CrmEvaluationStatus) {

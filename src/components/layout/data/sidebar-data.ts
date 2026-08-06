@@ -17,6 +17,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount, type AuthUser } from '@/lib/auth-api'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { type NavGroup, type NavItem, type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -106,6 +107,7 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
           title: 'Créditos e planos',
           url: '/settings/credits',
           icon: Coins,
+          ...(!CREDITS_AND_PLANS_ENABLED ? { badge: 'Em breve' } : {}),
         },
         {
           title: 'Perfil',

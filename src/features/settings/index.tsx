@@ -5,6 +5,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { SidebarNav } from './components/sidebar-nav'
 
 const sidebarNavItems = [
@@ -14,7 +15,9 @@ const sidebarNavItems = [
     icon: <UserCog size={18} />,
   },
   {
-    title: 'Créditos e planos',
+    title: CREDITS_AND_PLANS_ENABLED
+      ? 'Créditos e planos'
+      : 'Créditos e planos (Em breve)',
     href: '/settings/credits',
     icon: <Coins size={18} />,
   },

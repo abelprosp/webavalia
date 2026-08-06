@@ -21,6 +21,7 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { FirstRunBanner } from '@/components/onboarding/first-run-banner'
 import { isBrokerAccount } from '@/lib/auth-api'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
@@ -31,6 +32,40 @@ import { RecentLeads } from './components/recent-leads'
 import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
 import { useGamificationStats } from '@/features/gamification/hooks/use-gamification-stats'
 import { DashboardFoxAiInsights } from '@/features/fox-ai/components/dashboard-fox-ai-insights'
+
+function CreditsStatCard({
+  credits,
+  description,
+}: {
+  credits: number
+  description: string
+}) {
+  const card = (
+    <Card className='h-full'>
+      <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+        <CardTitle className='text-sm font-medium'>Créditos disponíveis</CardTitle>
+        <Coins className='size-4 text-muted-foreground' />
+      </CardHeader>
+      <CardContent>
+        <div className='text-2xl font-bold'>{credits}</div>
+        <p className='text-xs text-muted-foreground'>{description}</p>
+        {!CREDITS_AND_PLANS_ENABLED && (
+          <p className='mt-1 text-xs text-muted-foreground/80'>Compra em breve</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+
+  if (!CREDITS_AND_PLANS_ENABLED) {
+    return card
+  }
+
+  return (
+    <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
+      {card}
+    </Link>
+  )
+}
 
 export function Dashboard() {
   const user = useAuthStore((s) => s.auth.user)
@@ -102,22 +137,10 @@ export function Dashboard() {
         >
           {isBroker ? (
             <>
-              <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
-                <Card className='h-full'>
-                  <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                    <CardTitle className='text-sm font-medium'>
-                      Créditos disponíveis
-                    </CardTitle>
-                    <Coins className='size-4 text-muted-foreground' />
-                  </CardHeader>
-                  <CardContent>
-                    <div className='text-2xl font-bold'>{credits}</div>
-                    <p className='text-xs text-muted-foreground'>
-                      Para avaliações IA e leads
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
+              <CreditsStatCard
+                credits={credits}
+                description='Para avaliações IA e leads'
+              />
               <Link to='/leads' className='block transition-opacity hover:opacity-90'>
                 <Card className='h-full'>
                   <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
@@ -152,22 +175,7 @@ export function Dashboard() {
               </Link>
             </>
           ) : (
-            <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
-              <Card className='h-full'>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>
-                    Créditos disponíveis
-                  </CardTitle>
-                  <Coins className='size-4 text-muted-foreground' />
-                </CardHeader>
-                <CardContent>
-                  <div className='text-2xl font-bold'>{credits}</div>
-                  <p className='text-xs text-muted-foreground'>
-                    Para avaliações com IA
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+            <CreditsStatCard credits={credits} description='Para avaliações com IA' />
           )}
 
           <Link to='/avaliacao' className='block transition-opacity hover:opacity-90'>
@@ -259,14 +267,25 @@ export function Dashboard() {
                   </Button>
                 </>
               )}
-              <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
-                <Link to='/settings/credits'>
+              {CREDITS_AND_PLANS_ENABLED ? (
+                <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                  <Link to='/settings/credits'>
+                    <Coins className='size-6' />
+                    <span>
+                      {isBroker ? 'Créditos e planos' : 'Assinar avaliações'}
+                    </span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant='outline'
+                  className='h-auto flex-col gap-2 py-6'
+                  disabled
+                >
                   <Coins className='size-6' />
-                  <span>
-                    {isBroker ? 'Créditos e planos' : 'Assinar avaliações'}
-                  </span>
-                </Link>
-              </Button>
+                  <span>Créditos e planos (Em breve)</span>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

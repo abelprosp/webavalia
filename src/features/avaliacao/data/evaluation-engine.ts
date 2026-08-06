@@ -324,6 +324,47 @@ export type EvaluationResult = {
   }
 }
 
+/** Garante arrays e objetos aninhados para resultados persistidos incompletos (ex.: leads antigos). */
+export function normalizeEvaluationResult(
+  result: Partial<EvaluationResult> & {
+    estimatedValue: number
+    evaluatedAt: Date
+  }
+): EvaluationResult {
+  const photoPreviews = result.photoPreviews ?? []
+
+  return {
+    estimatedValue: result.estimatedValue,
+    valuePerSqm: result.valuePerSqm ?? 0,
+    score: result.score ?? 0,
+    scoreLabel: result.scoreLabel ?? '—',
+    criteriaScores: result.criteriaScores ?? [],
+    aiInsights: result.aiInsights ?? [],
+    marketAnalysis: {
+      averagePricePerSqm: result.marketAnalysis?.averagePricePerSqm ?? null,
+      priceRange: result.marketAnalysis?.priceRange ?? null,
+      comparables: result.marketAnalysis?.comparables ?? [],
+      summary: result.marketAnalysis?.summary ?? '',
+    },
+    masterPlanAnalysis: {
+      zoning: result.masterPlanAnalysis?.zoning ?? '—',
+      allowedUses: result.masterPlanAnalysis?.allowedUses ?? [],
+      restrictions: result.masterPlanAnalysis?.restrictions ?? [],
+      developmentPotential: result.masterPlanAnalysis?.developmentPotential ?? '',
+      summary: result.masterPlanAnalysis?.summary ?? '',
+    },
+    neighborhoodAnalysis: result.neighborhoodAnalysis,
+    floodRiskAnalysis: result.floodRiskAnalysis,
+    marketAppreciationAnalysis: result.marketAppreciationAnalysis,
+    nbr14653: result.nbr14653,
+    saleScenarios: result.saleScenarios,
+    photoPreviews,
+    photoCount: result.photoCount ?? photoPreviews.length,
+    evaluatedAt: result.evaluatedAt,
+    sources: result.sources,
+  }
+}
+
 export function getSaleScenarios(
   result: Pick<EvaluationResult, 'estimatedValue' | 'saleScenarios'>,
   area: number

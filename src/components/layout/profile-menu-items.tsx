@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Coins, LogOut, Palette, UserCog } from 'lucide-react'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -27,7 +28,9 @@ export function ProfileMenuItems({
         <DropdownMenuItem asChild>
           <Link to='/settings/credits'>
             {showIcons && <Coins />}
-            Créditos e planos
+            {CREDITS_AND_PLANS_ENABLED
+              ? 'Créditos e planos'
+              : 'Créditos e planos (Em breve)'}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

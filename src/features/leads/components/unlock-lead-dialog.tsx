@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { EvaluationResultPanel } from '@/features/avaliacao/components/evaluation-result'
 import { useCreditsStore } from '@/stores/credits-store'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { unlockLead, type LeadItem } from '@/lib/leads-api'
 import { parseLeadEvaluation } from '../lib/lead-evaluation'
 
@@ -58,6 +59,7 @@ function UnlockCostSummary({
       {!hasCredits && (
         <p className='text-sm text-destructive'>
           Você não possui créditos suficientes para desbloquear este lead.
+          {!CREDITS_AND_PLANS_ENABLED && ' A compra de créditos estará disponível em breve.'}
         </p>
       )}
     </>

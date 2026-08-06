@@ -70,6 +70,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 import { useEvaluationDraftStore } from '@/stores/evaluation-draft-store'
 import { isBrokerAccount } from '@/lib/auth-api'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { EvaluationResultPanel } from './components/evaluation-result'
 import { EvaluationWizardSteps } from './components/evaluation-wizard-steps'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
@@ -228,7 +229,9 @@ export function Avaliacao() {
   async function onSubmit(values: EvaluationFormValues) {
     if (isBroker && credits <= 0) {
       toast.error(
-        'Você não tem créditos suficientes. Compre créditos em Configurações → Créditos.'
+        CREDITS_AND_PLANS_ENABLED
+          ? 'Você não tem créditos suficientes. Compre créditos em Configurações → Créditos.'
+          : 'Você não tem créditos suficientes. A compra de créditos estará disponível em breve.'
       )
       return
     }
@@ -326,8 +329,9 @@ export function Avaliacao() {
           </p>
           {isBroker && credits === 0 && (
             <p className='mt-2 text-sm text-destructive'>
-              Você não tem créditos. Compre em Configurações → Créditos para
-              continuar avaliando.
+              {CREDITS_AND_PLANS_ENABLED
+                ? 'Você não tem créditos. Compre em Configurações → Créditos para continuar avaliando.'
+                : 'Você não tem créditos. A compra de créditos estará disponível em breve.'}
             </p>
           )}
         </div>

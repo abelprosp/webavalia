@@ -37,6 +37,7 @@ import {
   estimateMonthlyRent,
   getListingIntentLabel,
   getSaleScenarios,
+  normalizeEvaluationResult,
   type EvaluationFormValues,
   type EvaluationResult,
   type SaleScenario,
@@ -70,7 +71,7 @@ function getPropertyHighlights(property: EvaluationFormValues) {
 }
 
 function getCriterionScore(result: EvaluationResult, id: string) {
-  return result.criteriaScores.find((c) => c.id === id)?.score ?? 3
+  return result.criteriaScores?.find((c) => c.id === id)?.score ?? 3
 }
 
 function compactCurrency(value: number) {
@@ -258,7 +259,7 @@ function AppreciationBars() {
 }
 
 export function EvaluationResultPanel({
-  result,
+  result: incomingResult,
   property,
   previewMode = false,
   publicLocation,
@@ -268,6 +269,7 @@ export function EvaluationResultPanel({
   const authUser = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(authUser)
   const saveEvaluation = useCrmStore((s) => s.saveEvaluation)
+  const result = normalizeEvaluationResult(incomingResult)
   const { marketAnalysis, masterPlanAnalysis } = result
   const propertyHighlights = getPropertyHighlights(property)
   const isRentalView = (property.listingIntent ?? 'vender') === 'alugar'
@@ -574,7 +576,7 @@ export function EvaluationResultPanel({
             <BentoCard
               variant='dark'
               title='Pesquisa avançada do bairro'
-              subtitle={result.neighborhoodAnalysis.qualityOfLife.slice(0, 55)}
+              subtitle={result.neighborhoodAnalysis.qualityOfLife?.slice(0, 55) ?? 'Análise do bairro'}
               className='min-h-[280px] lg:col-span-2'
               showMenu={false}
             >
@@ -584,7 +586,7 @@ export function EvaluationResultPanel({
                     Segurança percebida
                   </p>
                   <p className='mt-1 text-base font-semibold leading-snug'>
-                    {result.neighborhoodAnalysis.safetyPerception.split(/[.,]/)[0]}
+                    {result.neighborhoodAnalysis.safetyPerception?.split(/[.,]/)[0] ?? '—'}
                   </p>
                 </div>
                 <div>
