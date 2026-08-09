@@ -28,13 +28,13 @@
   --flux-lavender: oklch(0.82 0.12 290);
   --flux-dark: oklch(0.22 0.02 260);
 
-  --sidebar: var(--flux-dark);
-  --sidebar-foreground: oklch(0.95 0.005 260);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.18 0.02 260);
   --sidebar-primary: var(--flux-lime);
   --sidebar-primary-foreground: var(--flux-dark);
-  --sidebar-accent: oklch(1 0 0);
-  --sidebar-accent-foreground: var(--flux-dark);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-accent: oklch(0.955 0.008 260);
+  --sidebar-accent-foreground: oklch(0.18 0.02 260);
+  --sidebar-border: oklch(0.91 0.006 260);
   --sidebar-ring: var(--flux-lime);
 }
 
