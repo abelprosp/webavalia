@@ -36,12 +36,16 @@ const UF_LIST = [
 type TransparentCheckoutFormProps = {
   cpfCnpj: string
   pricing: PaymentPricing | null
+  planSlug?: PaymentPricing['plans'][number]['slug']
+  planPriceLabel?: string
   onSuccess: (result: PlanCheckoutResponse) => void
 }
 
 export function TransparentCheckoutForm({
   cpfCnpj,
   pricing,
+  planSlug,
+  planPriceLabel,
   onSuccess,
 }: TransparentCheckoutFormProps) {
   const [holderName, setHolderName] = useState('')
@@ -154,6 +158,7 @@ export function TransparentCheckoutForm({
       })
 
       const result = await createPlanCheckout({
+        planSlug,
         cpfCnpj: documentDigits,
         paymentToken: token.paymentToken,
         phoneNumber: phone.replace(/\D/g, ''),
@@ -353,7 +358,7 @@ export function TransparentCheckoutForm({
             Processando…
           </>
         ) : (
-          `Assinar por ${pricing?.evaluationPlan.priceLabel ?? 'R$ 247,00'}/mês`
+          `Assinar por ${planPriceLabel ?? pricing?.evaluationPlan.priceLabel ?? 'R$ 197,00'}/mês`
         )}
       </Button>
     </form>

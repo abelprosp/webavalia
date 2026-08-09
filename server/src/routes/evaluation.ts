@@ -22,9 +22,12 @@ import {
   TrialExhaustedError,
 } from '../services/trial-service.js'
 import {
+  assertPfCanPublish,
   grantPfEvaluationReward,
   grantPfPublishReward,
   PfDailyCapError,
+  PfMonthlyCapError,
+  PfPublishCapError,
   recordPfEvaluationUsage,
   revertPfEvaluationUsage,
 } from '../services/pf-credits-service.js'
@@ -181,6 +184,12 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
       return res.status(429).json({
         message: error.message,
         code: 'PF_DAILY_CAP',
+      })
+    }
+    if (error instanceof PfMonthlyCapError) {
+      return res.status(402).json({
+        message: error.message,
+        code: error.code,
       })
     }
     throw error
@@ -472,6 +481,10 @@ router.post('/publish-lead', requireAuth, async (req: AuthRequest, res) => {
   }
 
   try {
+    if (req.user!.accountType === 'pf') {
+      await assertPfCanPublish(req.user!.id, parsed.data.evaluationId)
+    }
+
     const result = await publishEvaluationAsLead({
       evaluationId: parsed.data.evaluationId,
       userId: req.user!.id,
@@ -497,6 +510,12 @@ router.post('/publish-lead', requireAuth, async (req: AuthRequest, res) => {
       credits,
     })
   } catch (error) {
+    if (error instanceof PfPublishCapError) {
+      return res.status(402).json({
+        message: error.message,
+        code: error.code,
+      })
+    }
     const message =
       error instanceof Error
         ? error.message

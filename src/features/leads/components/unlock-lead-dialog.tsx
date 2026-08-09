@@ -54,7 +54,7 @@ function UnlockCostSummary({
       <div className='flex items-center justify-between rounded-lg border p-3'>
         <div className='flex items-center gap-2 text-sm'>
           <Coins className='size-4' />
-          Custo: <strong>{cost} crédito</strong>
+          Custo: <strong>{cost} créditos</strong>
         </div>
         <div className='text-sm text-muted-foreground'>
           Saldo: {credits} créditos

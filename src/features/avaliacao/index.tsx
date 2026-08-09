@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Sparkles, Home, Loader2, Camera, Gem, MapPin } from 'lucide-react'
@@ -84,6 +85,7 @@ import {
 } from './components/photo-upload'
 
 export function Avaliacao() {
+  const navigate = useNavigate()
   const [result, setResult] = useState<EvaluationResult | null>(null)
   const [evaluatedProperty, setEvaluatedProperty] =
     useState<EvaluationFormValues | null>(null)
@@ -282,7 +284,23 @@ export function Avaliacao() {
           : error instanceof Error
             ? error.message
             : undefined
-      toast.error(message ?? 'Erro ao avaliar imóvel. Tente novamente.')
+      if (
+        error instanceof AxiosError &&
+        (error.response?.status === 402 || error.response?.status === 429)
+      ) {
+        toast.error(message ?? 'Limite de avaliações atingido.', {
+          action: CREDITS_AND_PLANS_ENABLED
+            ? {
+                label: 'Ver planos',
+                onClick: () => {
+                  void navigate({ to: '/settings/credits' })
+                },
+              }
+            : undefined,
+        })
+      } else {
+        toast.error(message ?? 'Erro ao avaliar imóvel. Tente novamente.')
+      }
     } finally {
       setIsEvaluating(false)
       setEvaluatingStep('')
@@ -329,9 +347,8 @@ export function Avaliacao() {
           </p>
           {isBroker && credits === 0 && (
             <p className='mt-2 text-sm text-destructive'>
-              {CREDITS_AND_PLANS_ENABLED
-                ? 'Você não tem créditos. Compre em Configurações → Créditos para continuar avaliando.'
-                : 'Você não tem créditos. A compra de créditos estará disponível em breve.'}
+              Você não tem créditos. Compre em Configurações → Créditos para
+              continuar avaliando.
             </p>
           )}
         </div>

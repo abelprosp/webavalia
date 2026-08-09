@@ -155,7 +155,7 @@ function SignUpForm() {
         toast.success(
           `Conta criada! Você tem ${result.user.credits ?? result.user.trialEvaluationsRemaining} créditos para começar.`
         )
-        navigate({ to: '/', replace: true })
+        navigate({ to: '/app', replace: true })
       }
     } catch (error) {
       const message =

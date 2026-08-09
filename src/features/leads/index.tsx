@@ -155,7 +155,7 @@ export function Leads() {
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
         <PageHeader
           breadcrumbs={[
-            { label: 'Início', href: '/' },
+            { label: 'Início', href: '/app' },
             { label: 'Oportunidades' },
           ]}
           title='Oportunidades'

@@ -13,7 +13,7 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     try {
       const user = await fetchMe()
       useAuthStore.getState().auth.setUser(user)
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/app' })
     } catch (error) {
       if (isRedirect(error)) throw error
     }

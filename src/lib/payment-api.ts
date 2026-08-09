@@ -1,20 +1,45 @@
 import { api } from './api'
 
+export type PlanPricing = {
+  slug: 'pf_plus' | 'starter' | 'pro' | 'agency'
+  audience: 'pf' | 'pj'
+  credits: number
+  priceCents: number
+  priceLabel: string
+  label: string
+  description: string
+  highlighted: boolean
+  features: string[]
+  paymentMethods: readonly ['CARD']
+}
+
 export type PaymentPricing = {
   leadCreditPack: {
     credits: number
     priceCents: number
     priceLabel: string
     label: string
+    allowedPacks: number[]
+    pack20DiscountPercent: number
     paymentMethods: readonly ['PIX']
   }
+  plans: PlanPricing[]
   evaluationPlan: {
+    slug: string
     trialEvaluations: number
     priceCents: number
     priceLabel: string
     label: string
     description: string
     paymentMethods: readonly ['CARD']
+  }
+  costs: {
+    evaluationCredits: number
+    leadUnlockCredits: number
+  }
+  freeTier: {
+    pfMonthlyEvaluations: number
+    pfMonthlyPublishes: number
   }
   efi: {
     payeeCode: string
@@ -40,12 +65,14 @@ export type PlanCheckoutResponse = {
   orderId: string
   amountCents: number
   trialEvaluations: number
+  planSlug?: string
   status: string
   subscriptionId: string
   chargeId: string | null
 }
 
 export type PlanCheckoutInput = {
+  planSlug?: PlanPricing['slug']
   cpfCnpj: string
   paymentToken: string
   phoneNumber: string

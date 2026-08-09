@@ -101,7 +101,9 @@ function SignInForm({ redirectTo }: { redirectTo?: string }) {
       auth.setUser(user)
       toast.success(`Bem-vindo, ${user.name}!`)
       const target =
-        redirectTo && redirectTo.startsWith('/') ? redirectTo : '/'
+        redirectTo && redirectTo.startsWith('/') && redirectTo !== '/'
+          ? redirectTo
+          : '/app'
       navigate({ to: target, replace: true })
     } catch (error) {
       if (isEmailNotVerifiedError(error)) {

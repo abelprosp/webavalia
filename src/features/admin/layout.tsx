@@ -71,7 +71,7 @@ export function AdminLayout() {
       <Main fixed>
         <Breadcrumbs
           items={[
-            { label: 'Início', href: '/' },
+            { label: 'Início', href: '/app' },
             { label: 'Administração', href: '/admin' },
             ...(currentPage !== 'Visão geral' ? [{ label: currentPage }] : []),
           ]}

@@ -238,7 +238,7 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
         <PageHeader
           breadcrumbs={[
-            { label: 'Início', href: '/' },
+            { label: 'Início', href: '/app' },
             { label: personalMode ? 'Minhas avaliações' : 'CRM' },
           ]}
           title={personalMode ? 'Minhas avaliações' : 'CRM'}

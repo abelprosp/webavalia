@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_authenticated/leads/')({
   beforeLoad: () => {
     const user = useAuthStore.getState().auth.user
     if (user && !isBrokerAccount(user)) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/app' })
     }
   },
   component: Leads,

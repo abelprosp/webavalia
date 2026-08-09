@@ -49,6 +49,9 @@ async function migrate() {
       ADD COLUMN IF NOT EXISTS efi_subscription_id VARCHAR(255);
 
     ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS subscription_plan_slug VARCHAR(50);
+
+    ALTER TABLE users
       ADD COLUMN IF NOT EXISTS credits INT NOT NULL DEFAULT 0;
 
     -- Unifica saldos antigos (leads + avaliações) em credits

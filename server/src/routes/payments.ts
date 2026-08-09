@@ -113,7 +113,7 @@ router.post(
   async (req: AuthRequest, res) => {
   const parsed = z
     .object({
-      packs: z.number().int().min(1).max(20).optional(),
+      packs: z.union([z.literal(5), z.literal(10), z.literal(20)]).optional(),
       cpfCnpj: cpfCnpjSchema,
     })
     .safeParse(req.body)
@@ -168,6 +168,9 @@ router.get('/credits/pix/:orderId/status', async (req: AuthRequest, res) => {
 router.post('/plan/checkout', requireCreditsAndPlansEnabled, async (req: AuthRequest, res) => {
   const parsed = z
     .object({
+      planSlug: z
+        .enum(['pf_plus', 'starter', 'pro', 'agency'])
+        .optional(),
       cpfCnpj: cpfCnpjSchema,
       paymentToken: z.string().trim().min(10, 'Token de pagamento inválido.'),
       phoneNumber: z
@@ -194,6 +197,7 @@ router.post('/plan/checkout', requireCreditsAndPlansEnabled, async (req: AuthReq
   try {
     const checkout = await createEvaluationPlanCheckout({
       userId: req.user!.id,
+      planSlug: parsed.data.planSlug,
       cpfCnpj: parsed.data.cpfCnpj,
       paymentToken: parsed.data.paymentToken,
       phoneNumber: parsed.data.phoneNumber,

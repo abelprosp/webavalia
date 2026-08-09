@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
-const CREDIT_COST = 1
+const EVALUATION_CREDIT_COST = 1
+const LEAD_UNLOCK_CREDIT_COST = 2
 
 type CreditsStore = {
   credits: number
@@ -23,8 +24,8 @@ export const useCreditsStore = create<CreditsStore>()((set, get) => ({
     }
     return false
   },
-  getLeadUnlockCost: () => CREDIT_COST,
-  getEvaluationCost: () => CREDIT_COST,
+  getLeadUnlockCost: () => LEAD_UNLOCK_CREDIT_COST,
+  getEvaluationCost: () => EVALUATION_CREDIT_COST,
   reset: () => set({ credits: 0 }),
 }))
 

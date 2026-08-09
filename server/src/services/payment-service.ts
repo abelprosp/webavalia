@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { pool } from '../db/pool.js'
-import { PRICING } from '../constants/pricing.js'
+import {
+  calculatePixPackAmount,
+  formatPriceLabel,
+  getPlanBySlug,
+  listPlans,
+  PRICING,
+  resolveCheckoutPlanSlug,
+  type PlanAudience,
+} from '../constants/pricing.js'
 import {
   cancelCardSubscription,
   createCardSubscription,
@@ -35,30 +43,55 @@ type UserPaymentRow = {
   email: string
   company_name: string | null
   efi_subscription_id: string | null
+  subscription_plan_slug: string | null
+  account_type: string
+}
+
+function mapPlanPublic(plan: ReturnType<typeof listPlans>[number]) {
+  return {
+    slug: plan.slug,
+    audience: plan.audience,
+    credits: plan.credits,
+    priceCents: plan.priceCents,
+    priceLabel: formatPriceLabel(plan.priceCents),
+    label: plan.label,
+    description: plan.description,
+    highlighted: Boolean(plan.highlighted),
+    features: plan.features,
+    paymentMethods: ['CARD'] as const,
+  }
 }
 
 export function getPublicPricing() {
+  const pro = PRICING.plans.pro
   return {
     leadCreditPack: {
       credits: PRICING.leadCreditPack.credits,
       priceCents: PRICING.leadCreditPack.priceCents,
-      priceLabel: (PRICING.leadCreditPack.priceCents / 100).toLocaleString(
-        'pt-BR',
-        { style: 'currency', currency: 'BRL' }
-      ),
+      priceLabel: formatPriceLabel(PRICING.leadCreditPack.priceCents),
       label: PRICING.leadCreditPack.label,
+      allowedPacks: [5, 10, 20],
+      pack20DiscountPercent: 10,
       paymentMethods: ['PIX'] as const,
     },
+    plans: listPlans().map(mapPlanPublic),
+    /** Compat: plano âncora Pro */
     evaluationPlan: {
-      trialEvaluations: PRICING.evaluationPlan.trialEvaluations,
-      priceCents: PRICING.evaluationPlan.priceCents,
-      priceLabel: (PRICING.evaluationPlan.priceCents / 100).toLocaleString(
-        'pt-BR',
-        { style: 'currency', currency: 'BRL' }
-      ),
-      label: PRICING.evaluationPlan.label,
-      description: PRICING.evaluationPlan.description,
+      slug: pro.slug,
+      trialEvaluations: pro.credits,
+      priceCents: pro.priceCents,
+      priceLabel: formatPriceLabel(pro.priceCents),
+      label: `${pro.label} — ${pro.credits} créditos`,
+      description: pro.description,
       paymentMethods: ['CARD'] as const,
+    },
+    costs: {
+      evaluationCredits: 1,
+      leadUnlockCredits: 2,
+    },
+    freeTier: {
+      pfMonthlyEvaluations: 3,
+      pfMonthlyPublishes: 1,
     },
     efi: getPublicEfiConfig(),
   }
@@ -74,7 +107,8 @@ export async function pingPaymentProvider() {
 
 async function getUserForPayment(userId: string) {
   const result = await pool.query<UserPaymentRow>(
-    `SELECT id, name, email, company_name, efi_subscription_id
+    `SELECT id, name, email, company_name, efi_subscription_id,
+            subscription_plan_slug, account_type
      FROM users WHERE id = $1`,
     [userId]
   )
@@ -88,11 +122,11 @@ export async function createLeadCreditsPixOrder(input: {
   cpfCnpj: string
   packs?: number
 }) {
-  const packs = Math.min(Math.max(input.packs ?? 1, 1), 20)
+  const { packs, credits, amountCents } = calculatePixPackAmount(
+    input.packs ?? 5
+  )
   const orderId = randomUUID()
   const externalId = `lead-${orderId}`
-  const amountCents = PRICING.leadCreditPack.priceCents * packs
-  const credits = PRICING.leadCreditPack.credits * packs
 
   const user = await getUserForPayment(input.userId)
   if (!user) throw new Error('Usuário não encontrado.')
@@ -108,7 +142,7 @@ export async function createLeadCreditsPixOrder(input: {
     amountCents,
     payerName: input.userName,
     cpfCnpj: input.cpfCnpj,
-    description: `${credits} crédito(s) de leads — Avalia Imob`,
+    description: `${credits} crédito(s) — Avalia Imob`,
     orderId,
   })
 
@@ -143,6 +177,7 @@ export async function createEvaluationPlanCheckout(input: {
   phoneNumber: string
   birth: string
   billingAddress: EfiBillingAddress
+  planSlug?: string
 }) {
   const user = await getUserForPayment(input.userId)
   if (!user) throw new Error('Usuário não encontrado.')
@@ -153,10 +188,15 @@ export async function createEvaluationPlanCheckout(input: {
     )
   }
 
+  const audience: PlanAudience =
+    user.account_type === 'pf' ? 'pf' : 'pj'
+  const planSlug = resolveCheckoutPlanSlug(input.planSlug, audience)
+  const plan = PRICING.plans[planSlug]
+
   const orderId = randomUUID()
   const externalId = `plan-${orderId}`
-  const amountCents = PRICING.evaluationPlan.priceCents
-  const planId = await ensureEvaluationPlanId()
+  const amountCents = plan.priceCents
+  const efiPlanId = await ensureEvaluationPlanId(planSlug)
 
   await pool.query(
     `INSERT INTO payment_orders
@@ -167,7 +207,12 @@ export async function createEvaluationPlanCheckout(input: {
       input.userId,
       amountCents,
       externalId,
-      JSON.stringify({ provider: 'efi', planId }),
+      JSON.stringify({
+        provider: 'efi',
+        planId: efiPlanId,
+        planSlug,
+        credits: plan.credits,
+      }),
     ]
   )
 
@@ -181,9 +226,9 @@ export async function createEvaluationPlanCheckout(input: {
   }
 
   const subscription = await createCardSubscription({
-    planId,
+    planId: efiPlanId,
     amountCents,
-    itemName: PRICING.evaluationPlan.label,
+    itemName: `Avalia Imob — ${plan.label}`,
     customId: externalId,
     paymentToken: input.paymentToken,
     customer,
@@ -208,6 +253,7 @@ export async function createEvaluationPlanCheckout(input: {
         subscriptionId,
         chargeId,
         chargeStatus,
+        planSlug,
       }),
       orderId,
     ]
@@ -216,9 +262,10 @@ export async function createEvaluationPlanCheckout(input: {
   await pool.query(
     `UPDATE users
      SET efi_subscription_id = $2,
+         subscription_plan_slug = $3,
          updated_at = NOW()
      WHERE id = $1`,
-    [input.userId, subscriptionId]
+    [input.userId, subscriptionId, planSlug]
   )
 
   const paid =
@@ -234,7 +281,8 @@ export async function createEvaluationPlanCheckout(input: {
   return {
     orderId,
     amountCents,
-    trialEvaluations: PRICING.evaluationPlan.trialEvaluations,
+    trialEvaluations: plan.credits,
+    planSlug,
     status: paid ? 'paid' : chargeStatus.toLowerCase(),
     subscriptionId,
     chargeId,
@@ -270,6 +318,7 @@ export async function cancelEvaluationPlanSubscription(userId: string) {
   await pool.query(
     `UPDATE users
      SET efi_subscription_id = NULL,
+         subscription_plan_slug = NULL,
          updated_at = NOW()
      WHERE id = $1`,
     [userId]
@@ -321,7 +370,12 @@ export async function fulfillOrder(orderId: string) {
         ]
       )
     } else if (order.type === 'evaluation_plan') {
-      const credits = PRICING.evaluationPlan.trialEvaluations
+      const metaResult = await client.query<{
+        metadata: { planSlug?: string; credits?: number } | null
+      }>(`SELECT metadata FROM payment_orders WHERE id = $1`, [orderId])
+      const meta = metaResult.rows[0]?.metadata
+      const plan = getPlanBySlug(meta?.planSlug) ?? PRICING.plans.pro
+      const credits = meta?.credits ?? plan.credits
       await client.query(
         `UPDATE users
          SET credits = credits + $2, updated_at = NOW()
@@ -334,7 +388,7 @@ export async function fulfillOrder(orderId: string) {
         [
           order.user_id,
           credits,
-          `Plano mensal — ${credits} crédito(s)`,
+          `Plano ${plan.label} — ${credits} crédito(s)`,
         ]
       )
     }
@@ -368,8 +422,11 @@ export async function fulfillSubscriptionRenewal(input: {
     return { fulfilled: false, reason: 'duplicate' as const }
   }
 
-  const userResult = await pool.query<{ id: string }>(
-    `SELECT id FROM users WHERE efi_subscription_id = $1`,
+  const userResult = await pool.query<{
+    id: string
+    subscription_plan_slug: string | null
+  }>(
+    `SELECT id, subscription_plan_slug FROM users WHERE efi_subscription_id = $1`,
     [input.subscriptionId]
   )
   const user = userResult.rows[0]
@@ -377,10 +434,12 @@ export async function fulfillSubscriptionRenewal(input: {
     return { fulfilled: false, reason: 'user_not_found' as const }
   }
 
+  const plan =
+    getPlanBySlug(user.subscription_plan_slug) ?? PRICING.plans.pro
   const orderId = randomUUID()
   const externalId = `renewal-${input.paymentId}`
-  const amountCents = PRICING.evaluationPlan.priceCents
-  const credits = PRICING.evaluationPlan.trialEvaluations
+  const amountCents = plan.priceCents
+  const credits = plan.credits
 
   await pool.query(
     `INSERT INTO payment_orders
@@ -397,6 +456,8 @@ export async function fulfillSubscriptionRenewal(input: {
         provider: 'efi',
         subscriptionId: input.subscriptionId,
         chargeId: input.paymentId,
+        planSlug: plan.slug,
+        credits: plan.credits,
         type: 'subscription_renewal',
       }),
     ]
@@ -432,7 +493,11 @@ export async function listMonthlyCharges(
     status: string
     amount_cents: number
     packs: number
-    metadata: { type?: string } | null
+    metadata: {
+      type?: string
+      planSlug?: string
+      credits?: number
+    } | null
     created_at: Date | string
     paid_at: Date | string | null
     fulfilled_at: Date | string | null
@@ -449,15 +514,14 @@ export async function listMonthlyCharges(
 
   const orderCharges: MonthlyCharge[] = ordersResult.rows.map((row) => {
     const isRenewal = row.metadata?.type === 'subscription_renewal'
+    const plan = getPlanBySlug(row.metadata?.planSlug) ?? PRICING.plans.pro
     const chargedAt = row.paid_at ?? row.fulfilled_at ?? row.created_at
     return {
       id: row.id,
       kind: isRenewal ? 'renewal' : 'initial',
-      label: isRenewal
-        ? 'Renovação mensal'
-        : PRICING.evaluationPlan.label,
+      label: isRenewal ? `Renovação — ${plan.label}` : plan.label,
       amountCents: row.amount_cents,
-      credits: PRICING.evaluationPlan.trialEvaluations * (row.packs || 1),
+      credits: row.metadata?.credits ?? plan.credits * (row.packs || 1),
       status: row.status as MonthlyCharge['status'],
       chargedAt:
         chargedAt instanceof Date ? chargedAt.toISOString() : String(chargedAt),

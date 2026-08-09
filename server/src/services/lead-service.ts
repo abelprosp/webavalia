@@ -8,7 +8,9 @@ import {
   getListingIntentFromInput,
 } from '../utils/rent-estimate.js'
 
-export const LEAD_UNLOCK_COST = 1
+import { LEAD_UNLOCK_CREDIT_COST } from '../constants/pricing.js'
+
+export const LEAD_UNLOCK_COST = LEAD_UNLOCK_CREDIT_COST
 
 export type LeadRow = {
   id: string

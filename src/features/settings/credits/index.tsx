@@ -1,4 +1,4 @@
-import { CheckCircle2, Coins, Minus, Plus, Sparkles } from 'lucide-react'
+import { CheckCircle2, Coins, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -92,7 +92,10 @@ export function CreditsSettings() {
 
   const search = useSearch({ from: '/_authenticated/settings/credits' })
   const [pricing, setPricing] = useState<PaymentPricing | null>(null)
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState(5)
+  const [selectedPlanSlug, setSelectedPlanSlug] = useState<
+    PaymentPricing['plans'][number]['slug'] | null
+  >(null)
   const [cpfCnpj, setCpfCnpj] = useState('')
   const [loadingPix, setLoadingPix] = useState(false)
   const [pixPayment, setPixPayment] = useState<PixPaymentResponse | null>(null)
@@ -117,10 +120,17 @@ export function CreditsSettings() {
 
   useEffect(() => {
     fetchPaymentPricing()
-      .then(setPricing)
+      .then((data) => {
+        setPricing(data)
+        const audience = isBrokerAccount(user) ? 'pj' : 'pf'
+        const preferred =
+          data.plans.find((p) => p.audience === audience && p.highlighted) ??
+          data.plans.find((p) => p.audience === audience)
+        if (preferred) setSelectedPlanSlug(preferred.slug)
+      })
       .catch(() => toast.error('Não foi possível carregar os preços.'))
     void loadCharges()
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (user?.document) {
@@ -203,9 +213,21 @@ export function CreditsSettings() {
   }
 
   const creditsPerUnit = pricing?.leadCreditPack.credits ?? 1
-  const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 1499
+  const pricePerUnit = pricing?.leadCreditPack.priceCents ?? 1190
   const leadCreditsTotal = creditsPerUnit * quantity
-  const leadPriceTotal = pricePerUnit * quantity
+  const leadPriceTotal =
+    quantity === 20
+      ? Math.round(pricePerUnit * quantity * 0.9)
+      : pricePerUnit * quantity
+  const audiencePlans =
+    pricing?.plans.filter((p) =>
+      isBroker ? p.audience === 'pj' : p.audience === 'pf'
+    ) ?? []
+  const selectedPlan =
+    audiencePlans.find((p) => p.slug === selectedPlanSlug) ?? audiencePlans[0]
+  const unlockCost = pricing?.costs.leadUnlockCredits ?? 2
+  const evalCost = pricing?.costs.evaluationCredits ?? 1
+  const freeEvals = pricing?.freeTier.pfMonthlyEvaluations ?? 3
 
   return (
     <ContentSection
@@ -225,8 +247,8 @@ export function CreditsSettings() {
             </CardTitle>
             <CardDescription>
               {isBroker
-                ? `Cada conta recebe ${signupBonus} créditos ao se cadastrar e +1 ao enviar feedback após uma avaliação. Depois, compre mais créditos. 1 crédito = 1 avaliação IA ou 1 desbloqueio de lead.`
-                : `Cada conta recebe ${signupBonus} créditos ao se cadastrar e +1 ao concluir a primeira avaliação. Depois, compre mais créditos. 1 crédito = 1 avaliação IA.`}
+                ? `${evalCost} crédito = 1 avaliação IA · ${unlockCost} créditos = 1 lead. Cadastro com ${signupBonus} créditos iniciais.`
+                : `Plano free: ${freeEvals} avaliações/mês. Assine o Plus ou use créditos avulsos para ir além.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -270,20 +292,42 @@ export function CreditsSettings() {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Sparkles className='size-5' />
-              {pricing?.evaluationPlan.label ?? 'Plano Mensal — 24 créditos'}
+              Planos mensais
             </CardTitle>
             <CardDescription>
-              {pricing?.evaluationPlan.description ??
-                '24 créditos mensais para avaliações IA e leads'}
+              Escolha o plano e assine com cartão. Créditos renovam todo mês.
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <div className='text-3xl font-bold text-primary'>
-              {pricing?.evaluationPlan.priceLabel ?? 'R$ 247,00'}
-              <span className='ml-2 text-base font-normal text-muted-foreground'>
-                / mês
-              </span>
-            </div>
+            {!hasActiveSubscription && audiencePlans.length > 0 && (
+              <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+                {audiencePlans.map((plan) => (
+                  <button
+                    key={plan.slug}
+                    type='button'
+                    onClick={() => setSelectedPlanSlug(plan.slug)}
+                    className={`rounded-xl border p-4 text-left transition ${
+                      selectedPlan?.slug === plan.slug
+                        ? 'border-flux-lime bg-flux-lime/10 ring-2 ring-flux-lime/40'
+                        : 'hover:border-flux-lavender/40'
+                    }`}
+                  >
+                    <p className='font-semibold'>{plan.label}</p>
+                    <p className='mt-1 text-2xl font-bold'>{plan.priceLabel}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      {plan.credits} créditos/mês
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedPlan && !hasActiveSubscription && (
+              <div className='text-sm text-muted-foreground'>
+                {selectedPlan.description}
+              </div>
+            )}
+
             {hasActiveSubscription ? (
               <div className='space-y-4'>
                 <div className='flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/40'>
@@ -293,8 +337,8 @@ export function CreditsSettings() {
                       Assinatura ativa
                     </p>
                     <p className='mt-1 text-emerald-800/80 dark:text-emerald-200/80'>
-                      Você recebe 24 créditos todo mês. Os créditos já
-                      creditados permanecem na conta após o cancelamento.
+                      Seus créditos renovam todo mês. Os já creditados
+                      permanecem após o cancelamento.
                     </p>
                   </div>
                 </div>
@@ -310,6 +354,8 @@ export function CreditsSettings() {
               <TransparentCheckoutForm
                 cpfCnpj={cpfCnpj}
                 pricing={pricing}
+                planSlug={selectedPlan?.slug}
+                planPriceLabel={selectedPlan?.priceLabel}
                 onSuccess={async (result) => {
                   if (result.status === 'paid' || result.status === 'approved') {
                     toast.success(
@@ -384,34 +430,27 @@ export function CreditsSettings() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {pricing?.leadCreditPack.label ?? 'Pacote avulso de créditos'}
+                {pricing?.leadCreditPack.label ?? 'Créditos avulsos (PIX)'}
               </CardTitle>
               <CardDescription>
-                {pricing?.leadCreditPack.priceLabel ?? 'R$ 14,99'} por crédito —
-                pagamento via PIX. Também entram no saldo unificado.
+                {pricing?.leadCreditPack.priceLabel ?? 'R$ 11,90'} por crédito ·
+                packs 5, 10 ou 20 (20 com 10% off).
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <div className='flex items-center gap-4'>
-                <Button
-                  variant='outline'
-                  size='icon'
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                >
-                  <Minus className='size-4' />
-                </Button>
-                <span className='min-w-24 text-center text-lg font-medium'>
-                  {quantity} {quantity === 1 ? 'crédito' : 'créditos'}
-                </span>
-                <Button
-                  variant='outline'
-                  size='icon'
-                  onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                  disabled={quantity >= 20}
-                >
-                  <Plus className='size-4' />
-                </Button>
+              <div className='flex flex-wrap gap-2'>
+                {(pricing?.leadCreditPack.allowedPacks ?? [5, 10, 20]).map(
+                  (pack) => (
+                    <Button
+                      key={pack}
+                      type='button'
+                      variant={quantity === pack ? 'default' : 'outline'}
+                      onClick={() => setQuantity(pack)}
+                    >
+                      {pack} créditos
+                    </Button>
+                  )
+                )}
               </div>
 
               <div className='rounded-lg bg-muted/50 p-4 text-sm'>
@@ -421,6 +460,7 @@ export function CreditsSettings() {
                     style: 'currency',
                     currency: 'BRL',
                   })}
+                  {quantity === 20 ? ' (10% off)' : ''}
                 </p>
               </div>
 
@@ -441,23 +481,23 @@ export function CreditsSettings() {
           </CardHeader>
           <CardContent className='space-y-3 text-sm text-muted-foreground'>
             <p>
-              Você tem um único saldo de créditos. Cada avaliação com IA consome
-              1 crédito
+              {evalCost} crédito = 1 avaliação IA
               {isBroker
-                ? ' e cada desbloqueio de lead também consome 1 crédito.'
+                ? ` · ${unlockCost} créditos = 1 desbloqueio de lead.`
                 : '.'}
             </p>
-            {isBroker && (
+            {isBroker ? (
               <p>
-                O WhatsApp da Avalia captura leads interessados em imóveis. Para
-                ver nome, telefone e e-mail, use 1 crédito.
+                Assine Starter, Pro ou Imobiliária para ter o melhor custo por
+                crédito. PIX é para urgências.
+              </p>
+            ) : (
+              <p>
+                No free você tem {freeEvals} avaliações/mês. No Plus (R$ 39)
+                são 15/mês com publicação ilimitada. A 1ª publicação dá +2
+                créditos de bônus.
               </p>
             )}
-            <p>
-              {isBroker
-                ? 'Cada conta começa com créditos grátis. Ao enviar feedback após uma avaliação, você ganha +1 crédito bônus. Depois disso, compre pacotes avulsos via PIX ou assine o plano mensal.'
-                : 'Cada conta começa com créditos grátis. Ao concluir a primeira avaliação, você ganha +1 crédito. Depois disso, compre pacotes avulsos via PIX ou assine o plano mensal.'}
-            </p>
           </CardContent>
         </Card>
 

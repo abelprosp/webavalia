@@ -38,7 +38,7 @@ export function Settings() {
       <Main fixed>
         <Breadcrumbs
           items={[
-            { label: 'Início', href: '/' },
+            { label: 'Início', href: '/app' },
             { label: 'Configurações' },
           ]}
           className='mb-2'

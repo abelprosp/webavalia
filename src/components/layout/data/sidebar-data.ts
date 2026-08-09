@@ -42,7 +42,7 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
   const platformItems: NavItem[] = [
     {
       title: 'Início',
-      url: '/',
+      url: '/app',
       icon: LayoutDashboard,
     },
     {

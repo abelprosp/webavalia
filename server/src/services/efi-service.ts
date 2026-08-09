@@ -1,6 +1,10 @@
 import EfiPay from 'sdk-node-apis-efi'
 import { config } from '../config.js'
-import { PRICING } from '../constants/pricing.js'
+import {
+  getPlanBySlug,
+  PRICING,
+  type PlanSlug,
+} from '../constants/pricing.js'
 import { pool } from '../db/pool.js'
 
 type EfiOptions = {
@@ -119,21 +123,49 @@ async function withEfi<T>(fn: (efi: EfiClient) => Promise<T>): Promise<T> {
 
 const PLAN_SETTING_KEY = 'efi_evaluation_plan_id'
 
-export async function ensureEvaluationPlanId() {
-  if (config.efi.planId) return config.efi.planId
+function planSettingKey(slug: string) {
+  return `efi_plan_id_${slug}`
+}
 
+/** Garante plan_id Efí para o slug (ou legado único via EFI_PLAN_ID / setting antigo). */
+export async function ensureEvaluationPlanId(planSlug: PlanSlug = 'pro') {
+  const plan = getPlanBySlug(planSlug) ?? PRICING.plans.pro
+
+  // Env legado só cobre o plano Pro
+  if (planSlug === 'pro' && config.efi.planId) return config.efi.planId
+
+  const settingKey = planSettingKey(planSlug)
   const stored = await pool.query<{ value: { planId?: number } }>(
     `SELECT value FROM platform_settings WHERE key = $1`,
-    [PLAN_SETTING_KEY]
+    [settingKey]
   )
   const existingId = stored.rows[0]?.value?.planId
   if (existingId) return existingId
+
+  // Migração: reutiliza setting legado para Pro
+  if (planSlug === 'pro') {
+    const legacy = await pool.query<{ value: { planId?: number } }>(
+      `SELECT value FROM platform_settings WHERE key = $1`,
+      [PLAN_SETTING_KEY]
+    )
+    const legacyId = legacy.rows[0]?.value?.planId
+    if (legacyId) {
+      await pool.query(
+        `INSERT INTO platform_settings (key, value, updated_at)
+         VALUES ($1, $2::jsonb, NOW())
+         ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value, updated_at = NOW()`,
+        [settingKey, JSON.stringify({ planId: legacyId })]
+      )
+      return legacyId
+    }
+  }
 
   const created = await withEfi((efi) =>
     efi.createPlan(
       {},
       {
-        name: PRICING.evaluationPlan.label,
+        name: `Avalia Imob — ${plan.label}`,
         interval: 1,
       }
     )
@@ -147,7 +179,7 @@ export async function ensureEvaluationPlanId() {
      VALUES ($1, $2::jsonb, NOW())
      ON CONFLICT (key) DO UPDATE
      SET value = EXCLUDED.value, updated_at = NOW()`,
-    [PLAN_SETTING_KEY, JSON.stringify({ planId })]
+    [settingKey, JSON.stringify({ planId })]
   )
 
   return planId
