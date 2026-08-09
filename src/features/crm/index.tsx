@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -28,7 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { EmptyState } from '@/components/flux/empty-state'
+import { FluxCard } from '@/components/flux/flux-card'
+import { PageHeader } from '@/components/flux/page-header'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -81,106 +82,151 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
   }, [evaluations])
 
   const evaluationsSection = (
-    <Card>
-      <CardHeader>
-        <CardTitle className='flex items-center gap-2'>
+    <FluxCard>
+      <div className='mb-4 space-y-1'>
+        <h2 className='flex items-center gap-2 text-base font-semibold'>
           <Bookmark className='size-5' />
-          {personalMode ? 'Avaliações salvas' : 'Avaliações no CRM'}
-        </CardTitle>
-        <CardDescription>
+          {personalMode ? 'Avaliações salvas' : 'Histórico de avaliações'}
+        </h2>
+        <p className='text-sm text-muted-foreground'>
           {personalMode
             ? 'Clique em uma avaliação para ver detalhes ou exportar PDF.'
             : 'Clique em uma avaliação para ver detalhes, editar status ou exportar PDF.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {evaluations.length === 0 ? (
-          <div className='flex flex-col items-center gap-3 py-12 text-center'>
-            <Inbox className='size-10 text-muted-foreground' />
-            <div>
-              <p className='font-medium'>Nenhuma avaliação salva</p>
-              <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-                {personalMode
-                  ? 'Após avaliar um imóvel, use "Salvar em minhas avaliações" para guardar o resultado aqui.'
-                  : 'Após avaliar um imóvel, use "Salvar no CRM" para guardar o resultado aqui.'}
-              </p>
-            </div>
+        </p>
+      </div>
+      {evaluations.length === 0 ? (
+        <EmptyState
+          className='border-0 py-12'
+          icon={<Inbox className='size-10' />}
+          title='Nenhuma avaliação salva'
+          description={
+            personalMode
+              ? 'Após avaliar um imóvel, use "Salvar em minhas avaliações" para guardar o resultado aqui.'
+              : 'Após avaliar um imóvel, use "Salvar no CRM" para guardar o resultado no pipeline e no histórico.'
+          }
+          actions={
             <Button variant='outline' asChild>
               <Link to='/avaliacao'>
                 <Sparkles className='size-4' />
                 Ir para avaliação
               </Link>
             </Button>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Imóvel</TableHead>
-                {!personalMode && <TableHead>Cliente</TableHead>}
-                <TableHead>Tipo</TableHead>
-                <TableHead>Valor estimado</TableHead>
-                <TableHead>Score</TableHead>
-                {!personalMode && <TableHead>Status</TableHead>}
-                <TableHead>Salva em</TableHead>
-                <TableHead className='text-end'>Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {evaluations.map((evaluation) => (
-                <TableRow key={evaluation.id}>
-                  <TableCell>
-                    <div className='flex flex-col'>
-                      <span className='flex items-center gap-1 font-medium'>
-                        <MapPin className='size-3 text-muted-foreground' />
-                        {evaluation.property.address}
-                      </span>
-                      <span className='text-xs text-muted-foreground'>
-                        {evaluation.property.area} m²
-                      </span>
-                    </div>
-                  </TableCell>
-                  {!personalMode && (
-                    <TableCell>
-                      {evaluation.clientName ?? (
-                        <span className='text-muted-foreground'>—</span>
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    {getPropertyTypeLabel(evaluation.property.propertyType)}
-                  </TableCell>
-                  <TableCell className='font-medium text-primary'>
+          }
+        />
+      ) : (
+        <>
+          <div className='space-y-3 md:hidden'>
+            {evaluations.map((evaluation) => (
+              <button
+                key={evaluation.id}
+                type='button'
+                onClick={() => setSelected(evaluation)}
+                className='w-full rounded-2xl border border-black/[0.06] bg-background p-4 text-left transition hover:border-flux-lime/40'
+              >
+                <div className='flex items-start justify-between gap-3'>
+                  <div className='min-w-0 space-y-1'>
+                    <p className='flex items-center gap-1 truncate font-medium'>
+                      <MapPin className='size-3 shrink-0 text-muted-foreground' />
+                      {evaluation.property.address}
+                    </p>
+                    <p className='text-xs text-muted-foreground'>
+                      {getPropertyTypeLabel(evaluation.property.propertyType)} ·{' '}
+                      {evaluation.property.area} m²
+                    </p>
+                    {!personalMode && evaluation.clientName ? (
+                      <p className='text-xs text-muted-foreground'>
+                        Cliente: {evaluation.clientName}
+                      </p>
+                    ) : null}
+                  </div>
+                  {!personalMode ? (
+                    <Badge variant={statusVariant(evaluation.status)}>
+                      {getCrmStatusLabel(evaluation.status)}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className='mt-3 flex items-center justify-between text-sm'>
+                  <span className='font-medium text-primary'>
                     {formatCurrency(evaluation.result.estimatedValue)}
-                  </TableCell>
-                  <TableCell>{evaluation.result.score}/100</TableCell>
-                  {!personalMode && (
-                    <TableCell>
-                      <Badge variant={statusVariant(evaluation.status)}>
-                        {getCrmStatusLabel(evaluation.status)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                  <TableCell className='text-sm text-muted-foreground'>
-                    {new Date(evaluation.savedAt).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className='text-end'>
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => setSelected(evaluation)}
-                    >
-                      <Eye className='size-4' />
-                      Ver
-                    </Button>
-                  </TableCell>
+                  </span>
+                  <span className='text-muted-foreground'>
+                    Score {evaluation.result.score}/100
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className='hidden md:block'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Imóvel</TableHead>
+                  {!personalMode && <TableHead>Cliente</TableHead>}
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor estimado</TableHead>
+                  <TableHead>Score</TableHead>
+                  {!personalMode && <TableHead>Status</TableHead>}
+                  <TableHead>Salva em</TableHead>
+                  <TableHead className='text-end'>Ação</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {evaluations.map((evaluation) => (
+                  <TableRow key={evaluation.id}>
+                    <TableCell>
+                      <div className='flex flex-col'>
+                        <span className='flex items-center gap-1 font-medium'>
+                          <MapPin className='size-3 text-muted-foreground' />
+                          {evaluation.property.address}
+                        </span>
+                        <span className='text-xs text-muted-foreground'>
+                          {evaluation.property.area} m²
+                        </span>
+                      </div>
+                    </TableCell>
+                    {!personalMode && (
+                      <TableCell>
+                        {evaluation.clientName ?? (
+                          <span className='text-muted-foreground'>—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      {getPropertyTypeLabel(evaluation.property.propertyType)}
+                    </TableCell>
+                    <TableCell className='font-medium text-primary'>
+                      {formatCurrency(evaluation.result.estimatedValue)}
+                    </TableCell>
+                    <TableCell>{evaluation.result.score}/100</TableCell>
+                    {!personalMode && (
+                      <TableCell>
+                        <Badge variant={statusVariant(evaluation.status)}>
+                          {getCrmStatusLabel(evaluation.status)}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    <TableCell className='text-sm text-muted-foreground'>
+                      {new Date(evaluation.savedAt).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell className='text-end'>
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => setSelected(evaluation)}
+                      >
+                        <Eye className='size-4' />
+                        Ver
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </FluxCard>
   )
 
   return (
@@ -190,31 +236,26 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
-        <Breadcrumbs
-          items={[
+        <PageHeader
+          breadcrumbs={[
             { label: 'Início', href: '/' },
             { label: personalMode ? 'Minhas avaliações' : 'CRM' },
           ]}
-          className='mb-1'
+          title={personalMode ? 'Minhas avaliações' : 'CRM'}
+          description={
+            personalMode
+              ? 'Avaliações de imóveis que você salvou para consultar depois.'
+              : 'Pipeline de vendas com Lead Scoring IA, distribuição e histórico completo.'
+          }
+          actions={
+            <Button asChild>
+              <Link to='/avaliacao'>
+                <Plus className='size-4' />
+                Nova avaliação
+              </Link>
+            </Button>
+          }
         />
-        <div className='flex flex-wrap items-end justify-between gap-4'>
-          <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {personalMode ? 'Minhas avaliações' : 'CRM'}
-            </h2>
-            <p className='text-muted-foreground'>
-              {personalMode
-                ? 'Avaliações de imóveis que você salvou para consultar depois.'
-                : 'Pipeline de vendas com Lead Scoring IA, distribuição e histórico completo.'}
-            </p>
-          </div>
-          <Button asChild>
-            <Link to='/avaliacao'>
-              <Plus className='size-4' />
-              Nova avaliação
-            </Link>
-          </Button>
-        </div>
 
         <div
           className={`grid gap-4 ${personalMode ? 'sm:grid-cols-1' : 'sm:grid-cols-4'}`}
@@ -269,14 +310,11 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
             <TabsList>
               <TabsTrigger value='pipeline' className='gap-2'>
                 <Kanban className='size-4' />
-                Pipeline
-                <span className='hidden text-xs text-muted-foreground sm:inline'>
-                  (principal)
-                </span>
+                Negócios
               </TabsTrigger>
               <TabsTrigger value='evaluations' className='gap-2'>
                 <Bookmark className='size-4' />
-                Avaliações salvas
+                Histórico
               </TabsTrigger>
             </TabsList>
 

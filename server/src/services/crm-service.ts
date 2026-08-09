@@ -165,6 +165,14 @@ async function seedStageTasks(dealId: string, stageSlug: string, userId: string)
 }
 
 export async function createDealFromLead(userId: string, leadId: string) {
+  const existing = await pool.query<Record<string, unknown>>(
+    `SELECT * FROM crm_deals WHERE user_id = $1 AND lead_id = $2 LIMIT 1`,
+    [userId, leadId]
+  )
+  if (existing.rowCount) {
+    return mapDeal(existing.rows[0]!)
+  }
+
   const lead = await pool.query<Record<string, unknown>>(
     `SELECT * FROM leads WHERE id = $1`,
     [leadId]
@@ -258,6 +266,92 @@ export async function createDealFromLead(userId: string, leadId: string) {
 
   await seedStageTasks(mapped.id, firstStage.rows[0]!.slug, assigneeId)
 
+  return mapped
+}
+
+export async function createDealFromEvaluation(
+  userId: string,
+  input: {
+    title?: string
+    clientName?: string | null
+    notes?: string | null
+    propertyInput: Record<string, unknown>
+    evaluationResult: Record<string, unknown>
+  }
+) {
+  const propertyInput = input.propertyInput
+  const evaluationResult = input.evaluationResult
+  const location =
+    typeof propertyInput.address === 'string' ? propertyInput.address : null
+  const propertyType =
+    typeof propertyInput.propertyType === 'string'
+      ? propertyInput.propertyType
+      : null
+  const estimatedValue =
+    typeof evaluationResult.estimatedValue === 'number'
+      ? evaluationResult.estimatedValue
+      : null
+  const evaluationScore =
+    typeof evaluationResult.score === 'number' ? evaluationResult.score : null
+
+  const leadScore = await scoreLeadWithAI({
+    name: input.clientName ?? null,
+    phone: null,
+    propertyType,
+    interest: null,
+    budget: null,
+    location,
+    listingIntent: getListingIntentFromInput(propertyInput),
+    estimatedValue,
+    evaluationScore,
+  })
+
+  const pipelineId = await ensureDefaultPipeline(userId)
+  const firstStage = await pool.query<{ id: string; slug: string }>(
+    `SELECT id, slug FROM crm_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC LIMIT 1`,
+    [pipelineId]
+  )
+
+  const title =
+    input.title?.trim() ||
+    `${propertyType ?? 'Imóvel'} — ${location ?? 'Avaliação salva'}`
+
+  const deal = await pool.query<Record<string, unknown>>(
+    `INSERT INTO crm_deals (
+       user_id, pipeline_id, stage_id, lead_id, title,
+       client_name, location, property_type, notes, assignee_id,
+       lead_score, tags, property_input, evaluation_result, expected_ticket
+     )
+     VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     RETURNING *`,
+    [
+      userId,
+      pipelineId,
+      firstStage.rows[0]!.id,
+      title,
+      input.clientName ?? null,
+      location,
+      propertyType,
+      input.notes ?? null,
+      userId,
+      JSON.stringify(leadScore),
+      leadScore.tags,
+      propertyInput,
+      evaluationResult,
+      estimatedValue ?? leadScore.expectedTicket,
+    ]
+  )
+
+  const mapped = mapDeal(deal.rows[0]!)
+  await logActivity({
+    dealId: mapped.id,
+    userId,
+    activityType: 'deal_created',
+    title: 'Avaliação salva no pipeline',
+    body: input.notes ?? 'Negócio criado a partir de uma avaliação.',
+    metadata: { source: 'evaluation' },
+  })
+  await seedStageTasks(mapped.id, firstStage.rows[0]!.slug, userId)
   return mapped
 }
 

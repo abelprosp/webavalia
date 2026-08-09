@@ -1,5 +1,4 @@
 import { CreditsBadge } from '@/components/credits-badge'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { NotificationBell } from '@/features/notifications/components/notification-bell'
@@ -14,7 +13,6 @@ export function HeaderActions({ searchClassName = 'me-auto' }: HeaderActionsProp
       <Search className={searchClassName} />
       <CreditsBadge />
       <NotificationBell />
-      <ConfigDrawer />
       <ProfileDropdown />
     </>
   )

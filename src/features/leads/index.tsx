@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   Eye,
   Inbox,
@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { PageHeader } from '@/components/flux/page-header'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -67,6 +68,7 @@ function statusLabel(status: LeadItem['status']) {
 }
 
 export function Leads() {
+  const navigate = useNavigate()
   const [leads, setLeads] = useState<LeadItem[]>([])
   const [loading, setLoading] = useState(true)
   const [unlockLead, setUnlockLead] = useState<LeadItem | null>(null)
@@ -105,14 +107,31 @@ export function Leads() {
     )
   }, [leads, locationFilter])
 
-  function handleUnlockSuccess(lead: LeadItem, credits: number) {
-    syncCreditsFromUser(credits)
+  function handleUnlockSuccess(result: {
+    lead: LeadItem
+    credits: number
+    dealId: string | null
+    addedToPipeline: boolean
+  }) {
+    syncCreditsFromUser(result.credits)
     setLeads((current) =>
-      current.map((item) => (item.id === lead.id ? lead : item))
+      current.map((item) => (item.id === result.lead.id ? result.lead : item))
     )
     setUnlockLead(null)
-    setDetailLead(lead)
-    toast.success('Lead desbloqueado!')
+    setDetailLead(result.lead)
+    toast.success(
+      result.addedToPipeline
+        ? 'Lead desbloqueado e adicionado ao pipeline do CRM!'
+        : 'Lead desbloqueado!',
+      {
+        action: {
+          label: 'Ver CRM',
+          onClick: () => {
+            void navigate({ to: '/crm' })
+          },
+        },
+      }
+    )
   }
 
   async function markContacted(lead: LeadItem) {
@@ -134,13 +153,14 @@ export function Leads() {
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
-        <div>
-          <h2 className='text-2xl font-bold tracking-tight'>Leads</h2>
-          <p className='text-muted-foreground'>
-            Proprietários interessados em alugar ou vender e contatos recebidos
-            pela Avalia.
-          </p>
-        </div>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Início', href: '/' },
+            { label: 'Oportunidades' },
+          ]}
+          title='Oportunidades'
+          description='Proprietários interessados em alugar ou vender e contatos recebidos pela Avalia Imob.'
+        />
 
         <div className='grid gap-4 sm:grid-cols-4'>
           <Card>

@@ -719,6 +719,30 @@ export async function handlePixWebhookPayload(body: {
       continue
     }
 
+    if (order.status === 'fulfilled') {
+      results.push({ txid: item.txid, orderId: order.id, alreadyFulfilled: true })
+      continue
+    }
+
+    // Nunca confiar só no body do webhook — confirmar na API Efí.
+    const paid = await verifyProviderPayment(order)
+    if (!paid) {
+      results.push({ txid: item.txid, orderId: order.id, reason: 'not_paid_on_provider' })
+      continue
+    }
+
+    if (item.valor != null) {
+      const webhookCents = Math.round(Number(item.valor) * 100)
+      if (Number.isFinite(webhookCents) && webhookCents < order.amount_cents) {
+        results.push({
+          txid: item.txid,
+          orderId: order.id,
+          reason: 'amount_mismatch',
+        })
+        continue
+      }
+    }
+
     await markOrderPaid(order.id)
     await fulfillOrder(order.id)
     results.push({ txid: item.txid, orderId: order.id, processed: true })

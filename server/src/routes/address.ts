@@ -1,6 +1,13 @@
 import { Router } from 'express'
+import { createRateLimiter } from '../middleware/rate-limit.js'
 
 const router = Router()
+
+const cepRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: 'Muitas consultas de CEP. Aguarde e tente novamente.',
+})
 
 type ViaCepResponse = {
   cep?: string
@@ -11,7 +18,7 @@ type ViaCepResponse = {
   erro?: boolean
 }
 
-router.get('/cep/:cep', async (req, res) => {
+router.get('/cep/:cep', cepRateLimiter, async (req, res) => {
   const digits = String(req.params.cep).replace(/\D/g, '')
   if (digits.length !== 8) {
     return res.status(400).json({ message: 'CEP inválido.' })

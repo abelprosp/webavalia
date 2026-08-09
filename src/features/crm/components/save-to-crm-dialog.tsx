@@ -36,7 +36,7 @@ type SaveToCrmDialogProps = {
     clientName?: string
     notes?: string
     status: (typeof crmStatuses)[number]['value']
-  }) => void
+  }) => void | Promise<void>
 }
 
 export function SaveToCrmDialog({
@@ -50,19 +50,25 @@ export function SaveToCrmDialog({
   const isPersonal = mode === 'personal'
   const [clientName, setClientName] = useState('')
   const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
   const [status, setStatus] =
     useState<(typeof crmStatuses)[number]['value']>('novo')
 
-  function handleSave() {
-    onSave({
-      clientName: isPersonal ? undefined : clientName || undefined,
-      notes: notes || undefined,
-      status: isPersonal ? 'novo' : status,
-    })
-    setClientName('')
-    setNotes('')
-    setStatus('novo')
-    onOpenChange(false)
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await onSave({
+        clientName: isPersonal ? undefined : clientName || undefined,
+        notes: notes || undefined,
+        status: isPersonal ? 'novo' : status,
+      })
+      setClientName('')
+      setNotes('')
+      setStatus('novo')
+      onOpenChange(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -145,10 +151,16 @@ export function SaveToCrmDialog({
         </div>
 
         <DialogFooter className='gap-2 sm:gap-0'>
-          <Button variant='outline' onClick={() => onOpenChange(false)}>
+          <Button
+            variant='outline'
+            disabled={saving}
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSave}>Salvar avaliação</Button>
+          <Button disabled={saving} onClick={() => void handleSave()}>
+            {saving ? 'Salvando…' : 'Salvar avaliação'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -32,7 +32,12 @@ type UnlockLeadDialogProps = {
   lead: LeadItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: (lead: LeadItem, credits: number) => void
+  onSuccess: (result: {
+    lead: LeadItem
+    credits: number
+    dealId: string | null
+    addedToPipeline: boolean
+  }) => void
 }
 
 function UnlockCostSummary({
@@ -101,7 +106,12 @@ export function UnlockLeadDialog({
     setLoading(true)
     try {
       const result = await unlockLead(lead.id)
-      onSuccess(result.lead, result.credits)
+      onSuccess({
+        lead: result.lead,
+        credits: result.credits,
+        dealId: result.dealId,
+        addedToPipeline: result.addedToPipeline,
+      })
     } catch (error) {
       const message =
         error instanceof AxiosError

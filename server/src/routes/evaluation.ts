@@ -24,6 +24,7 @@ import {
 import {
   grantPfEvaluationReward,
   grantPfPublishReward,
+  PfDailyCapError,
   recordPfEvaluationUsage,
   revertPfEvaluationUsage,
 } from '../services/pf-credits-service.js'
@@ -174,6 +175,12 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
         message: error.message,
         credits: 0,
         trialEvaluationsRemaining: 0,
+      })
+    }
+    if (error instanceof PfDailyCapError) {
+      return res.status(429).json({
+        message: error.message,
+        code: 'PF_DAILY_CAP',
       })
     }
     throw error

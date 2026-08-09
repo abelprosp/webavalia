@@ -8,6 +8,7 @@ import {
   unlockLeadForUser,
   updateLeadStatus,
 } from '../services/lead-service.js'
+import { createDealFromLead } from '../services/crm-service.js'
 
 const router = Router()
 
@@ -33,7 +34,14 @@ router.get('/:id', async (req: AuthRequest, res) => {
 router.post('/:id/unlock', async (req: AuthRequest, res) => {
   try {
     const result = await unlockLeadForUser(req.user!.id, String(req.params.id))
-    return res.json(result)
+    let dealId: string | null = null
+    try {
+      const deal = await createDealFromLead(req.user!.id, String(req.params.id))
+      dealId = deal.id
+    } catch (dealError) {
+      console.error('[leads/unlock] falha ao criar deal no CRM:', dealError)
+    }
+    return res.json({ ...result, dealId, addedToPipeline: Boolean(dealId) })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erro ao desbloquear lead.'

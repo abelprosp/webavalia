@@ -108,6 +108,20 @@ export async function createDealFromLead(leadId: string) {
   return data.deal
 }
 
+export async function createDealFromEvaluation(input: {
+  title?: string
+  clientName?: string | null
+  notes?: string | null
+  propertyInput: Record<string, unknown>
+  evaluationResult: Record<string, unknown>
+}) {
+  const { data } = await api.post<{ deal: CrmDeal }>(
+    '/crm/deals/from-evaluation',
+    input
+  )
+  return data.deal
+}
+
 export async function moveDealStage(dealId: string, stageId: string) {
   const { data } = await api.patch<{ deal: CrmDeal }>(`/crm/deals/${dealId}/stage`, {
     stageId,

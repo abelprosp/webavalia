@@ -86,6 +86,22 @@ export async function forgotPasswordRequest(email: string) {
   return data
 }
 
+export async function resetPasswordRequest(token: string, password: string) {
+  try {
+    const { data } = await api.post<{ message: string }>('/auth/reset-password', {
+      token,
+      password,
+    })
+    return data
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const message = (error.response?.data as { message?: string })?.message
+      throw new Error(message ?? 'Não foi possível redefinir a senha.')
+    }
+    throw error
+  }
+}
+
 export async function logoutRequest() {
   await api.post('/auth/logout')
 }

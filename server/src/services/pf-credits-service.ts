@@ -3,9 +3,17 @@ import {
   PF_EVALUATION_REWARD,
   PF_PUBLISH_REWARD,
 } from '../constants/pf-credits.js'
+import { PF_DAILY_EVALUATION_CAP } from '../constants/feature-flags.js'
 import { addCredits } from './credits-service.js'
 
 type PfCreditRewardType = 'pf_evaluation_reward' | 'pf_publish_reward'
+
+export class PfDailyCapError extends Error {
+  constructor(message = 'Limite diário de avaliações atingido. Tente amanhã.') {
+    super(message)
+    this.name = 'PfDailyCapError'
+  }
+}
 
 function rewardDescription(evaluationId: string) {
   return `evaluation:${evaluationId}`
@@ -76,8 +84,24 @@ export async function grantPfPublishReward(userId: string, evaluationId: string)
   })
 }
 
-/** Registra uso de avaliação para PF sem consumir créditos. */
+/** Registra uso de avaliação para PF com teto diário anti-abuso. */
 export async function recordPfEvaluationUsage(userId: string) {
+  const usage = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+     FROM property_evaluations
+     WHERE user_id = $1
+       AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'America/Sao_Paulo')
+         AT TIME ZONE 'America/Sao_Paulo'`,
+    [userId]
+  )
+
+  const usedToday = Number(usage.rows[0]?.count ?? 0)
+  if (usedToday >= PF_DAILY_EVALUATION_CAP) {
+    throw new PfDailyCapError(
+      `Limite diário de ${PF_DAILY_EVALUATION_CAP} avaliações atingido. Tente novamente amanhã.`
+    )
+  }
+
   const updated = await pool.query<{ credits: number }>(
     `UPDATE users
      SET evaluations_used = evaluations_used + 1,

@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Inbox, RefreshCw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/flux/empty-state'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   fetchPipelineBoard,
@@ -23,15 +24,19 @@ const stageColorClass: Record<string, string> = {
 export function PipelineBoard() {
   const [board, setBoard] = useState<CrmPipelineBoard | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null)
 
   const loadBoard = useCallback(async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const data = await fetchPipelineBoard()
       setBoard(data)
     } catch {
+      setBoard(null)
+      setLoadError(true)
       toast.error('Erro ao carregar pipeline.')
     } finally {
       setLoading(false)
@@ -58,7 +63,21 @@ export function PipelineBoard() {
     return <PageSkeleton rows={4} />
   }
 
-  if (!board) return null
+  if (loadError || !board) {
+    return (
+      <EmptyState
+        icon={<Inbox className='size-10' />}
+        title='Não foi possível carregar o pipeline'
+        description='Verifique sua conexão e tente novamente.'
+        actions={
+          <Button variant='outline' onClick={() => void loadBoard()}>
+            <RefreshCw className='size-4' />
+            Tentar novamente
+          </Button>
+        }
+      />
+    )
+  }
 
   const stageSummaries = board.stages.map((s) => ({ id: s.id, name: s.name }))
   const totalDeals = board.stages.reduce((acc, s) => acc + s.deals.length, 0)
@@ -79,27 +98,24 @@ export function PipelineBoard() {
       </div>
 
       {totalDeals === 0 ? (
-        <div className='flex flex-col items-center gap-3 rounded-[1.75rem] border border-dashed py-16 text-center'>
-          <Inbox className='size-10 text-muted-foreground' />
-          <div>
-            <p className='font-medium'>Pipeline vazio</p>
-            <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-              Avalie imóveis e salve no CRM, ou desbloqueie leads para começar a
-              mover negócios entre etapas.
-            </p>
-          </div>
-          <div className='flex flex-wrap justify-center gap-2'>
-            <Button asChild>
-              <Link to='/avaliacao'>
-                <Sparkles className='size-4' />
-                Nova avaliação
-              </Link>
-            </Button>
-            <Button variant='outline' asChild>
-              <Link to='/leads'>Ver leads</Link>
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          icon={<Inbox className='size-10' />}
+          title='Pipeline vazio'
+          description='Avalie imóveis e salve no CRM, ou desbloqueie leads para começar a mover negócios entre etapas.'
+          actions={
+            <>
+              <Button asChild>
+                <Link to='/avaliacao'>
+                  <Sparkles className='size-4' />
+                  Nova avaliação
+                </Link>
+              </Button>
+              <Button variant='outline' asChild>
+                <Link to='/leads'>Ver oportunidades</Link>
+              </Button>
+            </>
+          }
+        />
       ) : (
         <div className='flex gap-4 overflow-x-auto pb-4'>
           {board.stages.map((stage) => (

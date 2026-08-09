@@ -32,11 +32,26 @@ export async function whatsappMetaWebhookHandler(req: Request, res: Response) {
         ? req.body
         : ''
 
+  if (config.isProduction && !config.whatsapp.appSecret) {
+    console.error(
+      '[whatsapp] WHATSAPP_APP_SECRET ausente em produção — webhook Meta rejeitado.'
+    )
+    return res.status(503).json({
+      message: 'Webhook WhatsApp não configurado com segurança.',
+    })
+  }
+
   if (config.whatsapp.appSecret) {
     const signature = req.header('X-Hub-Signature-256')
     if (!verifyMetaSignature(rawBody, signature ?? undefined)) {
       return res.status(401).json({ message: 'Assinatura inválida.' })
     }
+  } else {
+    // Em desenvolvimento, exige ao menos o secret se estiver definido;
+    // sem secret, rejeita para evitar ingestão aberta acidental.
+    return res.status(401).json({
+      message: 'WHATSAPP_APP_SECRET não configurado.',
+    })
   }
 
   let payload: Record<string, unknown>

@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { isBrokerAccount } from '@/lib/auth-api'
+import { createDealFromEvaluation } from '@/lib/crm-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCrmStore } from '@/stores/crm-store'
+import { serializeEvaluationResult } from '@/features/crm/data/schema'
 import {
   CrmSavedToastAction,
   SaveToCrmDialog,
@@ -298,20 +300,35 @@ export function EvaluationResultPanel({
     }
   }
 
-  function handleSaveToCrm(data: {
+  async function handleSaveToCrm(data: {
     clientName?: string
     notes?: string
     status: 'novo' | 'em_negociacao' | 'proposta' | 'fechado' | 'arquivado'
   }) {
-    saveEvaluation({ property, result, ...data })
-    toast.success(
-      isBroker
-        ? 'Avaliação salva no CRM!'
-        : 'Avaliação salva em minhas avaliações!',
-      {
-        action: <CrmSavedToastAction mode={isBroker ? 'broker' : 'personal'} />,
+    if (isBroker) {
+      try {
+        await createDealFromEvaluation({
+          clientName: data.clientName,
+          notes: data.notes,
+          propertyInput: property as unknown as Record<string, unknown>,
+          evaluationResult: serializeEvaluationResult(result) as unknown as Record<
+            string,
+            unknown
+          >,
+        })
+        toast.success('Avaliação salva no pipeline do CRM!', {
+          action: <CrmSavedToastAction mode='broker' />,
+        })
+      } catch {
+        toast.error('Não foi possível salvar no CRM. Tente novamente.')
       }
-    )
+      return
+    }
+
+    saveEvaluation({ property, result, ...data })
+    toast.success('Avaliação salva em minhas avaliações!', {
+      action: <CrmSavedToastAction mode='personal' />,
+    })
   }
 
   const locationLabel = publicLocation ?? property.address

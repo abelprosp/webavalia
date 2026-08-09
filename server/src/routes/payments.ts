@@ -15,33 +15,64 @@ import {
 } from '../services/payment-service.js'
 import { paymentRateLimiter } from '../middleware/rate-limit.js'
 import { requireBrokerAccount } from '../middleware/account-type.js'
+import { requireAdmin } from '../middleware/roles.js'
+import { CREDITS_AND_PLANS_ENABLED } from '../constants/feature-flags.js'
+import type { NextFunction, Response } from 'express'
 
 const router = Router()
 
-router.get('/pricing', (_req, res) => {
-  res.json(getPublicPricing())
-})
-
-router.get('/diagnostics', (_req, res) => {
-  res.json(getPaymentDiagnostics())
-})
-
-router.get('/diagnostics/pix', async (_req, res) => {
-  try {
-    const result = await pingPaymentProvider()
-    return res.status(result.ok ? 200 : 502).json({
-      ...getPaymentDiagnostics(),
-      ping: result,
-    })
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Falha ao testar API Pix.'
-    return res.status(502).json({
-      ...getPaymentDiagnostics(),
-      ping: { ok: false, error: message },
+function requireCreditsAndPlansEnabled(
+  _req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  if (!CREDITS_AND_PLANS_ENABLED) {
+    return res.status(503).json({
+      message:
+        'Compra de créditos e planos está temporariamente indisponível. Em breve.',
+      code: 'CREDITS_AND_PLANS_DISABLED',
     })
   }
+  return next()
+}
+
+router.get('/pricing', (_req, res) => {
+  res.json({
+    ...getPublicPricing(),
+    purchasesEnabled: CREDITS_AND_PLANS_ENABLED,
+  })
 })
+
+router.get(
+  '/diagnostics',
+  requireAuth,
+  requireAdmin,
+  (_req, res) => {
+    res.json(getPaymentDiagnostics())
+  }
+)
+
+router.get(
+  '/diagnostics/pix',
+  requireAuth,
+  requireAdmin,
+  async (_req, res) => {
+    try {
+      const result = await pingPaymentProvider()
+      return res.status(result.ok ? 200 : 502).json({
+        ...getPaymentDiagnostics(),
+        ping: result,
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Falha ao testar API Pix.'
+      return res.status(502).json({
+        ...getPaymentDiagnostics(),
+        ping: { ok: false, error: message },
+      })
+    }
+  }
+)
 
 router.use(requireAuth, paymentRateLimiter)
 
@@ -75,7 +106,11 @@ const billingAddressSchema = z.object({
   complement: z.string().trim().max(100).optional(),
 })
 
-router.post('/credits/pix', requireBrokerAccount, async (req: AuthRequest, res) => {
+router.post(
+  '/credits/pix',
+  requireCreditsAndPlansEnabled,
+  requireBrokerAccount,
+  async (req: AuthRequest, res) => {
   const parsed = z
     .object({
       packs: z.number().int().min(1).max(20).optional(),
@@ -115,7 +150,8 @@ router.post('/credits/pix', requireBrokerAccount, async (req: AuthRequest, res) 
     console.error('[payments/credits/pix]', message, error)
     return res.status(502).json({ message })
   }
-})
+  }
+)
 
 router.get('/credits/pix/:orderId/status', async (req: AuthRequest, res) => {
   const orderId = String(req.params.orderId)
@@ -129,7 +165,7 @@ router.get('/credits/pix/:orderId/status', async (req: AuthRequest, res) => {
   }
 })
 
-router.post('/plan/checkout', async (req: AuthRequest, res) => {
+router.post('/plan/checkout', requireCreditsAndPlansEnabled, async (req: AuthRequest, res) => {
   const parsed = z
     .object({
       cpfCnpj: cpfCnpjSchema,
@@ -172,7 +208,7 @@ router.post('/plan/checkout', async (req: AuthRequest, res) => {
   }
 })
 
-router.post('/plan/cancel', async (req: AuthRequest, res) => {
+router.post('/plan/cancel', requireCreditsAndPlansEnabled, async (req: AuthRequest, res) => {
   try {
     const result = await cancelEvaluationPlanSubscription(req.user!.id)
     return res.json(result)

@@ -34,10 +34,14 @@ export async function unlockLead(leadId: string) {
     credits: number
     leadCredits: number
     alreadyUnlocked: boolean
+    dealId?: string | null
+    addedToPipeline?: boolean
   }>(`/leads/${leadId}/unlock`)
   return {
     ...data,
     credits: data.credits ?? data.leadCredits,
+    dealId: data.dealId ?? null,
+    addedToPipeline: Boolean(data.addedToPipeline),
   }
 }
 

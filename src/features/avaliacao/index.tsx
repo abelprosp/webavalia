@@ -344,7 +344,32 @@ export function Avaliacao() {
         )}
 
         <div className='flex flex-col gap-6'>
+          {result && evaluatedProperty && (
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <p className='text-sm text-muted-foreground'>
+                Avaliação concluída. Revise o resultado abaixo ou inicie outra.
+              </p>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setResult(null)
+                  setEvaluatedProperty(null)
+                  setEvaluationId(null)
+                  setFeedbackSubmitted(false)
+                  setFloodFeedbackSubmitted(false)
+                  setWizardStep(1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+              >
+                <Sparkles className='size-4' />
+                Nova avaliação
+              </Button>
+            </div>
+          )}
+
           {!result && <EvaluationWizardSteps currentStep={wizardStep} />}
+          {!result && (
           <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
@@ -1026,8 +1051,7 @@ export function Avaliacao() {
             </form>
           </Form>
 
-          {!result && (
-              <Card className='flex min-h-100 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-muted-foreground/20 bg-card shadow-sm'>
+              <Card className='hidden min-h-100 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-muted-foreground/20 bg-card shadow-sm lg:flex'>
                 <CardContent className='flex flex-col items-center gap-4 py-12 text-center'>
                   <div className='flex size-16 items-center justify-center rounded-full bg-flux-lime/30'>
                     <Sparkles className='size-8 text-flux-dark' />
@@ -1044,8 +1068,8 @@ export function Avaliacao() {
                   </div>
                 </CardContent>
               </Card>
-          )}
           </div>
+          )}
 
           {result && evaluatedProperty && (
             <div className='space-y-6'>

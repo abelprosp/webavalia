@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Building2,
@@ -26,7 +27,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
 import { useLeadsStore } from '@/stores/leads-store'
-import { leads } from '@/features/leads/data/leads'
+import { fetchLeads } from '@/lib/leads-api'
 import { Overview } from './components/overview'
 import { RecentLeads } from './components/recent-leads'
 import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
@@ -71,7 +72,9 @@ export function Dashboard() {
   const user = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(user)
   const credits = useCreditsStore((s) => s.credits)
-  const unlockedCount = useLeadsStore((s) => s.unlockedIds.length)
+  const unlockedLocal = useLeadsStore((s) => s.unlockedIds.length)
+  const [leadsTotal, setLeadsTotal] = useState(0)
+  const [leadsUnlocked, setLeadsUnlocked] = useState(unlockedLocal)
   const localEvaluationsTotal = useEvaluationsStore((s) => s.total)
   const localMonthlyCounts = useEvaluationsStore((s) => s.monthlyCounts)
   const { stats: gamificationStats, loading: gamificationLoading } =
@@ -82,13 +85,25 @@ export function Dashboard() {
   const monthlyCounts = gamificationStats?.monthlyBreakdown ?? localMonthlyCounts
   const evaluationsThisMonth = monthlyCounts[MONTHS[currentMonth]] ?? 0
 
+  useEffect(() => {
+    if (!isBroker) return
+    void fetchLeads()
+      .then((items) => {
+        setLeadsTotal(items.length)
+        setLeadsUnlocked(items.filter((lead) => lead.unlocked).length)
+      })
+      .catch(() => {
+        // mantém zeros em falha — RecentLeads já trata erro próprio
+      })
+  }, [isBroker])
+
   const dashboardContext = {
     credits,
     evaluationsTotal,
     evaluationsThisMonth,
     monthlyCounts,
-    leadsTotal: isBroker ? leads.length : undefined,
-    leadsUnlocked: isBroker ? unlockedCount : undefined,
+    leadsTotal: isBroker ? leadsTotal : undefined,
+    leadsUnlocked: isBroker ? leadsUnlocked : undefined,
     currentPage: 'dashboard',
   }
 
@@ -126,7 +141,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {isBroker && <FirstRunBanner />}
+        <FirstRunBanner />
 
         <div className='mb-6'>
           <GamificationPanel stats={gamificationStats} loading={gamificationLoading} />
@@ -150,7 +165,7 @@ export function Dashboard() {
                     <MessageCircle className='size-4 text-muted-foreground' />
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{leads.length}</div>
+                    <div className='text-2xl font-bold'>{leadsTotal}</div>
                     <p className='text-xs text-muted-foreground'>
                       Leads captados pela Avalia
                     </p>
@@ -166,7 +181,7 @@ export function Dashboard() {
                     <Users className='size-4 text-muted-foreground' />
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{unlockedCount}</div>
+                    <div className='text-2xl font-bold'>{leadsUnlocked}</div>
                     <p className='text-xs text-muted-foreground'>
                       Prontos para contato
                     </p>

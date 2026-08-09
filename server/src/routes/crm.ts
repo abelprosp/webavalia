@@ -4,6 +4,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { requireBrokerAccount } from '../middleware/account-type.js'
 import {
   completeTask,
+  createDealFromEvaluation,
   createDealFromLead,
   getDealDetails,
   getPipelineBoard,
@@ -43,6 +44,36 @@ router.post('/deals/from-lead/:leadId', async (req: AuthRequest, res) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erro ao criar negócio.'
+    return res.status(400).json({ message })
+  }
+})
+
+const fromEvaluationSchema = z.object({
+  title: z.string().max(500).optional(),
+  clientName: z.string().max(255).nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
+  propertyInput: z.record(z.string(), z.unknown()),
+  evaluationResult: z.record(z.string(), z.unknown()),
+})
+
+router.post('/deals/from-evaluation', async (req: AuthRequest, res) => {
+  const parsed = fromEvaluationSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Dados da avaliação inválidos.' })
+  }
+
+  try {
+    const deal = await createDealFromEvaluation(req.user!.id, {
+      title: parsed.data.title,
+      clientName: parsed.data.clientName,
+      notes: parsed.data.notes,
+      propertyInput: parsed.data.propertyInput,
+      evaluationResult: parsed.data.evaluationResult,
+    })
+    return res.status(201).json({ deal })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Erro ao salvar no CRM.'
     return res.status(400).json({ message })
   }
 })

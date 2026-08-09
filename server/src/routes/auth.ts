@@ -14,8 +14,12 @@ import {
   verifyPasswordConstantTime,
 } from '../utils/password.js'
 import { passwordSchema } from '../utils/password-policy.js'
-import { signToken } from '../utils/jwt.js'
-import { setAuthCookie, clearAuthCookie } from '../utils/auth-cookie.js'
+import { signToken, verifyToken } from '../utils/jwt.js'
+import {
+  AUTH_COOKIE_NAME,
+  setAuthCookie,
+  clearAuthCookie,
+} from '../utils/auth-cookie.js'
 import { normalizeAuthTiming, normalizeEmail } from '../utils/auth-timing.js'
 import { getSetting } from '../services/settings-service.js'
 import {
@@ -47,6 +51,10 @@ import {
   FORGOT_PASSWORD_GENERIC,
   REGISTER_GENERIC_FAILURE,
 } from '../constants/auth-messages.js'
+import {
+  requestPasswordReset,
+  resetPasswordWithToken,
+} from '../services/password-reset-service.js'
 import { ACCOUNT_TYPES } from '../constants/account-type.js'
 import { validateDocumentForAccountType } from '../utils/document.js'
 
@@ -467,7 +475,11 @@ router.post(
     const normalizedEmail = normalizeEmail(parsed.data.email)
     const ipAddress = getClientIp(req)
 
-    await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail])
+    try {
+      await requestPasswordReset(normalizedEmail)
+    } catch (error) {
+      console.error('Erro ao solicitar reset de senha:', error)
+    }
 
     await logAuthAttempt({
       emailNormalized: normalizedEmail,
@@ -481,7 +493,59 @@ router.post(
   }
 )
 
-router.post('/logout', (_req, res) => {
+const resetPasswordSchema = z.object({
+  token: z.string().trim().min(20),
+  password: passwordSchema,
+})
+
+router.post(
+  '/reset-password',
+  forgotPasswordRateLimiter,
+  async (req, res) => {
+    const parsed = resetPasswordSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+      })
+    }
+
+    try {
+      await resetPasswordWithToken(parsed.data.token, parsed.data.password)
+      return res.json({ message: 'Senha redefinida com sucesso. Faça login.' })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Não foi possível redefinir a senha.'
+      return res.status(400).json({ message })
+    }
+  }
+)
+
+router.post('/logout', async (req, res) => {
+  // Invalida a sessão no servidor (JWT antigo deixa de passar em requireAuth).
+  try {
+    const header = req.headers.authorization
+    const bearer =
+      header?.startsWith('Bearer ') ? header.slice(7) : undefined
+    const cookieMatch = req.headers.cookie?.match(
+      new RegExp(`(?:^|; )${AUTH_COOKIE_NAME}=([^;]*)`)
+    )
+    const token =
+      bearer ??
+      (cookieMatch ? decodeURIComponent(cookieMatch[1]) : undefined)
+
+    if (token) {
+      const payload = verifyToken(token)
+      await pool.query(
+        `UPDATE users
+         SET session_version = session_version + 1, updated_at = NOW()
+         WHERE id = $1`,
+        [payload.sub]
+      )
+    }
+  } catch {
+    // Sempre limpa o cookie, mesmo com token inválido/expirado.
+  }
+
   clearAuthCookie(res)
   return res.status(204).send()
 })

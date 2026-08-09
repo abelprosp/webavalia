@@ -28,7 +28,7 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: 'Avalia Imobe',
+      name: 'Avalia Imob',
       logo: Building2,
       plan: 'imobiliárias',
     },

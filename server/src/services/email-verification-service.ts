@@ -14,8 +14,18 @@ function buildVerificationUrl(token: string) {
   return `${config.appUrl}/verify-email?token=${encodeURIComponent(token)}`
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function buildVerificationEmail(name: string, verifyUrl: string) {
   const subject = 'Confirme seu e-mail — Avalia Imob'
+  const safeName = escapeHtml(name)
 
   const text = [
     `Olá, ${name}!`,
@@ -32,7 +42,7 @@ function buildVerificationEmail(name: string, verifyUrl: string) {
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111;">
       <h2 style="margin-bottom: 8px;">Confirme seu e-mail</h2>
-      <p>Olá, <strong>${name}</strong>!</p>
+      <p>Olá, <strong>${safeName}</strong>!</p>
       <p>Obrigado por se cadastrar na <strong>Avalia Imob</strong>.</p>
       <p>Clique no botão abaixo para ativar sua conta:</p>
       <p style="margin: 24px 0;">

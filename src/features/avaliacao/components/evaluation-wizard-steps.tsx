@@ -36,7 +36,7 @@ export function EvaluationWizardSteps({
               </div>
               <span
                 className={cn(
-                  'hidden text-sm font-medium sm:inline',
+                  'text-xs font-medium sm:text-sm',
                   isActive ? 'text-foreground' : 'text-muted-foreground'
                 )}
               >
@@ -45,7 +45,7 @@ export function EvaluationWizardSteps({
               {index < STEPS.length - 1 && (
                 <div
                   className={cn(
-                    'mx-1 hidden h-px flex-1 sm:block',
+                    'mx-1 h-px flex-1',
                     isDone ? 'bg-flux-lime/50' : 'bg-border'
                   )}
                   aria-hidden
