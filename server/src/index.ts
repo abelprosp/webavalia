@@ -17,6 +17,7 @@ import leadsRoutes from './routes/leads.js'
 import crmRoutes from './routes/crm.js'
 import blogRoutes from './routes/blog.js'
 import foxAiRoutes from './routes/fox-ai.js'
+import captureRadarRoutes from './routes/capture-radar.js'
 import {
   efiChargesWebhookHandler,
   efiPixWebhookHandler,
@@ -147,6 +148,7 @@ app.use('/api/leads', leadsRoutes)
 app.use('/api/crm', crmRoutes)
 app.use('/api/blog', blogRoutes)
 app.use('/api/fox-ai', foxAiRoutes)
+app.use('/api/radar', captureRadarRoutes)
 
 if (config.isProduction) {
   const frontendDist = path.join(__dirname, '../../dist')

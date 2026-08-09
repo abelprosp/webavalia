@@ -35,6 +35,7 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedRadarIndexRouteImport } from './routes/_authenticated/radar/index'
 import { Route as AuthenticatedMinhasAvaliacoesIndexRouteImport } from './routes/_authenticated/minhas-avaliacoes/index'
 import { Route as AuthenticatedMapaDeMercadoIndexRouteImport } from './routes/_authenticated/mapa-de-mercado/index'
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads/index'
@@ -191,6 +192,11 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedRadarIndexRoute = AuthenticatedRadarIndexRouteImport.update({
+  id: '/radar/',
+  path: '/radar/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMinhasAvaliacoesIndexRoute =
   AuthenticatedMinhasAvaliacoesIndexRouteImport.update({
     id: '/minhas-avaliacoes/',
@@ -382,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/leads/': typeof AuthenticatedLeadsIndexRoute
   '/mapa-de-mercado/': typeof AuthenticatedMapaDeMercadoIndexRoute
   '/minhas-avaliacoes/': typeof AuthenticatedMinhasAvaliacoesIndexRoute
+  '/radar/': typeof AuthenticatedRadarIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
@@ -430,6 +437,7 @@ export interface FileRoutesByTo {
   '/leads': typeof AuthenticatedLeadsIndexRoute
   '/mapa-de-mercado': typeof AuthenticatedMapaDeMercadoIndexRoute
   '/minhas-avaliacoes': typeof AuthenticatedMinhasAvaliacoesIndexRoute
+  '/radar': typeof AuthenticatedRadarIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
@@ -485,6 +493,7 @@ export interface FileRoutesById {
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
   '/_authenticated/mapa-de-mercado/': typeof AuthenticatedMapaDeMercadoIndexRoute
   '/_authenticated/minhas-avaliacoes/': typeof AuthenticatedMinhasAvaliacoesIndexRoute
+  '/_authenticated/radar/': typeof AuthenticatedRadarIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
@@ -538,6 +547,7 @@ export interface FileRouteTypes {
     | '/leads/'
     | '/mapa-de-mercado/'
     | '/minhas-avaliacoes/'
+    | '/radar/'
     | '/settings/'
     | '/tasks/'
     | '/users/'
@@ -586,6 +596,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/mapa-de-mercado'
     | '/minhas-avaliacoes'
+    | '/radar'
     | '/settings'
     | '/tasks'
     | '/users'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leads/'
     | '/_authenticated/mapa-de-mercado/'
     | '/_authenticated/minhas-avaliacoes/'
+    | '/_authenticated/radar/'
     | '/_authenticated/settings/'
     | '/_authenticated/tasks/'
     | '/_authenticated/users/'
@@ -848,6 +860,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/radar/': {
+      id: '/_authenticated/radar/'
+      path: '/radar'
+      fullPath: '/radar/'
+      preLoaderRoute: typeof AuthenticatedRadarIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/minhas-avaliacoes/': {
       id: '/_authenticated/minhas-avaliacoes/'
@@ -1098,6 +1117,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
   AuthenticatedMapaDeMercadoIndexRoute: typeof AuthenticatedMapaDeMercadoIndexRoute
   AuthenticatedMinhasAvaliacoesIndexRoute: typeof AuthenticatedMinhasAvaliacoesIndexRoute
+  AuthenticatedRadarIndexRoute: typeof AuthenticatedRadarIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
@@ -1118,6 +1138,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMapaDeMercadoIndexRoute: AuthenticatedMapaDeMercadoIndexRoute,
   AuthenticatedMinhasAvaliacoesIndexRoute:
     AuthenticatedMinhasAvaliacoesIndexRoute,
+  AuthenticatedRadarIndexRoute: AuthenticatedRadarIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }

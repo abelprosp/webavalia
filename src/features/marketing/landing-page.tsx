@@ -13,6 +13,7 @@ import { AvaliaBrandMark } from '@/features/auth/components/auth-left-panel'
 
 const PJ_HIGHLIGHTS = [
   'Avaliações com IA e comparáveis de mercado',
+  'Radar de captação: IA encontra imóveis de proprietários',
   'Leads de proprietários da sua região',
   'CRM com scoring e pipeline',
   'Mapa de mercado + FoxAi',

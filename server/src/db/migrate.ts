@@ -318,6 +318,44 @@ async function migrate() {
       ADD COLUMN IF NOT EXISTS service_regions TEXT[] NOT NULL DEFAULT '{}',
       ADD COLUMN IF NOT EXISTS specialties TEXT[] NOT NULL DEFAULT '{}';
 
+    -- Radar de captação: oportunidades privadas por corretor
+    CREATE TABLE IF NOT EXISTS capture_opportunities (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      search_key VARCHAR(300) NOT NULL,
+      title VARCHAR(500) NOT NULL,
+      property_type VARCHAR(100),
+      price_cents BIGINT,
+      area NUMERIC,
+      location VARCHAR(500),
+      source_url TEXT NOT NULL,
+      source_portal VARCHAR(100),
+      owner_signal BOOLEAN NOT NULL DEFAULT false,
+      market_value_cents BIGINT,
+      discount_percent NUMERIC,
+      opportunity_score INT,
+      status VARCHAR(20) NOT NULL DEFAULT 'nova'
+        CHECK (status IN ('nova', 'abordada', 'descartada', 'no_crm')),
+      approach_message TEXT,
+      raw_snippet TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+      UNIQUE (user_id, source_url)
+    );
+
+    CREATE INDEX IF NOT EXISTS capture_opportunities_user_idx
+      ON capture_opportunities (user_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS capture_opportunities_search_idx
+      ON capture_opportunities (user_id, search_key, status);
+
+    -- Cache do preço de mercado regional para varreduras do radar
+    CREATE TABLE IF NOT EXISTS radar_market_cache (
+      search_key VARCHAR(300) PRIMARY KEY,
+      value_per_sqm NUMERIC NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE leads
       ADD COLUMN IF NOT EXISTS lead_score JSONB,
       ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}',

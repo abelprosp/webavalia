@@ -355,6 +355,105 @@ export async function createDealFromEvaluation(
   return mapped
 }
 
+export async function createDealFromCaptureOpportunity(
+  userId: string,
+  opportunity: {
+    id: string
+    title: string
+    propertyType: string | null
+    priceCents: number | null
+    area: number | null
+    location: string | null
+    sourceUrl: string
+    sourcePortal: string | null
+    marketValueCents: number | null
+    discountPercent: number | null
+    opportunityScore: number | null
+    approachMessage: string | null
+  }
+) {
+  const pipelineId = await ensureDefaultPipeline(userId)
+  const firstStage = await pool.query<{ id: string; slug: string }>(
+    `SELECT id, slug FROM crm_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC LIMIT 1`,
+    [pipelineId]
+  )
+
+  const notesParts = [
+    `Oportunidade do Radar de Captação IA.`,
+    `Anúncio original: ${opportunity.sourceUrl}`,
+    opportunity.priceCents != null
+      ? `Preço anunciado: R$ ${(opportunity.priceCents / 100).toLocaleString('pt-BR')}`
+      : null,
+    opportunity.marketValueCents != null
+      ? `Valor de mercado estimado: R$ ${(opportunity.marketValueCents / 100).toLocaleString('pt-BR')}`
+      : null,
+    opportunity.discountPercent != null
+      ? `Diferença vs mercado: ${opportunity.discountPercent}%`
+      : null,
+  ].filter(Boolean)
+
+  const tags = ['radar-captacao']
+  if (opportunity.discountPercent != null && opportunity.discountPercent >= 5) {
+    tags.push('abaixo-do-mercado')
+  }
+
+  const deal = await pool.query<Record<string, unknown>>(
+    `INSERT INTO crm_deals (
+       user_id, pipeline_id, stage_id, lead_id, title,
+       client_name, location, property_type, notes, assignee_id,
+       lead_score, tags, expected_ticket
+     )
+     VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     RETURNING *`,
+    [
+      userId,
+      pipelineId,
+      firstStage.rows[0]!.id,
+      `Captação — ${opportunity.title}`.slice(0, 480),
+      null,
+      opportunity.location,
+      opportunity.propertyType,
+      notesParts.join('\n'),
+      userId,
+      JSON.stringify({
+        probability: opportunity.opportunityScore ?? 50,
+        urgency:
+          (opportunity.opportunityScore ?? 0) >= 70 ? 'alta' : 'media',
+        expectedTicket:
+          opportunity.marketValueCents != null
+            ? Math.round(opportunity.marketValueCents / 100)
+            : opportunity.priceCents != null
+              ? Math.round(opportunity.priceCents / 100)
+              : 0,
+        interest: 'captacao',
+        summary: 'Oportunidade identificada pelo Radar de Captação IA.',
+        tags,
+        scoredAt: new Date().toISOString(),
+      } satisfies LeadScore),
+      tags,
+      opportunity.marketValueCents != null
+        ? Math.round(opportunity.marketValueCents / 100)
+        : opportunity.priceCents != null
+          ? Math.round(opportunity.priceCents / 100)
+          : null,
+    ]
+  )
+
+  const mapped = mapDeal(deal.rows[0]!)
+  await logActivity({
+    dealId: mapped.id,
+    userId,
+    activityType: 'deal_created',
+    title: 'Captação identificada pelo Radar IA',
+    body:
+      opportunity.approachMessage ??
+      'Negócio criado a partir de uma oportunidade do Radar de Captação.',
+    metadata: { source: 'capture_radar', opportunityId: opportunity.id },
+  })
+  await seedStageTasks(mapped.id, firstStage.rows[0]!.slug, userId)
+  return mapped
+}
+
 export async function moveDealStage(
   userId: string,
   dealId: string,

@@ -15,6 +15,7 @@ import {
   Map,
   Kanban,
   FileText,
+  Radar,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount, type AuthUser } from '@/lib/auth-api'
 import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
@@ -58,6 +59,12 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
         title: 'Oportunidades (Leads)',
         url: '/leads',
         icon: Users,
+      },
+      {
+        title: 'Radar de captação',
+        url: '/radar',
+        icon: Radar,
+        badge: 'Novo',
       },
       {
         title: 'Pipeline (CRM)',

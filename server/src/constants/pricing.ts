@@ -48,6 +48,7 @@ export const PRICING = {
       features: [
         '12 créditos/mês',
         'Avaliações IA',
+        'Radar de captação IA',
         'Desbloqueio de leads (2 créditos)',
         'CRM básico',
       ],
@@ -62,6 +63,7 @@ export const PRICING = {
       highlighted: true,
       features: [
         '40 créditos/mês',
+        'Radar de captação IA',
         'CRM + Lead Scoring IA',
         'Mapa de mercado',
         'FoxAi',

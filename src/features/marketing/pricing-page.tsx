@@ -12,6 +12,7 @@ const PJ_PLANS = [
     description: 'Ideal para corretor solo começar a captar.',
     features: [
       'Avaliações IA',
+      'Radar de captação IA (1 crédito/varredura)',
       'Desbloqueio de leads (2 créditos)',
       'CRM básico',
     ],
@@ -25,6 +26,7 @@ const PJ_PLANS = [
     highlighted: true,
     features: [
       'Tudo do Starter',
+      'Radar de captação IA em volume',
       'Mapa de mercado',
       'FoxAi',
       'Lead Scoring IA',
