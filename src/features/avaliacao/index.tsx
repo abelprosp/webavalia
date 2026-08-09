@@ -228,7 +228,23 @@ export function Avaliacao() {
     }
   }
 
+  async function advanceWizardStep() {
+    const fieldsByStep: (keyof EvaluationFormValues)[][] = [
+      ['listingIntent', 'cep', 'address', 'propertyType', 'area'],
+      ['standardLevel', 'conservation'],
+      [],
+    ]
+    const valid = await form.trigger(fieldsByStep[wizardStep - 1])
+    if (valid) setWizardStep((s) => Math.min(s + 1, 3))
+  }
+
   async function onSubmit(values: EvaluationFormValues) {
+    // Evita submit acidental (Enter ou clique residual) fora da etapa de fotos.
+    if (wizardStep < 3) {
+      await advanceWizardStep()
+      return
+    }
+
     if (isBroker && credits <= 0) {
       toast.error(
         CREDITS_AND_PLANS_ENABLED
@@ -389,7 +405,17 @@ export function Avaliacao() {
           {!result && (
           <div className='grid gap-6 lg:grid-cols-2'>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (wizardStep < 3) {
+                  void advanceWizardStep()
+                  return
+                }
+                void form.handleSubmit(onSubmit)(event)
+              }}
+              className='space-y-6'
+            >
               {wizardStep === 1 && (
                 <>
               <ListingIntentSelector control={form.control} />
@@ -1032,37 +1058,31 @@ export function Avaliacao() {
                   <Button
                     type='button'
                     className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                    onClick={async () => {
-                      const fieldsByStep: (keyof EvaluationFormValues)[][] = [
-                        ['listingIntent', 'cep', 'address', 'propertyType', 'area'],
-                        ['standardLevel', 'conservation'],
-                        [],
-                      ]
-                      const valid = await form.trigger(fieldsByStep[wizardStep - 1])
-                      if (valid) setWizardStep((s) => s + 1)
-                    }}
+                    onClick={() => void advanceWizardStep()}
                   >
                     Continuar
                   </Button>
                 ) : (
-              <Button
-                type='submit'
-                size='lg'
-                className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                disabled={isEvaluating || (isBroker && credits === 0)}
-              >
-                {isEvaluating ? (
-                  <>
-                    <Loader2 className='size-4 animate-spin' />
-                    {evaluatingStep || 'Analisando mercado'}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className='size-4' />
-                    Avaliar com IA
-                  </>
-                )}
-              </Button>
+                  <Button
+                    key='evaluate-submit'
+                    type='button'
+                    size='lg'
+                    className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
+                    disabled={isEvaluating || (isBroker && credits === 0)}
+                    onClick={() => void form.handleSubmit(onSubmit)()}
+                  >
+                    {isEvaluating ? (
+                      <>
+                        <Loader2 className='size-4 animate-spin' />
+                        {evaluatingStep || 'Analisando mercado'}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className='size-4' />
+                        Avaliar com IA
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </form>
