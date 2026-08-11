@@ -22,7 +22,7 @@ const PJ_HIGHLIGHTS = [
 const PF_HIGHLIGHTS = [
   '3 avaliações grátis por mês',
   'Publique e receba contato de corretores',
-  'Plus por R$ 39/mês com 15 avaliações',
+  'Plus por R$ 39,90/mês com 10 avaliações',
 ]
 
 export function LandingPage() {

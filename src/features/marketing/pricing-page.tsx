@@ -21,7 +21,7 @@ const PJ_PLANS = [
     slug: 'pro',
     name: 'Pro',
     price: 'R$ 197',
-    credits: '40 créditos/mês',
+    credits: '30 créditos/mês',
     description: 'Melhor custo por crédito — mapa, FoxAi e scoring.',
     highlighted: true,
     features: [
@@ -36,7 +36,7 @@ const PJ_PLANS = [
     slug: 'agency',
     name: 'Imobiliária',
     price: 'R$ 497',
-    credits: '120 créditos/mês',
+    credits: '80 créditos/mês',
     description: 'Alto volume para equipes e imobiliárias.',
     features: [
       'Tudo do Pro',
@@ -120,8 +120,9 @@ export function PricingPage() {
             <h2 className='text-xl font-bold'>Proprietário (PF)</h2>
             <p className='mt-2 text-sm text-muted-foreground'>
               Free: 3 avaliações/mês e 1 publicação/mês. Plus:{' '}
-              <strong className='text-foreground'>R$ 39/mês</strong> com 15
-              avaliações e publicação ilimitada.
+              <strong className='text-foreground'>R$ 39,90/mês</strong> com 10
+              avaliações IA (créditos exclusivos para avaliações) e publicação
+              ilimitada.
             </p>
             <Button className='mt-4' variant='outline' asChild>
               <Link to='/sign-up'>Criar conta PF</Link>

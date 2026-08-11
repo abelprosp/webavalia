@@ -493,8 +493,9 @@ export function CreditsSettings() {
               </p>
             ) : (
               <p>
-                No free você tem {freeEvals} avaliações/mês. No Plus (R$ 39)
-                são 15/mês com publicação ilimitada. A 1ª publicação dá +2
+                No free você tem {freeEvals} avaliações/mês. No Plus (R$ 39,90)
+                são 10 avaliações IA/mês — créditos válidos somente para
+                avaliações — com publicação ilimitada. A 1ª publicação dá +2
                 créditos de bônus.
               </p>
             )}

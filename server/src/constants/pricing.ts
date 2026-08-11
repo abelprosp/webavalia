@@ -28,12 +28,14 @@ export const PRICING = {
     pf_plus: {
       slug: 'pf_plus',
       audience: 'pf' as const,
-      credits: 15,
-      priceCents: 3900,
+      credits: 10,
+      priceCents: 3990,
       label: 'Proprietário Plus',
-      description: '15 avaliações/mês, publicação ilimitada e histórico completo.',
+      description:
+        '10 avaliações IA/mês (créditos válidos somente para avaliações), publicação ilimitada e histórico completo.',
       features: [
-        '15 avaliações IA por mês',
+        '10 avaliações IA por mês',
+        'Créditos exclusivos para avaliações',
         'Publicar imóvel ilimitado',
         'Histórico e PDF completo',
       ],
@@ -56,13 +58,13 @@ export const PRICING = {
     pro: {
       slug: 'pro',
       audience: 'pj' as const,
-      credits: 40,
+      credits: 30,
       priceCents: 19700,
       label: 'Pro',
-      description: '40 créditos/mês com mapa, FoxAi e scoring — melhor custo por crédito.',
+      description: '30 créditos/mês com mapa, FoxAi e scoring — melhor custo por crédito.',
       highlighted: true,
       features: [
-        '40 créditos/mês',
+        '30 créditos/mês',
         'Radar de captação IA',
         'CRM + Lead Scoring IA',
         'Mapa de mercado',
@@ -73,12 +75,12 @@ export const PRICING = {
     agency: {
       slug: 'agency',
       audience: 'pj' as const,
-      credits: 120,
+      credits: 80,
       priceCents: 49700,
       label: 'Imobiliária',
-      description: '120 créditos/mês para times e alto volume de captação.',
+      description: '80 créditos/mês para times e alto volume de captação.',
       features: [
-        '120 créditos/mês',
+        '80 créditos/mês',
         'Tudo do Pro',
         'Ideal para times (até 5 usuários em breve)',
         'Suporte prioritário',
