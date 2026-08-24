@@ -11,6 +11,7 @@ import {
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import {
   hashPassword,
+  verifyPassword,
   verifyPasswordConstantTime,
 } from '../utils/password.js'
 import { passwordSchema } from '../utils/password-policy.js'
@@ -565,6 +566,144 @@ router.get('/me', requireAuth, async (req: AuthRequest, res) => {
   }
 
   return res.json({ user: await mapUserResponse(result.rows[0]) })
+})
+
+const updateProfileSchema = z.object({
+  name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres.'),
+  email: z.email('E-mail inválido.'),
+  document: z.string().trim().min(11, 'Informe um CPF ou CNPJ válido.'),
+  companyName: z.string().trim().max(255, 'Razão social muito longa.').optional(),
+  tradeName: z.string().trim().max(255, 'Nome fantasia muito longo.').optional(),
+})
+
+router.patch('/me', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = updateProfileSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  const accountType = req.user!.accountType
+  const { name, email, document, companyName, tradeName } = parsed.data
+
+  const documentCheck = validateDocumentForAccountType(accountType, document)
+  if (!documentCheck.ok) {
+    return res.status(400).json({ message: documentCheck.message })
+  }
+
+  if (accountType === 'pj' && !companyName?.trim()) {
+    return res.status(400).json({
+      message: 'Informe a razão social da imobiliária.',
+    })
+  }
+
+  const normalizedEmail = normalizeEmail(email)
+
+  const existingEmail = await pool.query<{ id: string }>(
+    'SELECT id FROM users WHERE email = $1 AND id <> $2',
+    [normalizedEmail, req.user!.id]
+  )
+  if (existingEmail.rowCount && existingEmail.rowCount > 0) {
+    return res.status(409).json({ message: 'Este e-mail já está em uso.' })
+  }
+
+  const resolvedCompanyName =
+    accountType === 'pj' ? companyName!.trim() : null
+  const resolvedTradeName =
+    accountType === 'pj' ? tradeName?.trim() || null : null
+
+  const result = await pool.query<UserRow>(
+    `UPDATE users
+     SET name = $2,
+         email = $3,
+         document = $4,
+         company_name = $5,
+         trade_name = $6,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING ${USER_SELECT_FIELDS}`,
+    [
+      req.user!.id,
+      name.trim(),
+      normalizedEmail,
+      documentCheck.digits,
+      resolvedCompanyName,
+      resolvedTradeName,
+    ]
+  )
+
+  if (!result.rowCount) {
+    return res.status(401).json({ message: AUTH_INVALID_CREDENTIALS })
+  }
+
+  return res.json({
+    user: await mapUserResponse(result.rows[0]),
+    message: 'Perfil atualizado com sucesso.',
+  })
+})
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, 'Informe a senha atual.')
+      .max(128, 'Senha inválida.'),
+    newPassword: passwordSchema,
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'A nova senha deve ser diferente da senha atual.',
+    path: ['newPassword'],
+  })
+
+router.post('/change-password', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = changePasswordSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    })
+  }
+
+  const { currentPassword, newPassword } = parsed.data
+
+  const result = await pool.query<
+    UserRow & { password_hash: string }
+  >(
+    `SELECT ${USER_SELECT_FIELDS}, password_hash
+     FROM users WHERE id = $1`,
+    [req.user!.id]
+  )
+
+  const user = result.rows[0]
+  if (!user) {
+    return res.status(401).json({ message: AUTH_INVALID_CREDENTIALS })
+  }
+
+  const currentValid = await verifyPassword(currentPassword, user.password_hash)
+  if (!currentValid) {
+    return res.status(400).json({ message: 'Senha atual incorreta.' })
+  }
+
+  const passwordHash = await hashPassword(newPassword)
+
+  const updated = await pool.query<UserRow>(
+    `UPDATE users
+     SET password_hash = $2,
+         session_version = session_version + 1,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING ${USER_SELECT_FIELDS}`,
+    [user.id, passwordHash]
+  )
+
+  if (!updated.rowCount) {
+    return res.status(401).json({ message: AUTH_INVALID_CREDENTIALS })
+  }
+
+  // Reemite cookie com a nova session_version (invalida outras sessões).
+  issueSession(updated.rows[0], res)
+
+  return res.json({ message: 'Senha alterada com sucesso.' })
 })
 
 export default router

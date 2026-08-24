@@ -1,10 +1,18 @@
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/api-error'
+import {
+  updateProfileRequest,
+  type AccountType,
+} from '@/lib/auth-api'
+import {
+  documentDigits,
+  formatDocumentForAccountType,
+} from '@/lib/document'
 import { useAuthStore } from '@/stores/auth-store'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -16,160 +24,218 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 
-const profileFormSchema = z.object({
-  username: z
-    .string('Please enter your username.')
-    .min(2, 'Username must be at least 2 characters.')
-    .max(30, 'Username must not be longer than 30 characters.'),
-  email: z.email({
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select an email to display.'
-        : undefined,
-  }),
-  bio: z.string().max(160),
-  urls: z
-    .array(
-      z.object({
-        value: z.url('Please enter a valid URL.'),
-      })
-    )
-    .optional(),
-})
+function buildProfileSchema(accountType: AccountType) {
+  return z
+    .object({
+      name: z
+        .string()
+        .trim()
+        .min(2, 'Nome deve ter ao menos 2 caracteres.'),
+      email: z.email('E-mail inválido.'),
+      document: z.string().trim().min(1, 'Informe o documento.'),
+      companyName: z.string().trim().optional(),
+      tradeName: z.string().trim().optional(),
+    })
+    .superRefine((data, ctx) => {
+      const digits = documentDigits(data.document)
+      const expected = accountType === 'pf' ? 11 : 14
+      if (digits.length !== expected) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['document'],
+          message:
+            accountType === 'pf'
+              ? 'Informe um CPF válido.'
+              : 'Informe um CNPJ válido.',
+        })
+      }
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+      if (accountType === 'pj' && !data.companyName?.trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['companyName'],
+          message: 'Informe a razão social da imobiliária.',
+        })
+      }
+    })
+}
+
+type ProfileFormValues = z.infer<ReturnType<typeof buildProfileSchema>>
 
 export function ProfileForm() {
-  const authUser = useAuthStore((s) => s.auth.user)
+  const user = useAuthStore((s) => s.auth.user)
+  const setUser = useAuthStore((s) => s.auth.setUser)
+  const accountType: AccountType = user?.accountType ?? 'pf'
+  const isPj = accountType === 'pj'
+  const [saving, setSaving] = useState(false)
 
   const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(buildProfileSchema(accountType)),
     defaultValues: {
-      username: authUser?.name ?? '',
-      email: authUser?.email ?? '',
-      bio: '',
-      urls: [],
+      name: user?.name ?? '',
+      email: user?.email ?? '',
+      document: user?.document
+        ? formatDocumentForAccountType(accountType, user.document)
+        : '',
+      companyName: user?.companyName ?? '',
+      tradeName: user?.tradeName ?? '',
     },
     mode: 'onChange',
   })
 
-  const { fields, append } = useFieldArray({
-    name: 'urls',
-    control: form.control,
-  })
+  useEffect(() => {
+    if (!user) return
+    form.reset({
+      name: user.name ?? '',
+      email: user.email ?? '',
+      document: user.document
+        ? formatDocumentForAccountType(user.accountType, user.document)
+        : '',
+      companyName: user.companyName ?? '',
+      tradeName: user.tradeName ?? '',
+    })
+  }, [user, form])
+
+  async function onSubmit(values: ProfileFormValues) {
+    setSaving(true)
+    try {
+      const { user: updated, message } = await updateProfileRequest({
+        name: values.name.trim(),
+        email: values.email.trim(),
+        document: documentDigits(values.document),
+        companyName: isPj ? values.companyName?.trim() : undefined,
+        tradeName: isPj ? values.tradeName?.trim() || undefined : undefined,
+      })
+      setUser(updated)
+      toast.success(message ?? 'Perfil atualizado com sucesso.')
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, 'Não foi possível atualizar o perfil.')
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!user) return null
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
-        className='space-y-8'
-      >
-        <FormField
-          control={form.control}
-          name='username'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder='shadcn' {...field} />
-              </FormControl>
-              <FormDescription>
-                This is your public display name. It can be your real name or a
-                pseudonym. You can only change this once every 30 days.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='email'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a verified email to display' />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value='m@example.com'>m@example.com</SelectItem>
-                  <SelectItem value='m@google.com'>m@google.com</SelectItem>
-                  <SelectItem value='m@support.com'>m@support.com</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                You can manage verified email addresses in your{' '}
-                <Link to='/'>email settings</Link>.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='bio'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder='Tell us a little bit about yourself'
-                  className='resize-none'
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                You can <span>@mention</span> other users and organizations to
-                link to them.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div>
-          {fields.map((field, index) => (
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+        {isPj && (
+          <>
             <FormField
               control={form.control}
-              key={field.id}
-              name={`urls.${index}.value`}
+              name='companyName'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className={cn(index !== 0 && 'sr-only')}>
-                    URLs
-                  </FormLabel>
-                  <FormDescription className={cn(index !== 0 && 'sr-only')}>
-                    Add links to your website, blog, or social media profiles.
-                  </FormDescription>
-                  <FormControl className={cn(index !== 0 && 'mt-1.5')}>
-                    <Input {...field} />
+                  <FormLabel>Razão social</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder='Imobiliária Exemplo Ltda'
+                      autoComplete='organization'
+                      {...field}
+                      value={field.value ?? ''}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          ))}
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            className='mt-2'
-            onClick={() => append({ value: '' })}
-          >
-            Add URL
-          </Button>
-        </div>
-        <Button type='submit'>Update profile</Button>
+            <FormField
+              control={form.control}
+              name='tradeName'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome fantasia</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder='Opcional'
+                      {...field}
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Como a imobiliária é conhecida no mercado.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        <FormField
+          control={form.control}
+          name='name'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                {isPj ? 'Nome do responsável' : 'Nome completo'}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder={isPj ? 'Corretor responsável' : 'Seu nome'}
+                  autoComplete='name'
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name='document'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{isPj ? 'CNPJ' : 'CPF'}</FormLabel>
+              <FormControl>
+                <Input
+                  inputMode='numeric'
+                  placeholder={
+                    isPj ? '00.000.000/0000-00' : '000.000.000-00'
+                  }
+                  {...field}
+                  onChange={(e) =>
+                    field.onChange(
+                      formatDocumentForAccountType(accountType, e.target.value)
+                    )
+                  }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name='email'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>E-mail</FormLabel>
+              <FormControl>
+                <Input
+                  type='email'
+                  placeholder='seu@email.com'
+                  autoComplete='email'
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                Usado para login e notificações da plataforma.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type='submit' disabled={saving}>
+          {saving ? 'Salvando…' : 'Salvar alterações'}
+        </Button>
       </form>
     </Form>
   )

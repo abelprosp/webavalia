@@ -119,6 +119,33 @@ export async function fetchMe() {
   return data.user
 }
 
+export type UpdateProfilePayload = {
+  name: string
+  email: string
+  document: string
+  companyName?: string
+  tradeName?: string
+}
+
+export async function updateProfileRequest(payload: UpdateProfilePayload) {
+  const { data } = await api.patch<{ user: AuthUser; message: string }>(
+    '/auth/me',
+    payload
+  )
+  return data
+}
+
+export async function changePasswordRequest(
+  currentPassword: string,
+  newPassword: string
+) {
+  const { data } = await api.post<{ message: string }>(
+    '/auth/change-password',
+    { currentPassword, newPassword }
+  )
+  return data
+}
+
 export function isAdmin(user: AuthUser | null | undefined) {
   return user?.role === 'admin'
 }

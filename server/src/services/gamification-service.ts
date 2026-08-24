@@ -18,6 +18,7 @@ export type AchievementDefinition = {
   rewardEvaluations: number
 }
 
+/** Textos canônicos (PJ / corretor). PF sobrescreve só o display via localize*. */
 export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     key: 'first_evaluation',
@@ -63,12 +64,57 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
 ]
 
+/** Labels de exibição para pessoa física (keys estáveis). */
+const ACHIEVEMENT_COPY_PF: Partial<
+  Record<AchievementKey, Pick<AchievementDefinition, 'title' | 'description'>>
+> = {
+  evaluations_5: {
+    title: 'Em ação',
+    description: 'Completou 5 avaliações de imóveis',
+  },
+  evaluations_10: {
+    title: 'Analista de imóveis',
+    description: 'Completou 10 avaliações de imóveis',
+  },
+}
+
 const LEVELS = [
   { level: 1, name: 'Iniciante', minEvaluations: 0 },
   { level: 2, name: 'Corretor ativo', minEvaluations: 6 },
   { level: 3, name: 'Especialista', minEvaluations: 21 },
   { level: 4, name: 'Expert', minEvaluations: 50 },
 ] as const
+
+const LEVEL_NAME_PF: Partial<Record<number, string>> = {
+  2: 'Avaliador ativo',
+}
+
+function localizeAchievement(
+  def: AchievementDefinition,
+  accountType: string
+): AchievementDefinition {
+  if (accountType !== 'pf') return def
+  const pf = ACHIEVEMENT_COPY_PF[def.key]
+  if (!pf) return def
+  return { ...def, title: pf.title, description: pf.description }
+}
+
+function localizeLevelName(
+  level: number,
+  name: string,
+  accountType: string
+): string {
+  if (accountType !== 'pf') return name
+  return LEVEL_NAME_PF[level] ?? name
+}
+
+async function getUserAccountType(userId: string): Promise<string> {
+  const result = await pool.query<{ account_type: string }>(
+    'SELECT account_type FROM users WHERE id = $1',
+    [userId]
+  )
+  return result.rows[0]?.account_type ?? 'pf'
+}
 
 export type LevelInfo = {
   level: number
@@ -101,7 +147,10 @@ export type GamificationStats = {
   monthlyBreakdown: Record<string, number>
 }
 
-function getLevelInfo(evaluationsUsed: number): LevelInfo {
+function getLevelInfo(
+  evaluationsUsed: number,
+  accountType: string = 'pj'
+): LevelInfo {
   let currentIndex = 0
   for (let i = 0; i < LEVELS.length; i += 1) {
     if (evaluationsUsed >= LEVELS[i].minEvaluations) {
@@ -111,11 +160,12 @@ function getLevelInfo(evaluationsUsed: number): LevelInfo {
 
   const current = LEVELS[currentIndex]
   const next = LEVELS[currentIndex + 1] ?? null
+  const name = localizeLevelName(current.level, current.name, accountType)
 
   if (!next) {
     return {
       level: current.level,
-      name: current.name,
+      name,
       evaluationsUsed,
       progress: 1,
       nextLevelAt: null,
@@ -128,7 +178,7 @@ function getLevelInfo(evaluationsUsed: number): LevelInfo {
 
   return {
     level: current.level,
-    name: current.name,
+    name,
     evaluationsUsed,
     progress: Math.min(progressInLevel / span, 1),
     nextLevelAt: next.minEvaluations,
@@ -292,13 +342,10 @@ function resolveEligibleAchievements(metrics: {
 
 async function grantAchievementRewards(
   userId: string,
-  keys: AchievementKey[]
+  keys: AchievementKey[],
+  accountType: string
 ): Promise<{ totalReward: number; trialEvaluationsRemaining: number | null }> {
-  const userResult = await pool.query<{ account_type: string }>(
-    'SELECT account_type FROM users WHERE id = $1',
-    [userId]
-  )
-  const isBroker = userResult.rows[0]?.account_type === 'pj'
+  const isBroker = accountType === 'pj'
 
   let totalReward = 0
   let trialEvaluationsRemaining: number | null = null
@@ -309,10 +356,11 @@ async function grantAchievementRewards(
     // PF recebe créditos pelo pf-credits-service, não por conquistas.
     if (!isBroker) continue
 
+    const localized = localizeAchievement(def, accountType)
     trialEvaluationsRemaining = await addTrialEvaluations(
       userId,
       def.rewardEvaluations,
-      `Conquista desbloqueada: ${def.title}`
+      `Conquista desbloqueada: ${localized.title}`
     )
     totalReward += def.rewardEvaluations
   }
@@ -323,7 +371,8 @@ async function grantAchievementRewards(
 async function unlockAchievements(
   userId: string,
   keys: AchievementKey[],
-  alreadyUnlocked: Map<string, string>
+  alreadyUnlocked: Map<string, string>,
+  accountType: string
 ) {
   const newlyUnlocked: AchievementKey[] = []
 
@@ -347,11 +396,15 @@ async function unlockAchievements(
 
   const { totalReward, trialEvaluationsRemaining } = await grantAchievementRewards(
     userId,
-    newlyUnlocked
+    newlyUnlocked,
+    accountType
   )
 
   const achievements = newlyUnlocked.map((key) => {
-    const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)!
+    const def = localizeAchievement(
+      ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key)!,
+      accountType
+    )
     return {
       ...def,
       unlocked: true,
@@ -370,20 +423,26 @@ export async function getGamificationStats(
     5
   )
 
-  const metrics = await getUserMetrics(userId)
+  const [metrics, unlockedMap, accountType] = await Promise.all([
+    getUserMetrics(userId),
+    getUnlockedAchievements(userId),
+    getUserAccountType(userId),
+  ])
   const streak = computeStreak(metrics.evaluationDays)
-  const unlockedMap = await getUnlockedAchievements(userId)
 
-  const achievements = ACHIEVEMENT_DEFINITIONS.map((def) => ({
-    ...def,
-    unlocked: unlockedMap.has(def.key),
-    unlockedAt: unlockedMap.get(def.key) ?? null,
-  }))
+  const achievements = ACHIEVEMENT_DEFINITIONS.map((def) => {
+    const localized = localizeAchievement(def, accountType)
+    return {
+      ...localized,
+      unlocked: unlockedMap.has(def.key),
+      unlockedAt: unlockedMap.get(def.key) ?? null,
+    }
+  })
 
   return {
     evaluationsUsed: metrics.evaluationsUsed,
     feedbackCount: metrics.feedbackCount,
-    level: getLevelInfo(metrics.evaluationsUsed),
+    level: getLevelInfo(metrics.evaluationsUsed, accountType),
     monthlyGoal: {
       target: monthlyGoalTarget,
       current: metrics.evaluationsThisMonth,
@@ -401,9 +460,12 @@ export async function processEvaluationGamification(userId: string) {
     5
   )
 
-  const metrics = await getUserMetrics(userId)
+  const [metrics, unlockedMap, accountType] = await Promise.all([
+    getUserMetrics(userId),
+    getUnlockedAchievements(userId),
+    getUserAccountType(userId),
+  ])
   const streak = computeStreak(metrics.evaluationDays)
-  const unlockedMap = await getUnlockedAchievements(userId)
 
   const eligible = resolveEligibleAchievements({
     evaluationsUsed: metrics.evaluationsUsed,
@@ -414,13 +476,13 @@ export async function processEvaluationGamification(userId: string) {
   })
 
   const { achievements: newAchievements, totalReward, trialEvaluationsRemaining } =
-    await unlockAchievements(userId, eligible, unlockedMap)
+    await unlockAchievements(userId, eligible, unlockedMap, accountType)
 
   return {
     newAchievements,
     achievementTrialReward: totalReward,
     trialEvaluationsRemaining,
-    level: getLevelInfo(metrics.evaluationsUsed),
+    level: getLevelInfo(metrics.evaluationsUsed, accountType),
     monthlyGoalCompleted: metrics.evaluationsThisMonth >= monthlyGoalTarget,
   }
 }
