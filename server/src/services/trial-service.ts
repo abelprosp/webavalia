@@ -1,31 +1,32 @@
+import { EVALUATION_CREDIT_COST } from '../constants/pricing.js'
+import {
+  consumeCredits,
+  getCredits,
+  InsufficientCreditsError,
+} from './credits-service.js'
 import { pool } from '../db/pool.js'
 
-export class CreditsExhaustedError extends Error {
-  constructor() {
-    super('Você não tem créditos suficientes. Compre créditos para continuar.')
+export class CreditsExhaustedError extends InsufficientCreditsError {
+  constructor(required = EVALUATION_CREDIT_COST, balance = 0) {
+    super(
+      `Você não tem créditos suficientes. É necessário ${required} crédito(s) para avaliar.`,
+      required,
+      balance
+    )
     this.name = 'CreditsExhaustedError'
   }
 }
 
 /** @deprecated Use CreditsExhaustedError */
 export class TrialExhaustedError extends CreditsExhaustedError {
-  constructor() {
-    super()
+  constructor(required = EVALUATION_CREDIT_COST, balance = 0) {
+    super(required, balance)
     this.name = 'TrialExhaustedError'
   }
 }
 
 export async function getCreditsRemaining(userId: string) {
-  const result = await pool.query<{ credits: number }>(
-    'SELECT credits FROM users WHERE id = $1',
-    [userId]
-  )
-
-  if (!result.rowCount) {
-    throw new Error('Usuário não encontrado.')
-  }
-
-  return result.rows[0].credits
+  return getCredits(userId)
 }
 
 /** @deprecated Use getCreditsRemaining */
@@ -34,47 +35,18 @@ export async function getTrialEvaluationsRemaining(userId: string) {
 }
 
 export async function reserveCreditForEvaluation(userId: string) {
-  const client = await pool.connect()
-
   try {
-    await client.query('BEGIN')
-
-    const locked = await client.query<{ credits: number }>(
-      'SELECT credits FROM users WHERE id = $1 FOR UPDATE',
-      [userId]
-    )
-
-    if (!locked.rowCount) {
-      throw new Error('Usuário não encontrado.')
-    }
-
-    if (locked.rows[0].credits <= 0) {
-      throw new CreditsExhaustedError()
-    }
-
-    const updated = await client.query<{ credits: number }>(
-      `UPDATE users
-       SET credits = credits - 1,
-           evaluations_used = evaluations_used + 1,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING credits`,
-      [userId]
-    )
-
-    await client.query(
-      `INSERT INTO credit_transactions (user_id, amount, type, description)
-       VALUES ($1, -1, 'evaluation', 'Avaliação de imóvel com IA')`,
-      [userId]
-    )
-
-    await client.query('COMMIT')
-    return updated.rows[0].credits
+    return await consumeCredits({
+      userId,
+      amount: EVALUATION_CREDIT_COST,
+      type: 'evaluation',
+      description: `Avaliação de imóvel com IA (${EVALUATION_CREDIT_COST} créditos)`,
+    })
   } catch (error) {
-    await client.query('ROLLBACK')
+    if (error instanceof InsufficientCreditsError) {
+      throw new CreditsExhaustedError(error.required, error.balance)
+    }
     throw error
-  } finally {
-    client.release()
   }
 }
 
@@ -86,17 +58,21 @@ export async function reserveTrialEvaluation(userId: string) {
 export async function refundCreditForEvaluation(userId: string) {
   await pool.query(
     `UPDATE users
-     SET credits = credits + 1,
+     SET credits = credits + $2,
          evaluations_used = GREATEST(evaluations_used - 1, 0),
          updated_at = NOW()
      WHERE id = $1`,
-    [userId]
+    [userId, EVALUATION_CREDIT_COST]
   )
 
   await pool.query(
     `INSERT INTO credit_transactions (user_id, amount, type, description)
-     VALUES ($1, 1, 'evaluation_refund', 'Estorno de avaliação com falha')`,
-    [userId]
+     VALUES ($1, $2, 'evaluation_refund', $3)`,
+    [
+      userId,
+      EVALUATION_CREDIT_COST,
+      `Estorno de avaliação com falha (${EVALUATION_CREDIT_COST} créditos)`,
+    ]
   )
 }
 

@@ -1,36 +1,51 @@
 import { pool } from '../db/pool.js'
 import {
   PF_EVALUATION_REWARD,
-  PF_FREE_MONTHLY_EVALUATION_CAP,
-  PF_FREE_MONTHLY_PUBLISH_CAP,
+  PF_FREE_EVALUATIONS,
   PF_PUBLISH_REWARD,
 } from '../constants/pf-credits.js'
+import { EVALUATION_CREDIT_COST } from '../constants/pricing.js'
 import { PF_DAILY_EVALUATION_CAP } from '../constants/feature-flags.js'
-import { addCredits } from './credits-service.js'
+import {
+  addCredits,
+  consumeCredits,
+  InsufficientCreditsError,
+} from './credits-service.js'
 
 type PfCreditRewardType = 'pf_evaluation_reward' | 'pf_publish_reward'
 
 export class PfDailyCapError extends Error {
+  code = 'PF_DAILY_CAP' as const
   constructor(message = 'Limite diário de avaliações atingido. Tente amanhã.') {
     super(message)
     this.name = 'PfDailyCapError'
   }
 }
 
-export class PfMonthlyCapError extends Error {
-  code = 'PF_MONTHLY_CAP' as const
-  constructor(
-    message = `Limite gratuito de ${PF_FREE_MONTHLY_EVALUATION_CAP} avaliações/mês atingido. Assine o Proprietário Plus ou compre uma avaliação avulsa.`
-  ) {
-    super(message)
+export class PfInsufficientCreditsError extends InsufficientCreditsError {
+  constructor(balance = 0) {
+    super(
+      `Você já usou suas ${PF_FREE_EVALUATIONS} avaliações grátis. É necessário ${EVALUATION_CREDIT_COST} créditos para continuar.`,
+      EVALUATION_CREDIT_COST,
+      balance
+    )
+    this.name = 'PfInsufficientCreditsError'
+  }
+}
+
+/** @deprecated Caps mensais removidos — use PfInsufficientCreditsError. */
+export class PfMonthlyCapError extends PfInsufficientCreditsError {
+  constructor() {
+    super()
     this.name = 'PfMonthlyCapError'
   }
 }
 
+/** @deprecated Publicações PF são ilimitadas. */
 export class PfPublishCapError extends Error {
   code = 'PF_PUBLISH_CAP' as const
   constructor(
-    message = `No plano gratuito você pode publicar ${PF_FREE_MONTHLY_PUBLISH_CAP} imóvel por mês. Assine o Proprietário Plus para publicar sem limites.`
+    message = 'Publicação disponível. O plano gratuito permite anunciar sem limites.'
   ) {
     super(message)
     this.name = 'PfPublishCapError'
@@ -129,49 +144,17 @@ export async function grantPfPublishReward(userId: string, evaluationId: string)
   })
 }
 
-async function countPfEvaluationsThisMonth(userId: string) {
+async function countPfLifetimeEvaluations(userId: string) {
   const usage = await pool.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count
      FROM property_evaluations
-     WHERE user_id = $1
-       AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'America/Sao_Paulo')
-         AT TIME ZONE 'America/Sao_Paulo'`,
+     WHERE user_id = $1`,
     [userId]
   )
   return Number(usage.rows[0]?.count ?? 0)
 }
 
-async function countPfPublishesThisMonth(userId: string) {
-  const usage = await pool.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count
-     FROM leads
-     WHERE raw_payload->>'ownerUserId' = $1
-       AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'America/Sao_Paulo')
-         AT TIME ZONE 'America/Sao_Paulo'`,
-    [userId]
-  )
-  return Number(usage.rows[0]?.count ?? 0)
-}
-
-async function hasActivePaidSubscription(userId: string) {
-  const result = await pool.query<{ efi_subscription_id: string | null }>(
-    `SELECT efi_subscription_id FROM users WHERE id = $1`,
-    [userId]
-  )
-  return Boolean(result.rows[0]?.efi_subscription_id)
-}
-
-/** Registra uso de avaliação PF: cap mensal free + teto diário de segurança. */
-export async function recordPfEvaluationUsage(userId: string) {
-  const paid = await hasActivePaidSubscription(userId)
-
-  if (!paid) {
-    const usedMonth = await countPfEvaluationsThisMonth(userId)
-    if (usedMonth >= PF_FREE_MONTHLY_EVALUATION_CAP) {
-      throw new PfMonthlyCapError()
-    }
-  }
-
+async function assertPfDailyCap(userId: string) {
   const usage = await pool.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count
      FROM property_evaluations
@@ -187,25 +170,86 @@ export async function recordPfEvaluationUsage(userId: string) {
       `Limite diário de ${PF_DAILY_EVALUATION_CAP} avaliações atingido. Tente novamente amanhã.`
     )
   }
-
-  const updated = await pool.query<{ credits: number }>(
-    `UPDATE users
-     SET evaluations_used = evaluations_used + 1,
-         updated_at = NOW()
-     WHERE id = $1
-     RETURNING credits`,
-    [userId]
-  )
-
-  if (!updated.rowCount) {
-    throw new Error('Usuário não encontrado.')
-  }
-
-  return updated.rows[0].credits
 }
 
-/** Reverte contagem de avaliação PF quando a IA falha. */
-export async function revertPfEvaluationUsage(userId: string) {
+/**
+ * Registra uso de avaliação PF:
+ * - 3 primeiras (lifetime) grátis
+ * - a partir da 4ª: débito atômico de EVALUATION_CREDIT_COST
+ * - teto diário de segurança
+ */
+export async function recordPfEvaluationUsage(userId: string) {
+  await assertPfDailyCap(userId)
+
+  const usedLifetime = await countPfLifetimeEvaluations(userId)
+
+  if (usedLifetime < PF_FREE_EVALUATIONS) {
+    const updated = await pool.query<{ credits: number }>(
+      `UPDATE users
+       SET evaluations_used = evaluations_used + 1,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING credits`,
+      [userId]
+    )
+
+    if (!updated.rowCount) {
+      throw new Error('Usuário não encontrado.')
+    }
+
+    return {
+      credits: updated.rows[0].credits,
+      chargedCredits: 0,
+      freeEvaluationsRemaining: PF_FREE_EVALUATIONS - usedLifetime - 1,
+    }
+  }
+
+  try {
+    const credits = await consumeCredits({
+      userId,
+      amount: EVALUATION_CREDIT_COST,
+      type: 'evaluation',
+      description: `Avaliação IA PF — após ${PF_FREE_EVALUATIONS} grátis`,
+    })
+    return {
+      credits,
+      chargedCredits: EVALUATION_CREDIT_COST,
+      freeEvaluationsRemaining: 0,
+    }
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      throw new PfInsufficientCreditsError(error.balance)
+    }
+    throw error
+  }
+}
+
+/** Reverte contagem/créditos de avaliação PF quando a IA falha. */
+export async function revertPfEvaluationUsage(
+  userId: string,
+  chargedCredits = 0
+) {
+  if (chargedCredits > 0) {
+    await pool.query(
+      `UPDATE users
+       SET credits = credits + $2,
+           evaluations_used = GREATEST(evaluations_used - 1, 0),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [userId, chargedCredits]
+    )
+    await pool.query(
+      `INSERT INTO credit_transactions (user_id, amount, type, description)
+       VALUES ($1, $2, 'evaluation_refund', $3)`,
+      [
+        userId,
+        chargedCredits,
+        `Estorno de avaliação PF com falha (${chargedCredits} créditos)`,
+      ]
+    )
+    return
+  }
+
   await pool.query(
     `UPDATE users
      SET evaluations_used = GREATEST(evaluations_used - 1, 0),
@@ -215,24 +259,13 @@ export async function revertPfEvaluationUsage(userId: string) {
   )
 }
 
-/** Garante limite de publicação no plano free (ignora republicação). */
+/**
+ * PF free pode anunciar/criar quantos imóveis quiser — sem limite de publicação.
+ * Mantido para compatibilidade de chamadas existentes.
+ */
 export async function assertPfCanPublish(
-  userId: string,
-  evaluationId?: string
+  _userId: string,
+  _evaluationId?: string
 ) {
-  if (evaluationId) {
-    const existing = await pool.query(
-      `SELECT id FROM leads WHERE external_id = $1 LIMIT 1`,
-      [`evaluation-${evaluationId}`]
-    )
-    if (existing.rowCount) return
-  }
-
-  const paid = await hasActivePaidSubscription(userId)
-  if (paid) return
-
-  const published = await countPfPublishesThisMonth(userId)
-  if (published >= PF_FREE_MONTHLY_PUBLISH_CAP) {
-    throw new PfPublishCapError()
-  }
+  return
 }

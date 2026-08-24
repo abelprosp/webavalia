@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Bookmark,
@@ -9,8 +9,16 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react'
-import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
+import { toast } from 'sonner'
+import {
+  DEFAULT_EVALUATION_FORM_VALUES,
+  formatCurrency,
+  normalizeEvaluationResult,
+  type EvaluationFormValues,
+  type EvaluationResult,
+} from '@/features/avaliacao/data/evaluation-engine'
 import { propertyTypes } from '@/features/avaliacao/data/criteria'
+import { fetchMyEvaluations } from '@/lib/evaluation-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,6 +41,7 @@ import { PageHeader } from '@/components/flux/page-header'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useCrmStore } from '@/stores/crm-store'
 import { crmStatuses, getCrmStatusLabel, type CrmEvaluation } from './data/schema'
 import { CrmEvaluationDetail } from './components/crm-evaluation-detail'
@@ -41,6 +50,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function getPropertyTypeLabel(value: string) {
   return propertyTypes.find((t) => t.value === value)?.label ?? value
+}
+
+function mapServerEvaluationToCrm(item: {
+  id: string
+  propertyInput: Record<string, unknown>
+  evaluationResult: Record<string, unknown>
+  createdAt: string
+}): CrmEvaluation {
+  const property = {
+    ...DEFAULT_EVALUATION_FORM_VALUES,
+    ...(item.propertyInput as Partial<EvaluationFormValues>),
+  } as EvaluationFormValues
+
+  const rawResult = item.evaluationResult as Partial<EvaluationResult> & {
+    estimatedValue?: number
+    evaluatedAt?: string | Date
+  }
+
+  const result = normalizeEvaluationResult({
+    ...rawResult,
+    estimatedValue: Number(rawResult.estimatedValue ?? 0),
+    evaluatedAt: new Date(
+      (rawResult.evaluatedAt as string | Date | undefined) ?? item.createdAt
+    ),
+  })
+
+  return {
+    id: item.id,
+    status: 'novo',
+    property,
+    result: {
+      ...result,
+      evaluatedAt: result.evaluatedAt.toISOString(),
+    },
+    savedAt: item.createdAt,
+  }
 }
 
 function statusVariant(
@@ -60,9 +105,54 @@ function statusVariant(
 }
 
 export function Crm({ personalMode = false }: { personalMode?: boolean }) {
-  const evaluations = useCrmStore((s) => s.evaluations)
+  const localEvaluations = useCrmStore((s) => s.evaluations)
+  const [serverEvaluations, setServerEvaluations] = useState<CrmEvaluation[]>([])
+  const [loadingServer, setLoadingServer] = useState(personalMode)
   const [selected, setSelected] = useState<CrmEvaluation | null>(null)
   const [activeTab, setActiveTab] = useState<'pipeline' | 'evaluations'>('pipeline')
+
+  useEffect(() => {
+    if (!personalMode) return
+    let cancelled = false
+
+    async function load() {
+      setLoadingServer(true)
+      try {
+        const items = await fetchMyEvaluations()
+        if (cancelled) return
+        setServerEvaluations(items.map(mapServerEvaluationToCrm))
+      } catch {
+        if (!cancelled) {
+          toast.error('Não foi possível carregar suas avaliações do servidor.')
+        }
+      } finally {
+        if (!cancelled) setLoadingServer(false)
+      }
+    }
+
+    void load()
+
+    const onUpdated = () => {
+      void load()
+    }
+    window.addEventListener('evaluations:updated', onUpdated)
+    return () => {
+      cancelled = true
+      window.removeEventListener('evaluations:updated', onUpdated)
+    }
+  }, [personalMode])
+
+  const evaluations = personalMode
+    ? (() => {
+        const byId = new Map<string, CrmEvaluation>()
+        for (const item of localEvaluations) byId.set(item.id, item)
+        for (const item of serverEvaluations) byId.set(item.id, item)
+        return Array.from(byId.values()).sort(
+          (a, b) =>
+            new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+        )
+      })()
+    : localEvaluations
 
   const stats = useMemo(() => {
     const byStatus = Object.fromEntries(
@@ -80,6 +170,19 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
       fechado: byStatus.fechado,
     }
   }, [evaluations])
+
+  if (personalMode && loadingServer && evaluations.length === 0) {
+    return (
+      <>
+        <Header fixed>
+          <HeaderActions />
+        </Header>
+        <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+          <PageSkeleton rows={6} />
+        </Main>
+      </>
+    )
+  }
 
   const evaluationsSection = (
     <FluxCard>
@@ -101,7 +204,7 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
           title='Nenhuma avaliação salva'
           description={
             personalMode
-              ? 'Após avaliar um imóvel, use "Salvar em minhas avaliações" para guardar o resultado aqui.'
+              ? 'Suas avaliações aparecem aqui automaticamente após concluir uma análise com IA.'
               : 'Após avaliar um imóvel, use "Salvar no CRM" para guardar o resultado no pipeline e no histórico.'
           }
           actions={

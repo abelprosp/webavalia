@@ -86,6 +86,9 @@ export const evaluationFormSchema = z.object({
     .optional(),
   askingPrice: z.number().optional(),
   notes: z.string().optional(),
+  floor: z.number().int().min(0).max(200).optional(),
+  hasMezzanine: z.boolean().optional(),
+  structureType: z.enum(['alvenaria', 'pre-moldado']).optional(),
 }).superRefine((data, ctx) => {
   if (
     data.amenities.includes(HIGH_END_FURNITURE_AMENITY) &&
@@ -95,6 +98,39 @@ export const evaluationFormSchema = z.object({
       code: 'custom',
       path: ['highEndFurnitureValue'],
       message: 'Informe o valor estimado de todos os móveis juntos.',
+    })
+  }
+
+  const pavilionTypes = ['galpao', 'galpao-industrial', 'barracao']
+  if (pavilionTypes.includes(data.propertyType) && !data.structureType) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['structureType'],
+      message: 'Informe se a estrutura é Alvenaria ou Pré-moldado.',
+    })
+  }
+
+  if (data.propertyType === 'loja' && data.hasMezzanine == null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['hasMezzanine'],
+      message: 'Informe se o imóvel tem mezanino.',
+    })
+  }
+
+  const floorTypes = [
+    'apartamento',
+    'cobertura',
+    'studio',
+    'kitnet',
+    'loft',
+    'flat',
+  ]
+  if (floorTypes.includes(data.propertyType) && data.floor == null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['floor'],
+      message: 'Informe o andar do imóvel.',
     })
   }
 })
@@ -123,6 +159,9 @@ export const DEFAULT_EVALUATION_FORM_VALUES: EvaluationFormValues = {
   highEndFurnitureValue: undefined,
   askingPrice: undefined,
   notes: '',
+  floor: undefined,
+  hasMezzanine: undefined,
+  structureType: undefined,
 }
 
 export type ComparableListing = {
@@ -303,6 +342,12 @@ export type EvaluationResult = {
   valuePerSqm: number
   score: number
   scoreLabel: string
+  finishScore?: number
+  conservationScore?: number
+  locationScore?: number
+  constructionScore?: number
+  appreciationScore?: number
+  opportunityScore?: number
   criteriaScores: { id: string; label: string; score: number; weight: number }[]
   aiInsights: string[]
   marketAnalysis: MarketAnalysis

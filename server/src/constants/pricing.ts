@@ -12,7 +12,8 @@ export type PlanDefinition = {
 }
 
 export const LEAD_UNLOCK_CREDIT_COST = 2
-export const EVALUATION_CREDIT_COST = 1
+/** Custo em créditos por avaliação IA (PF após cotas grátis e PJ sempre). */
+export const EVALUATION_CREDIT_COST = 5
 
 /** Pacotes PIX permitidos (créditos) e desconto no maior. */
 export const PIX_ALLOWED_PACKS = [5, 10, 20] as const

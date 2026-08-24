@@ -4,6 +4,7 @@ import {
   getLeadInterestLabel,
   getListingIntentFromInput,
 } from '../utils/rent-estimate.js'
+import { computeRadarScoresFromEvaluation } from '../utils/opportunity-score.js'
 import { getSetting } from './settings-service.js'
 import {
   countLeadUnlocks,
@@ -79,6 +80,44 @@ export async function savePropertyEvaluation(input: {
   )
 
   return result.rows[0].id
+}
+
+/**
+ * Lista avaliações do usuário: dono (user_id) OU captador do lead vinculado.
+ * Persistência é síncrona (sem fila Redis) — a listagem não depende de jobs.
+ */
+export async function listMyEvaluations(userId: string, limit = 100) {
+  const result = await pool.query<{
+    id: string
+    property_input: StoredPropertyInput
+    evaluation_result: StoredEvaluationResult
+    created_at: Date | string
+  }>(
+    `SELECT e.id, e.property_input, e.evaluation_result, e.created_at
+     FROM property_evaluations e
+     WHERE e.user_id = $1
+        OR EXISTS (
+          SELECT 1
+          FROM leads l
+          JOIN lead_unlocks lu ON lu.lead_id = l.id AND lu.user_id = $1
+          WHERE l.external_id = 'evaluation-' || e.id::text
+             OR (l.raw_payload->>'evaluationId') = e.id::text
+        )
+     ORDER BY e.created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  )
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    propertyInput: row.property_input,
+    evaluationResult: row.evaluation_result,
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at),
+    ownerId: userId,
+  }))
 }
 
 export async function submitEvaluationFeedback(input: {
@@ -173,6 +212,27 @@ export async function publishEvaluationAsLead(input: {
         )
       : undefined
 
+  const radarScores = computeRadarScoresFromEvaluation(
+    evaluation.evaluation_result as {
+      score?: number
+      criteriaScores?: { id: string; score: number }[]
+      marketAppreciationAnalysis?: {
+        annualGrowthEstimatePercent?: number | null
+        trend?: string
+      } | null
+      finishScore?: number
+      conservationScore?: number
+      locationScore?: number
+      constructionScore?: number
+      appreciationScore?: number
+    }
+  )
+
+  const evaluationResultWithScores = {
+    ...evaluation.evaluation_result,
+    ...radarScores,
+  }
+
   return createLead({
     externalId: `evaluation-${input.evaluationId}`,
     name: evaluation.name,
@@ -187,12 +247,18 @@ export async function publishEvaluationAsLead(input: {
     location: getPublicLocation(evaluation.property_input),
     source: 'owner_evaluation',
     propertyInput: evaluation.property_input,
-    evaluationResult: evaluation.evaluation_result,
+    evaluationResult: evaluationResultWithScores,
+    opportunityScore: radarScores.opportunityScore,
+    appreciationScore: radarScores.appreciationScore,
     rawPayload: {
       evaluationId: input.evaluationId,
       ownerUserId: input.userId,
+      ownerId: input.userId,
       consent: true,
       consentedAt: new Date().toISOString(),
+      opportunityScore: radarScores.opportunityScore,
+      appreciationScore: radarScores.appreciationScore,
+      radarScores,
     },
   }).then(async (result) => {
     if (
@@ -211,12 +277,18 @@ export async function publishEvaluationAsLead(input: {
         budget,
         location: getPublicLocation(evaluation.property_input),
         propertyInput: evaluation.property_input,
-        evaluationResult: evaluation.evaluation_result,
+        evaluationResult: evaluationResultWithScores,
+        opportunityScore: radarScores.opportunityScore,
+        appreciationScore: radarScores.appreciationScore,
         rawPayload: {
           evaluationId: input.evaluationId,
           ownerUserId: input.userId,
+          ownerId: input.userId,
           consent: true,
           consentedAt: new Date().toISOString(),
+          opportunityScore: radarScores.opportunityScore,
+          appreciationScore: radarScores.appreciationScore,
+          radarScores,
         },
       })
       return { lead: reactivated, created: true }

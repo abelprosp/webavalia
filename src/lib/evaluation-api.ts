@@ -140,3 +140,19 @@ export async function analyzeProperty(
     gamification: data.gamification,
   }
 }
+
+export type MyEvaluationItem = {
+  id: string
+  propertyInput: Record<string, unknown>
+  evaluationResult: Record<string, unknown>
+  createdAt: string
+  ownerId: string
+}
+
+/** Lista avaliações do servidor (dono ou captador). */
+export async function fetchMyEvaluations() {
+  const { data } = await api.get<{ evaluations: MyEvaluationItem[] }>(
+    '/evaluation/mine'
+  )
+  return data.evaluations
+}

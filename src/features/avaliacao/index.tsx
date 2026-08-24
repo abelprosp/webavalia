@@ -7,6 +7,7 @@ import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { analyzeProperty } from '@/lib/evaluation-api'
 import { showGamificationUpdates } from '@/features/gamification/lib/show-gamification-toasts'
+import { emitMyEvaluationsUpdated } from '@/stores/credits-store'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -45,12 +46,16 @@ import {
   conservationStates,
   finishLevels,
   furnishingOptions,
+  isApartmentLikePropertyType,
   isLandOnlyPropertyType,
+  isPavilionPropertyType,
+  isStoreLikePropertyType,
   HIGH_END_FURNITURE_AMENITY,
   propertyAmenities,
   propertyTypeGroups,
   showsLotAreaField,
   standardLevels,
+  structureTypeOptions,
   viewTypes,
 } from './data/criteria'
 import {
@@ -192,6 +197,9 @@ export function Avaliacao() {
   )
   const showLotArea = showsLotAreaField(propertyType)
   const isLandOnly = isLandOnlyPropertyType(propertyType)
+  const showFloor = isApartmentLikePropertyType(propertyType)
+  const showMezzanine = isStoreLikePropertyType(propertyType)
+  const showStructure = isPavilionPropertyType(propertyType)
   const areaLabel = isLandOnly
     ? 'Metragem do terreno (m²)'
     : 'Área útil / construída (m²)'
@@ -230,7 +238,16 @@ export function Avaliacao() {
 
   async function advanceWizardStep() {
     const fieldsByStep: (keyof EvaluationFormValues)[][] = [
-      ['listingIntent', 'cep', 'address', 'propertyType', 'area'],
+      [
+        'listingIntent',
+        'cep',
+        'address',
+        'propertyType',
+        'area',
+        'floor',
+        'hasMezzanine',
+        'structureType',
+      ],
       ['standardLevel', 'conservation'],
       [],
     ]
@@ -245,10 +262,10 @@ export function Avaliacao() {
       return
     }
 
-    if (isBroker && credits <= 0) {
+    if (isBroker && credits < 5) {
       toast.error(
         CREDITS_AND_PLANS_ENABLED
-          ? 'Você não tem créditos suficientes. Compre créditos em Configurações → Créditos.'
+          ? 'Você não tem créditos suficientes (5 por avaliação). Compre créditos em Configurações → Créditos.'
           : 'Você não tem créditos suficientes. A compra de créditos estará disponível em breve.'
       )
       return
@@ -278,6 +295,7 @@ export function Avaliacao() {
       setFeedbackModeEnabled(modeEnabled)
       updateCredits(responseCredits ?? trialEvaluationsRemaining)
       recordEvaluation()
+      emitMyEvaluationsUpdated()
       showGamificationUpdates(gamification)
       if (pfCreditsEarned && pfCreditsEarned > 0) {
         toast.success(
@@ -294,6 +312,10 @@ export function Avaliacao() {
       if (error instanceof AxiosError && error.response?.status === 403) {
         updateCredits(0)
       }
+      if (error instanceof AxiosError && error.response?.status === 402) {
+        const balance = (error.response?.data as { credits?: number })?.credits
+        if (typeof balance === 'number') updateCredits(balance)
+      }
       const message =
         error instanceof AxiosError
           ? (error.response?.data as { message?: string })?.message
@@ -304,7 +326,7 @@ export function Avaliacao() {
         error instanceof AxiosError &&
         (error.response?.status === 402 || error.response?.status === 429)
       ) {
-        toast.error(message ?? 'Limite de avaliações atingido.', {
+        toast.error(message ?? 'Créditos insuficientes para avaliar.', {
           action: CREDITS_AND_PLANS_ENABLED
             ? {
                 label: 'Ver planos',
@@ -526,8 +548,19 @@ export function Avaliacao() {
                         <FormItem>
                           <FormLabel>Tipo</FormLabel>
                           <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              if (!isApartmentLikePropertyType(value)) {
+                                form.setValue('floor', undefined)
+                              }
+                              if (!isStoreLikePropertyType(value)) {
+                                form.setValue('hasMezzanine', undefined)
+                              }
+                              if (!isPavilionPropertyType(value)) {
+                                form.setValue('structureType', undefined)
+                              }
+                            }}
+                            value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -583,6 +616,103 @@ export function Avaliacao() {
                       )}
                     />
                   </div>
+
+                  {(showFloor || showMezzanine || showStructure) && (
+                    <div className='grid gap-4 sm:grid-cols-2'>
+                      {showFloor && (
+                        <FormField
+                          control={form.control}
+                          name='floor'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Andar</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type='number'
+                                  min={0}
+                                  placeholder='Ex: 3'
+                                  value={field.value ?? ''}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ''
+                                        ? undefined
+                                        : Number(e.target.value)
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Informe o andar do apartamento
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      {showMezzanine && (
+                        <FormField
+                          control={form.control}
+                          name='hasMezzanine'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tem mezanino?</FormLabel>
+                              <div className='flex gap-2'>
+                                <Button
+                                  type='button'
+                                  variant={
+                                    field.value === true ? 'default' : 'outline'
+                                  }
+                                  onClick={() => field.onChange(true)}
+                                >
+                                  Sim
+                                </Button>
+                                <Button
+                                  type='button'
+                                  variant={
+                                    field.value === false ? 'default' : 'outline'
+                                  }
+                                  onClick={() => field.onChange(false)}
+                                >
+                                  Não
+                                </Button>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      {showStructure && (
+                        <FormField
+                          control={form.control}
+                          name='structureType'
+                          render={({ field }) => (
+                            <FormItem className='sm:col-span-2'>
+                              <FormLabel>Estrutura do pavilhão</FormLabel>
+                              <div className='flex flex-wrap gap-2'>
+                                {structureTypeOptions.map((option) => (
+                                  <Button
+                                    key={option.value}
+                                    type='button'
+                                    variant={
+                                      field.value === option.value
+                                        ? 'default'
+                                        : 'outline'
+                                    }
+                                    onClick={() => field.onChange(option.value)}
+                                  >
+                                    {option.label}
+                                  </Button>
+                                ))}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   <div className='grid gap-4 sm:grid-cols-2'>
                     <FormField

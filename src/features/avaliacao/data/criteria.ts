@@ -5,6 +5,7 @@ export const propertyTypeGroups = [
       { label: 'Apartamento', value: 'apartamento' },
       { label: 'Casa', value: 'casa' },
       { label: 'Casa em condomínio', value: 'casa-condominio' },
+      { label: 'Casa geminada', value: 'casa-geminada' },
       { label: 'Cobertura', value: 'cobertura' },
       { label: 'Studio', value: 'studio' },
       { label: 'Kitnet', value: 'kitnet' },
@@ -39,7 +40,7 @@ export const propertyTypeGroups = [
   {
     label: 'Industrial',
     types: [
-      { label: 'Galpão industrial', value: 'galpao-industrial' },
+      { label: 'Pavilhão', value: 'galpao-industrial' },
       { label: 'Terreno industrial', value: 'terreno-industrial' },
       { label: 'Área industrial', value: 'area-industrial' },
     ],
@@ -58,6 +59,42 @@ export const propertyTypeGroups = [
 export const propertyTypes = propertyTypeGroups.flatMap((group) =>
   group.types.map((type) => ({ ...type }))
 )
+
+export const structureTypeOptions = [
+  { label: 'Alvenaria', value: 'alvenaria' },
+  { label: 'Pré-moldado', value: 'pre-moldado' },
+] as const
+
+export type StructureType = (typeof structureTypeOptions)[number]['value']
+
+/** Apartamento e derivados — pedem campo Andar. */
+export const apartmentLikePropertyTypes = [
+  'apartamento',
+  'cobertura',
+  'studio',
+  'kitnet',
+  'loft',
+  'flat',
+] as const
+
+/** Pavilhão / galpão — pedem Alvenaria ou Pré-moldado. */
+export const pavilionPropertyTypes = [
+  'galpao',
+  'galpao-industrial',
+  'barracao',
+] as const
+
+export function isApartmentLikePropertyType(type: string) {
+  return (apartmentLikePropertyTypes as readonly string[]).includes(type)
+}
+
+export function isPavilionPropertyType(type: string) {
+  return (pavilionPropertyTypes as readonly string[]).includes(type)
+}
+
+export function isStoreLikePropertyType(type: string) {
+  return type === 'loja'
+}
 
 export const buildingAgeOptions = [
   { label: 'Mais de 1 ano', value: 'mais-1' },
@@ -79,7 +116,7 @@ export function isLandOnlyPropertyType(type: string) {
 }
 
 export function showsLotAreaField(type: string) {
-  if (type === 'apartamento') return false
+  if (isApartmentLikePropertyType(type)) return false
   if (isLandOnlyPropertyType(type)) return false
   return true
 }

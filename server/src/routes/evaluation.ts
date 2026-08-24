@@ -21,19 +21,23 @@ import {
   reserveTrialEvaluation,
   TrialExhaustedError,
 } from '../services/trial-service.js'
+import { EVALUATION_CREDIT_COST } from '../constants/pricing.js'
+import { PF_FREE_EVALUATIONS } from '../constants/pf-credits.js'
 import {
   assertPfCanPublish,
   grantPfEvaluationReward,
   grantPfPublishReward,
   PfDailyCapError,
-  PfMonthlyCapError,
+  PfInsufficientCreditsError,
   PfPublishCapError,
   recordPfEvaluationUsage,
   revertPfEvaluationUsage,
 } from '../services/pf-credits-service.js'
+import { InsufficientCreditsError } from '../services/credits-service.js'
 import {
   isEvaluationFeedbackModeEnabled,
   getEvaluationLeadStatus,
+  listMyEvaluations,
   publishEvaluationAsLead,
   savePropertyEvaluation,
   submitEvaluationFeedback,
@@ -100,6 +104,9 @@ const evaluationSchema = z.object({
   highEndFurnitureValue: z.number().min(1).optional(),
   askingPrice: z.number().optional(),
   notes: z.string().optional(),
+  floor: z.number().int().min(0).max(200).optional(),
+  hasMezzanine: z.boolean().optional(),
+  structureType: z.enum(['alvenaria', 'pre-moldado']).optional(),
   photos: z.array(photoSchema).max(5).optional(),
 }).superRefine((data, ctx) => {
   if (
@@ -110,6 +117,32 @@ const evaluationSchema = z.object({
       code: 'custom',
       path: ['highEndFurnitureValue'],
       message: 'Informe o valor estimado de todos os móveis juntos.',
+    })
+  }
+
+  const pavilionTypes = ['galpao', 'galpao-industrial', 'barracao']
+  if (pavilionTypes.includes(data.propertyType) && !data.structureType) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['structureType'],
+      message: 'Informe se a estrutura é Alvenaria ou Pré-moldado.',
+    })
+  }
+
+  if (data.propertyType === 'loja' && data.hasMezzanine == null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['hasMezzanine'],
+      message: 'Informe se o imóvel tem mezanino.',
+    })
+  }
+
+  const floorTypes = ['apartamento', 'cobertura', 'studio', 'kitnet', 'loft', 'flat']
+  if (floorTypes.includes(data.propertyType) && data.floor == null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['floor'],
+      message: 'Informe o andar do imóvel.',
     })
   }
 })
@@ -142,6 +175,19 @@ router.get('/config', requireAuth, async (_req, res) => {
   return res.json({ feedbackModeEnabled })
 })
 
+/** Minhas avaliações: dono do imóvel OU captador do lead. */
+router.get('/mine', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const evaluations = await listMyEvaluations(req.user!.id)
+    return res.json({ evaluations })
+  } catch (error) {
+    console.error('[evaluation/mine]', error)
+    return res.status(500).json({
+      message: 'Erro ao listar avaliações.',
+    })
+  }
+})
+
 router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequest, res) => {
   if (!config.openaiApiKey) {
     return res.status(503).json({
@@ -165,31 +211,39 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
   const userId = req.user!.id
   const isPfAccount = req.user!.accountType === 'pf'
   let trialEvaluationsRemaining: number
+  let chargedCredits = 0
+  let freeEvaluationsRemaining: number | undefined
 
   try {
     if (isPfAccount) {
-      trialEvaluationsRemaining = await recordPfEvaluationUsage(userId)
+      const pfUsage = await recordPfEvaluationUsage(userId)
+      trialEvaluationsRemaining = pfUsage.credits
+      chargedCredits = pfUsage.chargedCredits
+      freeEvaluationsRemaining = pfUsage.freeEvaluationsRemaining
     } else {
       trialEvaluationsRemaining = await reserveTrialEvaluation(userId)
+      chargedCredits = EVALUATION_CREDIT_COST
     }
   } catch (error) {
-    if (error instanceof TrialExhaustedError) {
-      return res.status(403).json({
+    if (
+      error instanceof TrialExhaustedError ||
+      error instanceof InsufficientCreditsError ||
+      error instanceof PfInsufficientCreditsError
+    ) {
+      return res.status(402).json({
         message: error.message,
-        credits: 0,
-        trialEvaluationsRemaining: 0,
+        code: 'INSUFFICIENT_CREDITS',
+        credits: 'balance' in error ? error.balance : 0,
+        trialEvaluationsRemaining: 'balance' in error ? error.balance : 0,
+        required:
+          'required' in error ? error.required : EVALUATION_CREDIT_COST,
+        freeEvaluationsCap: isPfAccount ? PF_FREE_EVALUATIONS : undefined,
       })
     }
     if (error instanceof PfDailyCapError) {
       return res.status(429).json({
         message: error.message,
         code: 'PF_DAILY_CAP',
-      })
-    }
-    if (error instanceof PfMonthlyCapError) {
-      return res.status(402).json({
-        message: error.message,
-        code: error.code,
       })
     }
     throw error
@@ -223,6 +277,8 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
       feedbackModeEnabled,
       credits,
       trialEvaluationsRemaining: credits,
+      chargedCredits,
+      freeEvaluationsRemaining,
       pfCreditsEarned: isPfAccount ? pfCreditsEarned : undefined,
       gamification: {
         level: gamification.level,
@@ -235,7 +291,7 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
     })
   } catch (error) {
     if (isPfAccount) {
-      await revertPfEvaluationUsage(userId)
+      await revertPfEvaluationUsage(userId, chargedCredits)
     } else {
       await refundTrialEvaluation(userId)
     }

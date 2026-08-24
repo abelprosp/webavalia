@@ -2,6 +2,7 @@ import type { EvaluationRequest } from '../types/evaluation.js'
 import { getEvaluationArea } from '../constants/evaluation-defaults.js'
 import { computeSaleScenarios } from '../utils/sale-scenarios.js'
 import { sanitizeEvaluationComparables } from '../utils/comparable-location-filter.js'
+import { enrichEvaluationWithRadarScores } from '../utils/opportunity-score.js'
 import { evaluateWithOpenAI } from './openai-evaluator.js'
 import { applyNbr14653ToEvaluation } from './nbr-14653-service.js'
 import {
@@ -46,7 +47,7 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
   const listingIntent = input.listingIntent ?? 'vender'
   const evaluationArea = getEvaluationArea(input)
 
-  return {
+  return enrichEvaluationWithRadarScores({
     ...withNbr,
     saleScenarios:
       listingIntent === 'vender'
@@ -60,5 +61,5 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
       neighborhoodResultsCount: neighborhoodResults.length,
       appreciationResultsCount: appreciationResults.length,
     },
-  }
+  })
 }

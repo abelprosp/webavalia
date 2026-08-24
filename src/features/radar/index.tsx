@@ -56,18 +56,22 @@ import {
   updateRadarOpportunityStatus,
   type CaptureOpportunity,
 } from '@/lib/capture-radar-api'
-import { syncCreditsFromUser, useCreditsStore } from '@/stores/credits-store'
+import { useAuthStore } from '@/stores/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
 
 const PROPERTY_TYPES = [
   { value: 'apartamento', label: 'Apartamento' },
   { value: 'casa', label: 'Casa' },
   { value: 'casa-condominio', label: 'Casa em condomínio' },
+  { value: 'casa-geminada', label: 'Casa geminada' },
   { value: 'cobertura', label: 'Cobertura' },
   { value: 'studio', label: 'Studio / kitnet' },
   { value: 'sobrado', label: 'Sobrado' },
   { value: 'terreno', label: 'Terreno / lote' },
   { value: 'chacara', label: 'Chácara / sítio' },
   { value: 'comercial', label: 'Comercial' },
+  { value: 'loja', label: 'Loja' },
+  { value: 'galpao-industrial', label: 'Pavilhão' },
 ] as const
 
 const UF_LIST = [
@@ -107,6 +111,7 @@ function statusLabel(status: CaptureOpportunity['status']) {
 export function Radar() {
   const navigate = useNavigate()
   const credits = useCreditsStore((state) => state.credits)
+  const updateCredits = useAuthStore((s) => s.auth.updateCredits)
 
   const [city, setCity] = useState('')
   const [uf, setUf] = useState('RS')
@@ -177,7 +182,7 @@ export function Radar() {
         propertyType,
         listingIntent,
       })
-      syncCreditsFromUser(result.creditsRemaining)
+      updateCredits(result.creditsRemaining)
       setLastScanInfo({
         found: result.found,
         regionValuePerSqm: result.regionValuePerSqm,

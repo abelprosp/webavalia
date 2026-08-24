@@ -27,6 +27,8 @@ export type LeadRow = {
   property_input: Record<string, unknown> | null
   evaluation_result: Record<string, unknown> | null
   raw_payload: Record<string, unknown>
+  opportunity_score: number | null
+  appreciation_score: number | null
   created_at: Date | string
 }
 
@@ -103,6 +105,18 @@ function mapLeadForUser(
     estimatedValue,
     displayValue,
     hasEvaluation: Boolean(row.evaluation_result),
+    opportunityScore:
+      row.opportunity_score != null
+        ? Number(row.opportunity_score)
+        : typeof row.evaluation_result?.opportunityScore === 'number'
+          ? row.evaluation_result.opportunityScore
+          : null,
+    appreciationScore:
+      row.appreciation_score != null
+        ? Number(row.appreciation_score)
+        : typeof row.evaluation_result?.appreciationScore === 'number'
+          ? row.evaluation_result.appreciationScore
+          : null,
     propertyInput: previewPropertyInput,
     evaluationResult: unlocked
       ? row.evaluation_result
@@ -123,13 +137,16 @@ export async function createLead(input: {
   propertyInput?: Record<string, unknown>
   evaluationResult?: Record<string, unknown>
   rawPayload?: Record<string, unknown>
+  opportunityScore?: number | null
+  appreciationScore?: number | null
 }) {
   const result = await pool.query<LeadRow>(
     `INSERT INTO leads (
        external_id, name, phone, email, property_type, interest, budget,
-       location, source, property_input, evaluation_result, raw_payload
+       location, source, property_input, evaluation_result, raw_payload,
+       opportunity_score, appreciation_score
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13, $14)
      ON CONFLICT (external_id) DO NOTHING
      RETURNING *`,
     [
@@ -145,6 +162,8 @@ export async function createLead(input: {
       input.propertyInput ? JSON.stringify(input.propertyInput) : null,
       input.evaluationResult ? JSON.stringify(input.evaluationResult) : null,
       JSON.stringify(input.rawPayload ?? {}),
+      input.opportunityScore ?? null,
+      input.appreciationScore ?? null,
     ]
   )
 
@@ -230,6 +249,8 @@ export async function reactivateLead(
     propertyInput?: Record<string, unknown>
     evaluationResult?: Record<string, unknown>
     rawPayload?: Record<string, unknown>
+    opportunityScore?: number | null
+    appreciationScore?: number | null
   }
 ) {
   const result = await pool.query<LeadRow>(
@@ -244,7 +265,9 @@ export async function reactivateLead(
          location = COALESCE($8, location),
          property_input = COALESCE($9::jsonb, property_input),
          evaluation_result = COALESCE($10::jsonb, evaluation_result),
-         raw_payload = COALESCE($11::jsonb, raw_payload) || $12::jsonb
+         raw_payload = COALESCE($11::jsonb, raw_payload) || $12::jsonb,
+         opportunity_score = COALESCE($13, opportunity_score),
+         appreciation_score = COALESCE($14, appreciation_score)
      WHERE id = $1 AND status = 'indisponivel'
      RETURNING *`,
     [
@@ -262,6 +285,8 @@ export async function reactivateLead(
       JSON.stringify({
         reactivatedAt: new Date().toISOString(),
       }),
+      input.opportunityScore ?? null,
+      input.appreciationScore ?? null,
     ]
   )
 
@@ -272,14 +297,27 @@ export async function reactivateLead(
   return result.rows[0]
 }
 
-export async function listLeadsForUser(userId: string, limit = 50) {
+export async function listLeadsForUser(
+  userId: string,
+  options: { limit?: number; sort?: 'recent' | 'investment' | 'opportunity' } = {}
+) {
+  const limit = options.limit ?? 50
+  const sort = options.sort ?? 'recent'
+
+  const orderBy =
+    sort === 'investment'
+      ? 'l.appreciation_score DESC NULLS LAST, l.created_at DESC'
+      : sort === 'opportunity'
+        ? 'l.opportunity_score DESC NULLS LAST, l.created_at DESC'
+        : 'l.created_at DESC'
+
   const result = await pool.query<LeadRow & { unlocked: boolean }>(
     `SELECT l.*, (lu.id IS NOT NULL) AS unlocked
      FROM leads l
      LEFT JOIN lead_unlocks lu
        ON lu.lead_id = l.id AND lu.user_id = $1
      WHERE ${ACTIVE_LEAD_STATUS_FILTER}
-     ORDER BY l.created_at DESC
+     ORDER BY ${orderBy}
      LIMIT $2`,
     [userId, limit]
   )
@@ -354,7 +392,12 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
     }
 
     if (userResult.rows[0].credits < LEAD_UNLOCK_COST) {
-      throw new Error('Créditos insuficientes.')
+      const err = new Error(
+        `Créditos insuficientes. Necessário ${LEAD_UNLOCK_COST} créditos para desbloquear.`
+      ) as Error & { code: string; balance: number }
+      err.code = 'INSUFFICIENT_CREDITS'
+      err.balance = userResult.rows[0].credits
+      throw err
     }
 
     await client.query(
@@ -365,12 +408,20 @@ export async function unlockLeadForUser(userId: string, leadId: string) {
 
     const updatedCredits = await client.query<{ credits: number }>(
       `UPDATE users
-       SET credits = GREATEST(credits - $2, 0),
+       SET credits = credits - $2,
            updated_at = NOW()
-       WHERE id = $1
+       WHERE id = $1 AND credits >= $2
        RETURNING credits`,
       [userId, LEAD_UNLOCK_COST]
     )
+
+    if (!updatedCredits.rowCount) {
+      const err = new Error('Créditos insuficientes.') as Error & {
+        code: string
+      }
+      err.code = 'INSUFFICIENT_CREDITS'
+      throw err
+    }
 
     await client.query(
       `INSERT INTO credit_transactions (user_id, amount, type, description)

@@ -45,6 +45,7 @@ const RADAR_TYPE_LABELS: Record<string, string> = {
   apartamento: 'apartamento',
   casa: 'casa',
   'casa-condominio': 'casa em condomínio',
+  'casa-geminada': 'casa geminada',
   cobertura: 'cobertura',
   studio: 'studio',
   kitnet: 'kitnet',
@@ -56,6 +57,7 @@ const RADAR_TYPE_LABELS: Record<string, string> = {
   comercial: 'sala comercial',
   loja: 'loja',
   galpao: 'galpão',
+  'galpao-industrial': 'pavilhão',
 }
 
 function getTypeLabel(propertyType: string) {

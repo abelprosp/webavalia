@@ -20,6 +20,11 @@ const aiResponseSchema = z.object({
   valuePerSqm: z.number(),
   score: z.number().min(0).max(100),
   scoreLabel: z.string(),
+  finishScore: z.number().min(0).max(100).optional(),
+  conservationScore: z.number().min(0).max(100).optional(),
+  locationScore: z.number().min(0).max(100).optional(),
+  constructionScore: z.number().min(0).max(100).optional(),
+  appreciationScore: z.number().min(0).max(100).optional(),
   criteriaScores: z.array(
     z.object({
       id: z.string(),
@@ -287,9 +292,18 @@ Dados do imóvel:
 - Acabamento: ${FINISH_LEVEL_LABELS[input.finishLevel] ?? input.finishLevel}
 - Condomínio: ${CONDOMINIUM_LEVEL_LABELS[input.condominiumLevel] ?? input.condominiumLevel}
 - Vista: ${input.viewType ? (VIEW_TYPE_LABELS[input.viewType] ?? input.viewType) : 'não informada'}
+- Andar: ${input.floor != null ? `${input.floor}º andar` : 'não informado'}
+- Mezanino: ${input.hasMezzanine == null ? 'não informado' : input.hasMezzanine ? 'sim' : 'não'}
+- Estrutura (pavilhão/galpão): ${
+  input.structureType === 'alvenaria'
+    ? 'Alvenaria'
+    : input.structureType === 'pre-moldado'
+      ? 'Pré-moldado'
+      : 'não informada'
+}
 - Diferenciais: ${formatAmenities(input.amenities)}
 - Valor estimado dos móveis alto padrão: ${input.highEndFurnitureValue ? `R$ ${input.highEndFurnitureValue.toLocaleString('pt-BR')}` : 'não informado'}
-- Valor pedido: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
+- Valor pedido / desejado pelo proprietário: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
 - Observações: ${input.notes || 'nenhuma'}
 `
 
@@ -318,11 +332,13 @@ REGRAS ESPECÍFICAS PARA TERRENO/LOTE:
   const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
 ${locationRuleBlock}
 AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
-1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, amenidades, móveis alto padrão'}, valor pedido e observações) na homogeneização e no score final.
+1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, andar, mezanino, estrutura, amenidades, móveis alto padrão'}, valor pedido/desejado e observações) na homogeneização e no score final.
 2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
 3. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
 4. O score (0-100) e criteriaScores devem refletir perfil do bairro e tendência de valorização, além das características ${isLand ? 'do terreno e zoneamento' : 'físicas do imóvel'}.
+4b. OBRIGATÓRIO — scores do radar (0-100, inteiros, NÃO cosméticos/vazios): finishScore (acabamento), conservationScore (conservação), constructionScore (construção/padrão), locationScore (localização), appreciationScore (valorização). Eles DEVEM ser coerentes com criteriaScores e marketAppreciationAnalysis.
 5. Inclua em aiInsights conclusões acionáveis sobre valorização e diferenciais ${isLand ? 'do terreno' : 'do imóvel'}.
+5b. Considere explicitamente o valor desejado/pedido pelo proprietário (askingPrice) na calibração — não ignore.
 ${landMethodologyBlock}
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado ${isLand ? 'do terreno avaliando' : 'do imóvel avaliando'}.
@@ -348,6 +364,11 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
   "valuePerSqm": number,
   "score": number (0-100),
   "scoreLabel": "Excelente" | "Bom" | "Médio" | "Regular",
+  "finishScore": number (0-100),
+  "conservationScore": number (0-100),
+  "constructionScore": number (0-100),
+  "locationScore": number (0-100),
+  "appreciationScore": number (0-100),
   "criteriaScores": [
     { "id": "location", "label": "Localização", "score": number, "weight": 0.25 },
     { "id": "infrastructure", "label": "Infraestrutura", "score": number, "weight": 0.15 },

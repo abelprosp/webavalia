@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { syncCreditsFromUser, useCreditsStore } from '@/stores/credits-store'
+import { emitCreditsUpdated, useCreditsStore } from '@/stores/credits-store'
 import { logoutRequest } from '@/lib/auth-api'
 import type { AuthUser } from '@/lib/auth-api'
 
@@ -22,11 +22,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
   auth: {
     user: null,
     setUser: (user) => {
-      if (user) syncCreditsFromUser(resolveUserCredits(user))
+      if (user) emitCreditsUpdated(resolveUserCredits(user))
       set((state) => ({ ...state, auth: { ...state.auth, user } }))
     },
     updateCredits: (credits) => {
-      syncCreditsFromUser(credits)
+      emitCreditsUpdated(credits)
       set((state) => ({
         ...state,
         auth: {
@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       }))
     },
     updateTrialEvaluationsRemaining: (remaining) => {
-      syncCreditsFromUser(remaining)
+      emitCreditsUpdated(remaining)
       set((state) => ({
         ...state,
         auth: {

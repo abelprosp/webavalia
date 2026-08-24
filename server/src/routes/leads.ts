@@ -19,7 +19,12 @@ const statusSchema = z.object({
 })
 
 router.get('/', async (req: AuthRequest, res) => {
-  const leads = await listLeadsForUser(req.user!.id)
+  const sortRaw = String(req.query.sort ?? 'recent')
+  const sort =
+    sortRaw === 'investment' || sortRaw === 'opportunity' || sortRaw === 'recent'
+      ? sortRaw
+      : 'recent'
+  const leads = await listLeadsForUser(req.user!.id, { sort })
   return res.json({ leads })
 })
 
@@ -45,8 +50,18 @@ router.post('/:id/unlock', async (req: AuthRequest, res) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erro ao desbloquear lead.'
-    const status = message.includes('insuficientes') ? 402 : 404
-    return res.status(status).json({ message })
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code: string }).code)
+        : undefined
+    const status =
+      code === 'INSUFFICIENT_CREDITS' || message.includes('insuficientes')
+        ? 402
+        : 404
+    return res.status(status).json({
+      message,
+      code: code === 'INSUFFICIENT_CREDITS' ? code : undefined,
+    })
   }
 })
 

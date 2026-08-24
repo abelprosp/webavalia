@@ -39,7 +39,7 @@ import {
   updateLeadStatus,
   type LeadItem,
 } from '@/lib/leads-api'
-import { syncCreditsFromUser } from '@/stores/credits-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { UnlockLeadDialog } from './components/unlock-lead-dialog'
 import { LeadDetailDialog } from './components/lead-detail-dialog'
 
@@ -69,24 +69,29 @@ function statusLabel(status: LeadItem['status']) {
 
 export function Leads() {
   const navigate = useNavigate()
+  const updateCredits = useAuthStore((s) => s.auth.updateCredits)
   const [leads, setLeads] = useState<LeadItem[]>([])
   const [loading, setLoading] = useState(true)
   const [unlockLead, setUnlockLead] = useState<LeadItem | null>(null)
   const [detailLead, setDetailLead] = useState<LeadItem | null>(null)
   const [locationFilter, setLocationFilter] = useState('')
+  const [sortMode, setSortMode] = useState<'recent' | 'investment' | 'opportunity'>(
+    'recent'
+  )
 
   const loadLeads = useCallback(async () => {
     try {
-      const data = await fetchLeads()
+      const data = await fetchLeads(sortMode)
       setLeads(data)
     } catch {
       toast.error('Erro ao carregar leads.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [sortMode])
 
   useEffect(() => {
+    setLoading(true)
     void loadLeads()
   }, [loadLeads])
 
@@ -113,7 +118,7 @@ export function Leads() {
     dealId: string | null
     addedToPipeline: boolean
   }) {
-    syncCreditsFromUser(result.credits)
+    updateCredits(result.credits)
     setLeads((current) =>
       current.map((item) => (item.id === result.lead.id ? result.lead : item))
     )
@@ -197,14 +202,35 @@ export function Leads() {
           </Card>
         </div>
 
-        <div className='relative max-w-md'>
-          <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
-          <Input
-            value={locationFilter}
-            onChange={(event) => setLocationFilter(event.target.value)}
-            placeholder='Filtrar por bairro, cidade ou estado'
-            className='pl-9'
-          />
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='relative max-w-md flex-1'>
+            <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+            <Input
+              value={locationFilter}
+              onChange={(event) => setLocationFilter(event.target.value)}
+              placeholder='Filtrar por bairro, cidade ou estado'
+              className='pl-9'
+            />
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            {(
+              [
+                { value: 'recent' as const, label: 'Mais recentes' },
+                { value: 'investment' as const, label: 'Investimento' },
+                { value: 'opportunity' as const, label: 'Oportunidade' },
+              ] as const
+            ).map((option) => (
+              <Button
+                key={option.value}
+                type='button'
+                size='sm'
+                variant={sortMode === option.value ? 'default' : 'outline'}
+                onClick={() => setSortMode(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <Card>

@@ -27,6 +27,12 @@ export type EvaluationCriteriaInput = {
   highEndFurnitureValue?: number
   askingPrice?: number
   notes?: string
+  /** Andar (apartamento e derivados). */
+  floor?: number
+  /** Mezanino (loja). */
+  hasMezzanine?: boolean
+  /** Estrutura do pavilhão/galpão. */
+  structureType?: 'alvenaria' | 'pre-moldado'
 }
 
 export type PhotoInput = {
@@ -130,6 +136,12 @@ type EvaluationAIBase = {
   valuePerSqm: number
   score: number
   scoreLabel: string
+  finishScore?: number
+  conservationScore?: number
+  locationScore?: number
+  constructionScore?: number
+  appreciationScore?: number
+  opportunityScore?: number
   criteriaScores: {
     id: string
     label: string

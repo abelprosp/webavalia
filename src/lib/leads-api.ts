@@ -19,12 +19,18 @@ export type LeadItem = {
   estimatedValue: number | null
   displayValue: string | null
   hasEvaluation: boolean
+  opportunityScore?: number | null
+  appreciationScore?: number | null
   propertyInput: Record<string, unknown> | null
   evaluationResult: Record<string, unknown> | null
 }
 
-export async function fetchLeads() {
-  const { data } = await api.get<{ leads: LeadItem[] }>('/leads')
+export type LeadSortMode = 'recent' | 'investment' | 'opportunity'
+
+export async function fetchLeads(sort: LeadSortMode = 'recent') {
+  const { data } = await api.get<{ leads: LeadItem[] }>('/leads', {
+    params: { sort },
+  })
   return data.leads
 }
 

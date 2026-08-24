@@ -359,7 +359,15 @@ async function migrate() {
     ALTER TABLE leads
       ADD COLUMN IF NOT EXISTS lead_score JSONB,
       ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}',
-      ADD COLUMN IF NOT EXISTS assignee_id UUID REFERENCES users(id) ON DELETE SET NULL;
+      ADD COLUMN IF NOT EXISTS assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS opportunity_score INT,
+      ADD COLUMN IF NOT EXISTS appreciation_score INT;
+
+    CREATE INDEX IF NOT EXISTS leads_opportunity_score_idx
+      ON leads (opportunity_score DESC NULLS LAST);
+
+    CREATE INDEX IF NOT EXISTS leads_appreciation_score_idx
+      ON leads (appreciation_score DESC NULLS LAST);
 
     CREATE TABLE IF NOT EXISTS crm_pipelines (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
