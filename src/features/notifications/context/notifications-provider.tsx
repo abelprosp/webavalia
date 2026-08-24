@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -96,7 +96,10 @@ export function NotificationsProvider({
   const markAllRead = useCallback(async () => {
     await markAllNotificationsRead()
     setNotifications((current) =>
-      current.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() }))
+      current.map((n) => ({
+        ...n,
+        readAt: n.readAt ?? new Date().toISOString(),
+      }))
     )
     setUnreadCount(0)
   }, [])
@@ -120,7 +123,9 @@ export function NotificationsProvider({
 export function useNotifications() {
   const context = useContext(NotificationsContext)
   if (!context) {
-    throw new Error('useNotifications must be used within NotificationsProvider')
+    throw new Error(
+      'useNotifications must be used within NotificationsProvider'
+    )
   }
   return context
 }

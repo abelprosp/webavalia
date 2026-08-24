@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { AxiosError } from 'axios'
 import { Coins, Loader2, Lock, MapPin, Phone, User } from 'lucide-react'
 import { toast } from 'sonner'
+import { useCreditsStore } from '@/stores/credits-store'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import { unlockLead, type LeadItem } from '@/lib/leads-api'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,9 +26,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { EvaluationResultPanel } from '@/features/avaliacao/components/evaluation-result'
-import { useCreditsStore } from '@/stores/credits-store'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
-import { unlockLead, type LeadItem } from '@/lib/leads-api'
 import { parseLeadEvaluation } from '../lib/lead-evaluation'
 
 type UnlockLeadDialogProps = {
@@ -64,7 +64,8 @@ function UnlockCostSummary({
       {!hasCredits && (
         <p className='text-sm text-destructive'>
           Você não possui créditos suficientes para desbloquear este lead.
-          {!CREDITS_AND_PLANS_ENABLED && ' A compra de créditos estará disponível em breve.'}
+          {!CREDITS_AND_PLANS_ENABLED &&
+            ' A compra de créditos estará disponível em breve.'}
         </p>
       )}
     </>
@@ -73,7 +74,7 @@ function UnlockCostSummary({
 
 function LeadSummary({ lead }: { lead: LeadItem }) {
   return (
-    <div className='rounded-lg border bg-muted/50 p-4 space-y-2 text-sm'>
+    <div className='space-y-2 rounded-lg border bg-muted/50 p-4 text-sm'>
       <div className='flex items-center gap-2'>
         <User className='size-4 text-muted-foreground' />
         <span className='font-medium'>{lead.name}</span>
@@ -175,7 +176,10 @@ export function UnlockLeadDialog({
             >
               Cancelar
             </Button>
-            <Button disabled={!hasCredits || loading} onClick={() => void handleUnlock()}>
+            <Button
+              disabled={!hasCredits || loading}
+              onClick={() => void handleUnlock()}
+            >
               {loading ? (
                 <Loader2 className='size-4 animate-spin' />
               ) : (

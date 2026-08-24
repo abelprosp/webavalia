@@ -15,9 +15,7 @@ type AdvancedAnalysisPanelProps = {
   appreciation?: MarketAppreciationAnalysis
 }
 
-function getAppreciationBadgeClass(
-  trend: MarketAppreciationAnalysis['trend']
-) {
+function getAppreciationBadgeClass(trend: MarketAppreciationAnalysis['trend']) {
   switch (trend) {
     case 'valorizacao':
       return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'

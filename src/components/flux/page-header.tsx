@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { Breadcrumbs, type BreadcrumbItem } from '@/components/layout/breadcrumbs'
+import {
+  Breadcrumbs,
+  type BreadcrumbItem,
+} from '@/components/layout/breadcrumbs'
 
 type PageHeaderProps = {
   title: string
@@ -29,7 +32,9 @@ export function PageHeader({
             <p className='text-muted-foreground'>{description}</p>
           ) : null}
         </div>
-        {actions ? <div className='flex shrink-0 flex-wrap gap-2'>{actions}</div> : null}
+        {actions ? (
+          <div className='flex shrink-0 flex-wrap gap-2'>{actions}</div>
+        ) : null}
       </div>
     </div>
   )

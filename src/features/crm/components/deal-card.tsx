@@ -1,5 +1,5 @@
 import { MapPin, MoreHorizontal, Sparkles, User } from 'lucide-react'
-import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
+import { getUrgencyLabel, type CrmDeal } from '@/lib/crm-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getUrgencyLabel, type CrmDeal } from '@/lib/crm-api'
+import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
 
 type DealCardProps = {
   deal: CrmDeal
@@ -49,7 +49,7 @@ export function DealCard({
     >
       <div className='space-y-2'>
         <div className='flex items-start justify-between gap-2'>
-          <p className='text-sm font-semibold leading-snug'>{deal.title}</p>
+          <p className='text-sm leading-snug font-semibold'>{deal.title}</p>
           {moveTargets.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -63,7 +63,10 @@ export function DealCard({
                   <MoreHorizontal className='size-4' />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuContent
+                align='end'
+                onClick={(e) => e.stopPropagation()}
+              >
                 <DropdownMenuLabel>Mover para</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {moveTargets.map((stage) => (
@@ -99,7 +102,10 @@ export function DealCard({
               <Sparkles className='size-3' />
               {score.probability}%
             </Badge>
-            <Badge variant={urgencyVariant[score.urgency]} className='text-[10px]'>
+            <Badge
+              variant={urgencyVariant[score.urgency]}
+              className='text-[10px]'
+            >
               {getUrgencyLabel(score.urgency)}
             </Badge>
             {deal.expectedTicket != null && (
@@ -113,7 +119,11 @@ export function DealCard({
         {deal.tags.length > 0 && (
           <div className='flex flex-wrap gap-1'>
             {deal.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant='outline' className='text-[10px] font-normal'>
+              <Badge
+                key={tag}
+                variant='outline'
+                className='text-[10px] font-normal'
+              >
                 {tag}
               </Badge>
             ))}

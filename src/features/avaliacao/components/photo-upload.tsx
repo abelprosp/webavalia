@@ -37,7 +37,9 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
       for (const file of incoming.slice(0, remaining)) {
         if (!ACCEPTED_TYPES.includes(file.type)) {
-          toast.error(`${file.name}: formato não suportado. Use JPG, PNG ou WebP.`)
+          toast.error(
+            `${file.name}: formato não suportado. Use JPG, PNG ou WebP.`
+          )
           continue
         }
 

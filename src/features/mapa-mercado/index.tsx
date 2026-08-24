@@ -1,9 +1,7 @@
 import { useCallback, useState } from 'react'
 import { AxiosError } from 'axios'
 import { Filter, Map } from 'lucide-react'
-import { Header } from '@/components/layout/header'
-import { HeaderActions } from '@/components/layout/header-actions'
-import { Main } from '@/components/layout/main'
+import { queryMarketMapPoint, type MarketMapResult } from '@/lib/market-map-api'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -12,15 +10,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { queryMarketMapPoint, type MarketMapResult } from '@/lib/market-map-api'
+import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
+import { Main } from '@/components/layout/main'
 import { isLandOnlyPropertyType } from '@/features/avaliacao/data/criteria'
-import { DEFAULT_MARKET_CITY, type MarketCity } from './data/cities'
 import {
   MarketMapFilters,
   type MarketMapFiltersState,
 } from './components/market-map-filters'
-import { MarketMapView } from './components/market-map-view'
 import { MarketMapResultPanel } from './components/market-map-result'
+import { MarketMapView } from './components/market-map-view'
+import { DEFAULT_MARKET_CITY, type MarketCity } from './data/cities'
 
 const INITIAL_FILTERS: MarketMapFiltersState = {
   propertyType: 'apartamento',
@@ -30,7 +30,8 @@ const INITIAL_FILTERS: MarketMapFiltersState = {
 
 export function MapaMercado() {
   const [filters, setFilters] = useState<MarketMapFiltersState>(INITIAL_FILTERS)
-  const [selectedCity, setSelectedCity] = useState<MarketCity>(DEFAULT_MARKET_CITY)
+  const [selectedCity, setSelectedCity] =
+    useState<MarketCity>(DEFAULT_MARKET_CITY)
   const [clickPosition, setClickPosition] = useState<{
     lat: number
     lng: number
@@ -61,8 +62,8 @@ export function MapaMercado() {
       } catch (err) {
         const message =
           err instanceof AxiosError
-            ? (err.response?.data as { message?: string })?.message ??
-              'Erro ao consultar preço no mapa.'
+            ? ((err.response?.data as { message?: string })?.message ??
+              'Erro ao consultar preço no mapa.')
             : 'Erro ao consultar preço no mapa.'
         setError(message)
       } finally {
@@ -84,7 +85,9 @@ export function MapaMercado() {
       <Header fixed>
         <div className='flex items-center gap-2'>
           <Map className='size-5 text-flux-lavender' />
-          <h1 className='text-lg font-semibold tracking-tight'>Mapa de Mercado</h1>
+          <h1 className='text-lg font-semibold tracking-tight'>
+            Mapa de Mercado
+          </h1>
         </div>
         <HeaderActions />
       </Header>
@@ -150,7 +153,11 @@ export function MapaMercado() {
 
           {/* Resultado — desktop e mobile abaixo do mapa */}
           <aside className='lg:sticky lg:top-20 lg:self-start'>
-            <MarketMapResultPanel result={result} error={error} loading={loading} />
+            <MarketMapResultPanel
+              result={result}
+              error={error}
+              loading={loading}
+            />
           </aside>
         </div>
       </Main>

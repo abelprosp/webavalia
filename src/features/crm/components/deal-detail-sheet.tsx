@@ -8,7 +8,19 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { propertyTypes } from '@/features/avaliacao/data/criteria'
+import {
+  completeCrmTask,
+  fetchCrmAssignees,
+  fetchDealDetails,
+  rescoreDeal,
+  updateDeal,
+  type CrmActivity,
+  type CrmAssignee,
+  type CrmDeal,
+  type CrmStageSummary,
+  type CrmTask,
+  type LeadScore,
+} from '@/lib/crm-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,19 +40,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  completeCrmTask,
-  fetchCrmAssignees,
-  fetchDealDetails,
-  rescoreDeal,
-  updateDeal,
-  type CrmActivity,
-  type CrmAssignee,
-  type CrmDeal,
-  type CrmStageSummary,
-  type CrmTask,
-  type LeadScore,
-} from '@/lib/crm-api'
+import { propertyTypes } from '@/features/avaliacao/data/criteria'
 
 type DealDetailSheetProps = {
   dealId: string | null
@@ -152,7 +152,10 @@ export function DealDetailSheet({
     void load()
   }, [open, dealId])
 
-  function updateField<K extends keyof DealFormState>(key: K, value: DealFormState[K]) {
+  function updateField<K extends keyof DealFormState>(
+    key: K,
+    value: DealFormState[K]
+  ) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
@@ -164,7 +167,10 @@ export function DealDetailSheet({
     const probabilityRaw = form.probability.trim()
     const probability = probabilityRaw ? Number(probabilityRaw) : undefined
 
-    if (probabilityRaw && (!Number.isFinite(probability) || probability! < 0 || probability! > 100)) {
+    if (
+      probabilityRaw &&
+      (!Number.isFinite(probability) || probability! < 0 || probability! > 100)
+    ) {
       toast.error('Probabilidade deve ser entre 0 e 100.')
       return
     }
@@ -352,7 +358,9 @@ export function DealDetailSheet({
                     <Input
                       id='client-phone'
                       value={form.clientPhone}
-                      onChange={(e) => updateField('clientPhone', e.target.value)}
+                      onChange={(e) =>
+                        updateField('clientPhone', e.target.value)
+                      }
                     />
                   </div>
                   <div className='space-y-2'>
@@ -361,7 +369,9 @@ export function DealDetailSheet({
                       id='client-email'
                       type='email'
                       value={form.clientEmail}
-                      onChange={(e) => updateField('clientEmail', e.target.value)}
+                      onChange={(e) =>
+                        updateField('clientEmail', e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -403,7 +413,9 @@ export function DealDetailSheet({
                       min={0}
                       max={100}
                       value={form.probability}
-                      onChange={(e) => updateField('probability', e.target.value)}
+                      onChange={(e) =>
+                        updateField('probability', e.target.value)
+                      }
                     />
                   </div>
                   <div className='space-y-2'>
@@ -425,7 +437,9 @@ export function DealDetailSheet({
                     </Select>
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='score-ticket'>Ticket esperado (score)</Label>
+                    <Label htmlFor='score-ticket'>
+                      Ticket esperado (score)
+                    </Label>
                     <Input
                       id='score-ticket'
                       type='number'
@@ -443,7 +457,9 @@ export function DealDetailSheet({
                       type='number'
                       min={0}
                       value={form.expectedTicket}
-                      onChange={(e) => updateField('expectedTicket', e.target.value)}
+                      onChange={(e) =>
+                        updateField('expectedTicket', e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -477,7 +493,11 @@ export function DealDetailSheet({
                 {parseTags(form.tags).length > 0 && (
                   <div className='flex flex-wrap gap-1 pt-1'>
                     {parseTags(form.tags).map((tag) => (
-                      <Badge key={tag} variant='secondary' className='text-[10px]'>
+                      <Badge
+                        key={tag}
+                        variant='secondary'
+                        className='text-[10px]'
+                      >
                         {tag}
                       </Badge>
                     ))}
@@ -489,7 +509,9 @@ export function DealDetailSheet({
                 <h3 className='mb-2 text-sm font-semibold'>Tarefas da etapa</h3>
                 <div className='space-y-2'>
                   {tasks.length === 0 && (
-                    <p className='text-sm text-muted-foreground'>Nenhuma tarefa.</p>
+                    <p className='text-sm text-muted-foreground'>
+                      Nenhuma tarefa.
+                    </p>
                   )}
                   {tasks.map((task) => (
                     <div
@@ -511,7 +533,9 @@ export function DealDetailSheet({
                       <div>
                         <p
                           className={
-                            task.completedAt ? 'text-muted-foreground line-through' : ''
+                            task.completedAt
+                              ? 'text-muted-foreground line-through'
+                              : ''
                           }
                         >
                           {task.title}
@@ -555,17 +579,23 @@ export function DealDetailSheet({
               </Button>
 
               <section>
-                <h3 className='mb-2 text-sm font-semibold'>Timeline de atividades</h3>
+                <h3 className='mb-2 text-sm font-semibold'>
+                  Timeline de atividades
+                </h3>
                 <div className='space-y-3 border-l-2 border-muted pl-4'>
                   {activities.length === 0 && (
-                    <p className='text-sm text-muted-foreground'>Nenhuma atividade.</p>
+                    <p className='text-sm text-muted-foreground'>
+                      Nenhuma atividade.
+                    </p>
                   )}
                   {activities.map((activity) => (
                     <div key={activity.id} className='relative'>
-                      <span className='absolute -left-[21px] top-1 size-2.5 rounded-full bg-flux-lavender' />
+                      <span className='absolute top-1 -left-[21px] size-2.5 rounded-full bg-flux-lavender' />
                       <p className='text-sm font-medium'>{activity.title}</p>
                       {activity.body && (
-                        <p className='text-xs text-muted-foreground'>{activity.body}</p>
+                        <p className='text-xs text-muted-foreground'>
+                          {activity.body}
+                        </p>
                       )}
                       <p className='text-[10px] text-muted-foreground'>
                         {new Date(activity.createdAt).toLocaleString('pt-BR')}

@@ -31,7 +31,8 @@ export async function detectCardBrand(cardNumber: string): Promise<CardBrand> {
   if (digits.length < 6) return 'undefined'
 
   try {
-    const brand = await EfiPay.CreditCard.setCardNumber(digits).verifyCardBrand()
+    const brand =
+      await EfiPay.CreditCard.setCardNumber(digits).verifyCardBrand()
     return brand as CardBrand
   } catch {
     return 'undefined'

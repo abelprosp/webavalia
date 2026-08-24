@@ -1,6 +1,9 @@
 import { Calculator, AlertTriangle } from 'lucide-react'
+import {
+  formatCurrency,
+  type Nbr14653Analysis,
+} from '../data/evaluation-engine'
 import { BentoCard, FluxBadge } from './bento-card'
-import { formatCurrency, type Nbr14653Analysis } from '../data/evaluation-engine'
 
 type Nbr14653PanelProps = {
   nbr: Nbr14653Analysis
@@ -17,8 +20,12 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
     >
       <div className='space-y-5 text-sm'>
         <div className='flex flex-wrap gap-2'>
-          <FluxBadge variant='lavender'>{nbr.specificationGradeLabel}</FluxBadge>
-          <FluxBadge variant='dark'>±{nbr.maxDeviationPercent}% tolerância</FluxBadge>
+          <FluxBadge variant='lavender'>
+            {nbr.specificationGradeLabel}
+          </FluxBadge>
+          <FluxBadge variant='dark'>
+            ±{nbr.maxDeviationPercent}% tolerância
+          </FluxBadge>
         </div>
 
         <p className='text-xs leading-relaxed text-muted-foreground'>
@@ -26,7 +33,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
         </p>
 
         <div className='rounded-2xl bg-muted/40 p-4'>
-          <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             Método principal
           </p>
           <p className='mt-1 font-medium'>{nbr.primaryMethod.name}</p>
@@ -37,7 +44,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
 
         {nbr.complementaryMethods.length > 0 && (
           <div>
-            <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+            <p className='mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
               Métodos complementares
             </p>
             <div className='space-y-2'>
@@ -62,7 +69,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
         )}
 
         <div>
-          <p className='mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='mb-3 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             <Calculator className='size-3.5' />
             Comparáveis homogeneizados
           </p>
@@ -74,12 +81,14 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
               >
                 <div className='flex flex-wrap items-start justify-between gap-2'>
                   <div className='min-w-0'>
-                    <p className='font-medium leading-snug'>{item.title}</p>
+                    <p className='leading-snug font-medium'>{item.title}</p>
                     <p className='mt-1 text-base font-bold text-flux-dark'>
                       {item.declaredPrice}
                     </p>
                     {item.area && (
-                      <p className='text-xs text-muted-foreground'>{item.area}</p>
+                      <p className='text-xs text-muted-foreground'>
+                        {item.area}
+                      </p>
                     )}
                   </div>
                   <FluxBadge variant='lavender'>
@@ -112,7 +121,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
         </div>
 
         <div className='rounded-2xl bg-flux-dark p-4 text-white'>
-          <p className='text-xs font-semibold uppercase tracking-wide text-white/50'>
+          <p className='text-xs font-semibold tracking-wide text-white/50 uppercase'>
             Memória de cálculo
           </p>
           <ol className='mt-2 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-white/75'>
@@ -125,7 +134,10 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
               <div>
                 <p className='text-[10px] text-white/45'>Média unitária</p>
                 <p className='text-sm font-semibold'>
-                  {formatCurrency(nbr.calculationMemory.homogenizedAveragePriceSqm)}/m²
+                  {formatCurrency(
+                    nbr.calculationMemory.homogenizedAveragePriceSqm
+                  )}
+                  /m²
                 </p>
               </div>
             )}
@@ -139,7 +151,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
         </div>
 
         <div>
-          <p className='mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             <AlertTriangle className='size-3.5' />
             Limitações
           </p>

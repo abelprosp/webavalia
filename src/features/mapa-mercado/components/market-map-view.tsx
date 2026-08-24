@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   MapContainer,
   Marker,
@@ -7,7 +8,6 @@ import {
   useMap,
   useMapEvents,
 } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
 import type { MarketCity } from '../data/cities'
 
 const markerIcon = L.divIcon({
@@ -70,7 +70,7 @@ export function MarketMapView({
         key={`${city.lat}-${city.lng}-${city.zoom}`}
         center={[city.lat, city.lng]}
         zoom={city.zoom}
-        className='h-full w-full min-h-[320px] z-0'
+        className='z-0 h-full min-h-[320px] w-full'
         scrollWheelZoom
       >
         <TileLayer

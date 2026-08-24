@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ExternalLink, Loader2, Sparkles, X } from 'lucide-react'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
+import { getSuggestedPrompts, type DashboardContext } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -10,9 +13,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { getSuggestedPrompts, type DashboardContext } from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { FoxAiChat } from './fox-ai-chat'
 import { QuickActionChips } from './quick-action-chips'
 
@@ -42,7 +42,7 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
     <>
       <Button
         size='lg'
-        className='relative fixed bottom-6 end-6 z-50 size-14 rounded-full bg-orange-500 shadow-lg hover:bg-orange-600'
+        className='fixed relative end-6 bottom-6 z-50 size-14 rounded-full bg-orange-500 shadow-lg hover:bg-orange-600'
         onClick={() => setOpen(true)}
         aria-label={
           isBackgroundBusy
@@ -61,10 +61,7 @@ export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side='right'
-          className='flex w-full flex-col sm:max-w-md'
-        >
+        <SheetContent side='right' className='flex w-full flex-col sm:max-w-md'>
           <SheetHeader>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-2'>

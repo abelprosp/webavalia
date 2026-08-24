@@ -1,10 +1,6 @@
-import {
-  Flame,
-  Medal,
-  Sparkles,
-  Target,
-  Trophy,
-} from 'lucide-react'
+import { Flame, Medal, Sparkles, Target, Trophy } from 'lucide-react'
+import type { GamificationStats } from '@/lib/gamification-api'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -14,8 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { GamificationStats } from '@/lib/gamification-api'
-import { cn } from '@/lib/utils'
 
 type GamificationPanelProps = {
   stats: GamificationStats | null
@@ -30,7 +24,12 @@ function ProgressBar({
   className?: string
 }) {
   return (
-    <div className={cn('h-2 w-full overflow-hidden rounded-full bg-muted', className)}>
+    <div
+      className={cn(
+        'h-2 w-full overflow-hidden rounded-full bg-muted',
+        className
+      )}
+    >
       <div
         className='h-full rounded-full bg-primary transition-all duration-500'
         style={{ width: `${Math.min(Math.max(value, 0), 1) * 100}%` }}
@@ -62,10 +61,16 @@ function AchievementBadge({
       <div
         className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-full',
-          unlocked ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+          unlocked
+            ? 'bg-primary/15 text-primary'
+            : 'bg-muted text-muted-foreground'
         )}
       >
-        {unlocked ? <Trophy className='size-4' /> : <Medal className='size-4' />}
+        {unlocked ? (
+          <Trophy className='size-4' />
+        ) : (
+          <Medal className='size-4' />
+        )}
       </div>
       <div className='min-w-0 flex-1'>
         <div className='flex flex-wrap items-center gap-2'>
@@ -117,8 +122,8 @@ export function GamificationPanel({ stats, loading }: GamificationPanelProps) {
               Seu progresso
             </CardTitle>
             <CardDescription>
-              Nível, metas e conquistas — cada badge desbloqueada rende avaliações
-              bônus
+              Nível, metas e conquistas — cada badge desbloqueada rende
+              avaliações bônus
             </CardDescription>
           </div>
           <div className='flex flex-wrap gap-2'>
@@ -129,7 +134,8 @@ export function GamificationPanel({ stats, loading }: GamificationPanelProps) {
             {stats.streak.current > 0 && (
               <Badge variant='secondary' className='gap-1'>
                 <Flame className='size-3.5 text-orange-500' />
-                {stats.streak.current} dia{stats.streak.current === 1 ? '' : 's'} seguidos
+                {stats.streak.current} dia
+                {stats.streak.current === 1 ? '' : 's'} seguidos
               </Badge>
             )}
           </div>
@@ -165,7 +171,8 @@ export function GamificationPanel({ stats, loading }: GamificationPanelProps) {
                   Meta mensal
                 </p>
                 <p className='text-xs text-muted-foreground'>
-                  {stats.monthlyGoal.current}/{stats.monthlyGoal.target} avaliações este mês
+                  {stats.monthlyGoal.current}/{stats.monthlyGoal.target}{' '}
+                  avaliações este mês
                 </p>
               </div>
               {stats.monthlyGoal.completed && (

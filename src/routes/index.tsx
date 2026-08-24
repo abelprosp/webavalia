@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { LandingPage } from '@/features/marketing/landing-page'
-import { fetchMe } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { fetchMe } from '@/lib/auth-api'
+import { LandingPage } from '@/features/marketing/landing-page'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {

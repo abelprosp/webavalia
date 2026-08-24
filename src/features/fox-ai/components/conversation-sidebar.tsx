@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
 import { isToday, isYesterday } from 'date-fns'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import {
   BarChart3,
   Building2,
@@ -9,16 +10,15 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import {
   listFoxAiConversations,
   type FoxAiConversationSummary,
 } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 type ConversationSidebarProps = {
   activeId?: string
@@ -81,7 +81,7 @@ export function ConversationSidebar({
             <Sparkles className='size-4' />
           </div>
           <div>
-            <p className='font-semibold leading-none'>FoxAi</p>
+            <p className='leading-none font-semibold'>FoxAi</p>
             <p className='mt-1 text-xs text-muted-foreground'>
               Assistente imobiliário
             </p>
@@ -123,8 +123,8 @@ export function ConversationSidebar({
         </Button>
       </nav>
 
-      <div className='px-4 pb-2 pt-4'>
-        <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+      <div className='px-4 pt-4 pb-2'>
+        <p className='text-xs font-semibold tracking-wider text-muted-foreground uppercase'>
           Conversas
         </p>
       </div>
@@ -142,7 +142,7 @@ export function ConversationSidebar({
           <div className='space-y-5 px-3 pb-4'>
             {groups.map((group) => (
               <section key={group.label}>
-                <p className='mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground'>
+                <p className='mb-1.5 px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase'>
                   {group.label}
                 </p>
                 <div className='space-y-0.5'>

@@ -1,6 +1,4 @@
-import {
-  ChevronsUpDown,
-} from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -16,8 +14,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { SignOutDialog } from '@/components/sign-out-dialog'
 import { ProfileMenuItems } from '@/components/layout/profile-menu-items'
+import { SignOutDialog } from '@/components/sign-out-dialog'
 
 type NavUserProps = {
   user: {

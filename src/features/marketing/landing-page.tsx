@@ -49,7 +49,7 @@ export function LandingPage() {
       <main className='mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6'>
         <section className='grid gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-20'>
           <div className='space-y-6'>
-            <p className='text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground'>
+            <p className='text-sm font-semibold tracking-[0.18em] text-muted-foreground uppercase'>
               Avalia Imob
             </p>
             <h1 className='max-w-xl text-4xl font-bold tracking-tight text-flux-dark sm:text-5xl'>
@@ -99,7 +99,9 @@ export function LandingPage() {
               <li className='flex gap-3 rounded-2xl bg-flux-lavender/15 p-4'>
                 <Sparkles className='mt-0.5 size-5 shrink-0 text-flux-dark' />
                 <div>
-                  <p className='font-medium'>Corretor desbloqueia com créditos</p>
+                  <p className='font-medium'>
+                    Corretor desbloqueia com créditos
+                  </p>
                   <p className='text-muted-foreground'>
                     2 créditos por lead · 1 crédito por avaliação IA
                   </p>

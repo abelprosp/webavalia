@@ -68,7 +68,8 @@ export function AppearanceForm() {
                 <ChevronDownIcon className='absolute inset-e-3 top-2.5 h-4 w-4 opacity-50' />
               </div>
               <FormDescription className='font-manrope'>
-                A plataforma usa o modo claro. Aqui você pode só ajustar a fonte.
+                A plataforma usa o modo claro. Aqui você pode só ajustar a
+                fonte.
               </FormDescription>
               <FormMessage />
             </FormItem>

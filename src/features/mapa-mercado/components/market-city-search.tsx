@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, MapPin, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { searchMarketCities } from '@/lib/market-map-api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { searchMarketCities } from '@/lib/market-map-api'
 import type { MarketCity } from '../data/cities'
 
 type MarketCitySearchProps = {
@@ -83,7 +83,7 @@ export function MarketCitySearch({
     <div ref={containerRef} className='space-y-2'>
       <Label htmlFor='market-city-search'>Cidade</Label>
       <div className='relative'>
-        <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+        <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
         <Input
           id='market-city-search'
           value={query}
@@ -98,11 +98,11 @@ export function MarketCitySearch({
           }}
         />
         {loading && (
-          <Loader2 className='absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
+          <Loader2 className='absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
         )}
 
         {open && results.length > 0 && (
-          <ul className='absolute left-0 right-0 top-full z-[1000] mt-1 max-h-56 overflow-auto rounded-xl border bg-popover p-1 shadow-md'>
+          <ul className='absolute top-full right-0 left-0 z-[1000] mt-1 max-h-56 overflow-auto rounded-xl border bg-popover p-1 shadow-md'>
             {results.map((city) => (
               <li key={`${city.city}-${city.state}`}>
                 <button

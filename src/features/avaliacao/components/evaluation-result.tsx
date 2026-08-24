@@ -13,22 +13,17 @@ import {
   Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { isBrokerAccount } from '@/lib/auth-api'
-import { createDealFromEvaluation } from '@/lib/crm-api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCrmStore } from '@/stores/crm-store'
-import { serializeEvaluationResult } from '@/features/crm/data/schema'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { createDealFromEvaluation } from '@/lib/crm-api'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   CrmSavedToastAction,
   SaveToCrmDialog,
 } from '@/features/crm/components/save-to-crm-dialog'
-import { Button } from '@/components/ui/button'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
+import { serializeEvaluationResult } from '@/features/crm/data/schema'
 import {
   getFinishLevelLabel,
   getFurnishingLabel,
@@ -45,8 +40,8 @@ import {
   type SaleScenario,
 } from '../data/evaluation-engine'
 import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
-import { Nbr14653Panel } from './nbr-14653-panel'
 import { BentoCard, FluxBadge, MetricIcon } from './bento-card'
+import { Nbr14653Panel } from './nbr-14653-panel'
 
 type EvaluationResultPanelProps = {
   result: EvaluationResult
@@ -63,8 +58,13 @@ function getPropertyHighlights(property: EvaluationFormValues) {
   if (property.furnishing && property.furnishing !== 'sem') {
     highlights.push(getFurnishingLabel(property.furnishing))
   }
-  if (property.finishLevel && !['basico', 'padrao'].includes(property.finishLevel)) {
-    highlights.push(`Acabamento ${getFinishLevelLabel(property.finishLevel).toLowerCase()}`)
+  if (
+    property.finishLevel &&
+    !['basico', 'padrao'].includes(property.finishLevel)
+  ) {
+    highlights.push(
+      `Acabamento ${getFinishLevelLabel(property.finishLevel).toLowerCase()}`
+    )
   }
   if (property.amenities?.length) {
     highlights.push(`${property.amenities.length} diferenciais`)
@@ -105,21 +105,21 @@ function ValueBreakdownCircles({
   return (
     <div className='relative mx-auto my-5 flex h-[148px] w-full max-w-[240px] items-center justify-center'>
       <div
-        className='absolute left-1/2 top-1/2 flex size-[108px] -translate-x-[62%] -translate-y-1/2 flex-col items-center justify-center rounded-full bg-flux-lavender/90 text-flux-dark shadow-sm'
+        className='absolute top-1/2 left-1/2 flex size-[108px] -translate-x-[62%] -translate-y-1/2 flex-col items-center justify-center rounded-full bg-flux-lavender/90 text-flux-dark shadow-sm'
         style={{ zIndex: 1 }}
       >
         <span className='text-[10px] font-medium opacity-60'>Localização</span>
         <span className='text-sm font-bold'>{compactCurrency(locVal)}</span>
       </div>
       <div
-        className='absolute left-1/2 top-1/2 flex size-[88px] -translate-x-[18%] -translate-y-[58%] flex-col items-center justify-center rounded-full bg-flux-dark text-white shadow-md'
+        className='absolute top-1/2 left-1/2 flex size-[88px] -translate-x-[18%] -translate-y-[58%] flex-col items-center justify-center rounded-full bg-flux-dark text-white shadow-md'
         style={{ zIndex: 2 }}
       >
         <span className='text-[10px] font-medium opacity-60'>Construção</span>
         <span className='text-xs font-bold'>{compactCurrency(conVal)}</span>
       </div>
       <div
-        className='absolute left-1/2 top-1/2 flex size-[68px] -translate-x-[5%] -translate-y-[12%] flex-col items-center justify-center rounded-full bg-flux-lime text-flux-dark shadow-sm'
+        className='absolute top-1/2 left-1/2 flex size-[68px] -translate-x-[5%] -translate-y-[12%] flex-col items-center justify-center rounded-full bg-flux-lime text-flux-dark shadow-sm'
         style={{ zIndex: 3 }}
       >
         <span className='text-[9px] font-medium opacity-60'>Mercado</span>
@@ -177,12 +177,18 @@ function SaleScenarioCard({ scenario }: { scenario: SaleScenario }) {
     >
       <div className='mb-3 flex items-start justify-between gap-2'>
         <div>
-          <p className='text-[13px] font-semibold tracking-tight'>{scenario.label}</p>
-          <p className='mt-0.5 text-[11px] text-muted-foreground'>{scenario.description}</p>
+          <p className='text-[13px] font-semibold tracking-tight'>
+            {scenario.label}
+          </p>
+          <p className='mt-0.5 text-[11px] text-muted-foreground'>
+            {scenario.description}
+          </p>
         </div>
         <FluxBadge variant={styles.badge}>{scenario.timeframe}</FluxBadge>
       </div>
-      <p className='text-xl font-bold tracking-tight'>{formatCurrency(scenario.value)}</p>
+      <p className='text-xl font-bold tracking-tight'>
+        {formatCurrency(scenario.value)}
+      </p>
       <p className='mt-1 text-[11px] text-muted-foreground'>
         {formatCurrency(scenario.valuePerSqm)}/m² · {adjustmentLabel}
       </p>
@@ -225,7 +231,10 @@ function AppreciationBars() {
       {months.map((month, i) => {
         const isActive = i === months.length - 1
         return (
-          <div key={month} className='flex flex-1 flex-col items-center gap-1.5'>
+          <div
+            key={month}
+            className='flex flex-1 flex-col items-center gap-1.5'
+          >
             <div
               className='flex w-full items-end justify-center gap-[3px]'
               style={{ height: 56 }}
@@ -252,7 +261,9 @@ function AppreciationBars() {
                 />
               )}
             </div>
-            <span className='text-[9px] font-medium text-white/30'>{month}</span>
+            <span className='text-[9px] font-medium text-white/30'>
+              {month}
+            </span>
           </div>
         )
       })}
@@ -286,7 +297,8 @@ export function EvaluationResultPanel({
   const conditionScore = getCriterionScore(result, 'condition')
   const marketScore = getCriterionScore(result, 'market')
   const neighborhoodDots = Math.round((locationScore / 5) * 25)
-  const growthPct = result.marketAppreciationAnalysis?.annualGrowthEstimatePercent
+  const growthPct =
+    result.marketAppreciationAnalysis?.annualGrowthEstimatePercent
 
   async function handleExportPdf() {
     setIsExporting(true)
@@ -311,10 +323,9 @@ export function EvaluationResultPanel({
           clientName: data.clientName,
           notes: data.notes,
           propertyInput: property as unknown as Record<string, unknown>,
-          evaluationResult: serializeEvaluationResult(result) as unknown as Record<
-            string,
-            unknown
-          >,
+          evaluationResult: serializeEvaluationResult(
+            result
+          ) as unknown as Record<string, unknown>,
         })
         toast.success('Avaliação salva no pipeline do CRM!', {
           action: <CrmSavedToastAction mode='broker' />,
@@ -347,7 +358,7 @@ export function EvaluationResultPanel({
           <div>
             <div className='mb-1 flex items-center gap-2'>
               <Sparkles className='size-4 text-flux-dark' />
-              <span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+              <span className='text-xs font-semibold tracking-widest text-muted-foreground uppercase'>
                 Resultado
               </span>
             </div>
@@ -358,7 +369,8 @@ export function EvaluationResultPanel({
               {locationLabel}
             </p>
             <p className='text-xs text-muted-foreground/70'>
-              Objetivo: {getListingIntentLabel(property.listingIntent ?? 'vender')} ·{' '}
+              Objetivo:{' '}
+              {getListingIntentLabel(property.listingIntent ?? 'vender')} ·{' '}
               {result.evaluatedAt.toLocaleString('pt-BR', {
                 dateStyle: 'long',
                 timeStyle: 'short',
@@ -393,7 +405,9 @@ export function EvaluationResultPanel({
                 </Button>
               </>
             )}
-            <FluxBadge className='h-9 px-4 text-sm'>{result.scoreLabel}</FluxBadge>
+            <FluxBadge className='h-9 px-4 text-sm'>
+              {result.scoreLabel}
+            </FluxBadge>
           </div>
         </div>
 
@@ -405,441 +419,469 @@ export function EvaluationResultPanel({
           </TabsList>
 
           <TabsContent value='resumo' className='space-y-4'>
-        {/* Row 1 — Hero + métricas */}
-        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-          <BentoCard
-            title={isRentalView ? 'Aluguel estimado' : 'Valor estimado'}
-            subtitle={
-              isRentalView
-                ? 'Locação mensal · com base no valor de mercado'
-                : 'Determinação de mercado · NBR 14653'
-            }
-            className='min-h-[420px] sm:col-span-2 lg:col-span-1 lg:row-span-2'
-          >
-            <div className='flex items-start justify-between gap-2'>
-              <div>
-                {isRentalView && rentalEstimate ? (
-                  <>
-                    <p className='text-[2rem] font-bold leading-none tracking-tight'>
-                      {formatCurrency(rentalEstimate.monthlyRent)}
-                      <span className='text-lg font-semibold text-muted-foreground'>
-                        /mês
+            {/* Row 1 — Hero + métricas */}
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+              <BentoCard
+                title={isRentalView ? 'Aluguel estimado' : 'Valor estimado'}
+                subtitle={
+                  isRentalView
+                    ? 'Locação mensal · com base no valor de mercado'
+                    : 'Determinação de mercado · NBR 14653'
+                }
+                className='min-h-[420px] sm:col-span-2 lg:col-span-1 lg:row-span-2'
+              >
+                <div className='flex items-start justify-between gap-2'>
+                  <div>
+                    {isRentalView && rentalEstimate ? (
+                      <>
+                        <p className='text-[2rem] leading-none font-bold tracking-tight'>
+                          {formatCurrency(rentalEstimate.monthlyRent)}
+                          <span className='text-lg font-semibold text-muted-foreground'>
+                            /mês
+                          </span>
+                        </p>
+                        <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
+                          {formatCurrency(rentalEstimate.rentPerSqm)}/m² ·
+                          aluguel
+                        </p>
+                        <p className='mt-1 text-xs text-muted-foreground/80'>
+                          Valor de venda de referência:{' '}
+                          {formatCurrency(result.estimatedValue)} (
+                          {rentalEstimate.annualYieldPercent.toFixed(1)}% a.a.)
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className='text-[2rem] leading-none font-bold tracking-tight'>
+                          {formatCurrency(result.estimatedValue)}
+                        </p>
+                        <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
+                          {formatCurrency(result.valuePerSqm)}/m²
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  {growthPct != null && <FluxBadge>+{growthPct}%</FluxBadge>}
+                </div>
+
+                <ValueBreakdownCircles
+                  total={
+                    isRentalView && rentalEstimate
+                      ? rentalEstimate.monthlyRent
+                      : result.estimatedValue
+                  }
+                  location={locationScore}
+                  construction={conditionScore}
+                  market={marketScore}
+                />
+
+                <HeroCriteriaBars criteria={result.criteriaScores} />
+
+                {propertyHighlights.length > 0 && (
+                  <div className='mt-4 flex flex-wrap gap-1.5 border-t border-black/[0.04] pt-4'>
+                    {propertyHighlights.map((h) => (
+                      <span
+                        key={h}
+                        className='rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground'
+                      >
+                        {h}
                       </span>
-                    </p>
-                    <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
-                      {formatCurrency(rentalEstimate.rentPerSqm)}/m² · aluguel
-                    </p>
-                    <p className='mt-1 text-xs text-muted-foreground/80'>
-                      Valor de venda de referência:{' '}
-                      {formatCurrency(result.estimatedValue)} (
-                      {rentalEstimate.annualYieldPercent.toFixed(1)}% a.a.)
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className='text-[2rem] font-bold leading-none tracking-tight'>
-                      {formatCurrency(result.estimatedValue)}
-                    </p>
-                    <p className='mt-1.5 text-sm font-medium text-muted-foreground'>
-                      {formatCurrency(result.valuePerSqm)}/m²
-                    </p>
-                  </>
+                    ))}
+                  </div>
                 )}
-              </div>
-              {growthPct != null && (
-                <FluxBadge>+{growthPct}%</FluxBadge>
+              </BentoCard>
+
+              <BentoCard
+                title='Mercado local'
+                subtitle='Comparáveis e faixa de preços'
+              >
+                <div className='flex items-start justify-between gap-3'>
+                  <div>
+                    <p className='text-2xl font-bold tracking-tight'>
+                      {marketAnalysis.averagePricePerSqm != null
+                        ? formatCurrency(marketAnalysis.averagePricePerSqm)
+                        : '—'}
+                    </p>
+                    <p className='mt-0.5 text-[11px] text-muted-foreground'>
+                      média / m²
+                    </p>
+                    <p className='mt-2 text-[11px] font-semibold text-muted-foreground'>
+                      {marketAnalysis.comparables.length} comparáveis
+                    </p>
+                  </div>
+                  <MetricIcon className='bg-flux-lavender/25'>
+                    <Building2 className='size-5 text-flux-dark/70' />
+                  </MetricIcon>
+                </div>
+                {marketAnalysis.priceRange && (
+                  <p className='mt-3 text-[11px] text-muted-foreground'>
+                    Faixa:{' '}
+                    <span className='font-medium text-foreground'>
+                      {formatCurrency(marketAnalysis.priceRange.min)} –{' '}
+                      {formatCurrency(marketAnalysis.priceRange.max)}
+                    </span>
+                  </p>
+                )}
+                <p className='mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground'>
+                  {marketAnalysis.summary}
+                </p>
+              </BentoCard>
+
+              <BentoCard title='Zoneamento' subtitle='Plano Diretor'>
+                <div className='flex items-start justify-between gap-3'>
+                  <div className='min-w-0'>
+                    <p className='text-lg leading-tight font-bold tracking-tight'>
+                      {masterPlanAnalysis.zoning.split(/[,;]/)[0]?.trim() ||
+                        masterPlanAnalysis.zoning.slice(0, 30)}
+                    </p>
+                    <p className='mt-1 text-[11px] text-muted-foreground'>
+                      {masterPlanAnalysis.allowedUses.length} uso(s)
+                      permitido(s)
+                    </p>
+                    <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
+                      {masterPlanAnalysis.developmentPotential}
+                    </p>
+                  </div>
+                  <MetricIcon className='bg-flux-lavender/25'>
+                    <Landmark className='size-5 text-flux-dark/70' />
+                  </MetricIcon>
+                </div>
+              </BentoCard>
+
+              <BentoCard
+                title='Score do bairro'
+                subtitle='Localização e infraestrutura'
+              >
+                <p className='text-[2rem] leading-none font-bold tracking-tight'>
+                  {Math.round((locationScore / 5) * 100)}%
+                </p>
+                <FluxBadge className='mt-2'>+{locationScore * 4}%</FluxBadge>
+                <div className='mt-auto pt-5'>
+                  <DotMatrix filled={neighborhoodDots} />
+                </div>
+              </BentoCard>
+
+              {result.marketAppreciationAnalysis && (
+                <BentoCard title='Valorização' subtitle='Tendência de mercado'>
+                  <div className='flex items-start justify-between gap-3'>
+                    <div>
+                      <p className='text-xl font-bold tracking-tight'>
+                        {result.marketAppreciationAnalysis.trendLabel}
+                      </p>
+                      {result.marketAppreciationAnalysis
+                        .annualGrowthEstimatePercent != null && (
+                        <FluxBadge className='mt-2'>
+                          +
+                          {
+                            result.marketAppreciationAnalysis
+                              .annualGrowthEstimatePercent
+                          }
+                          %/ano
+                        </FluxBadge>
+                      )}
+                      <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
+                        {result.marketAppreciationAnalysis.liquidity}
+                      </p>
+                    </div>
+                    <MetricIcon className='bg-flux-lime/30'>
+                      <TrendingUp className='size-5 text-flux-dark/70' />
+                    </MetricIcon>
+                  </div>
+                </BentoCard>
               )}
             </div>
 
-            <ValueBreakdownCircles
-              total={
-                isRentalView && rentalEstimate
-                  ? rentalEstimate.monthlyRent
-                  : result.estimatedValue
-              }
-              location={locationScore}
-              construction={conditionScore}
-              market={marketScore}
-            />
-
-            <HeroCriteriaBars criteria={result.criteriaScores} />
-
-            {propertyHighlights.length > 0 && (
-              <div className='mt-4 flex flex-wrap gap-1.5 border-t border-black/[0.04] pt-4'>
-                {propertyHighlights.map((h) => (
-                  <span
-                    key={h}
-                    className='rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground'
-                  >
-                    {h}
+            {!isRentalView && saleScenarios && (
+              <BentoCard
+                title='Cenários de venda'
+                subtitle='Faixas de preço conforme tempo esperado para vender'
+                className='col-span-full'
+              >
+                <div className='mb-3 flex items-center gap-2 text-[11px] text-muted-foreground'>
+                  <Clock className='size-3.5 shrink-0' />
+                  <span>
+                    Baseado no valor estimado de{' '}
+                    {formatCurrency(result.estimatedValue)} · ajustes de −10%
+                    (rápida), mercado (moderada) e +8% (lenta)
                   </span>
-                ))}
-              </div>
-            )}
-          </BentoCard>
-
-          <BentoCard title='Mercado local' subtitle='Comparáveis e faixa de preços'>
-            <div className='flex items-start justify-between gap-3'>
-              <div>
-                <p className='text-2xl font-bold tracking-tight'>
-                  {marketAnalysis.averagePricePerSqm != null
-                    ? formatCurrency(marketAnalysis.averagePricePerSqm)
-                    : '—'}
-                </p>
-                <p className='mt-0.5 text-[11px] text-muted-foreground'>média / m²</p>
-                <p className='mt-2 text-[11px] font-semibold text-muted-foreground'>
-                  {marketAnalysis.comparables.length} comparáveis
-                </p>
-              </div>
-              <MetricIcon className='bg-flux-lavender/25'>
-                <Building2 className='size-5 text-flux-dark/70' />
-              </MetricIcon>
-            </div>
-            {marketAnalysis.priceRange && (
-              <p className='mt-3 text-[11px] text-muted-foreground'>
-                Faixa:{' '}
-                <span className='font-medium text-foreground'>
-                  {formatCurrency(marketAnalysis.priceRange.min)} –{' '}
-                  {formatCurrency(marketAnalysis.priceRange.max)}
-                </span>
-              </p>
-            )}
-            <p className='mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground'>
-              {marketAnalysis.summary}
-            </p>
-          </BentoCard>
-
-          <BentoCard title='Zoneamento' subtitle='Plano Diretor'>
-            <div className='flex items-start justify-between gap-3'>
-              <div className='min-w-0'>
-                <p className='text-lg font-bold leading-tight tracking-tight'>
-                  {masterPlanAnalysis.zoning.split(/[,;]/)[0]?.trim() ||
-                    masterPlanAnalysis.zoning.slice(0, 30)}
-                </p>
-                <p className='mt-1 text-[11px] text-muted-foreground'>
-                  {masterPlanAnalysis.allowedUses.length} uso(s) permitido(s)
-                </p>
-                <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
-                  {masterPlanAnalysis.developmentPotential}
-                </p>
-              </div>
-              <MetricIcon className='bg-flux-lavender/25'>
-                <Landmark className='size-5 text-flux-dark/70' />
-              </MetricIcon>
-            </div>
-          </BentoCard>
-
-          <BentoCard title='Score do bairro' subtitle='Localização e infraestrutura'>
-            <p className='text-[2rem] font-bold leading-none tracking-tight'>
-              {Math.round((locationScore / 5) * 100)}%
-            </p>
-            <FluxBadge className='mt-2'>+{locationScore * 4}%</FluxBadge>
-            <div className='mt-auto pt-5'>
-              <DotMatrix filled={neighborhoodDots} />
-            </div>
-          </BentoCard>
-
-          {result.marketAppreciationAnalysis && (
-            <BentoCard title='Valorização' subtitle='Tendência de mercado'>
-              <div className='flex items-start justify-between gap-3'>
-                <div>
-                  <p className='text-xl font-bold tracking-tight'>
-                    {result.marketAppreciationAnalysis.trendLabel}
-                  </p>
-                  {result.marketAppreciationAnalysis.annualGrowthEstimatePercent != null && (
-                    <FluxBadge className='mt-2'>
-                      +{result.marketAppreciationAnalysis.annualGrowthEstimatePercent}%/ano
-                    </FluxBadge>
-                  )}
-                  <p className='mt-2 line-clamp-2 text-[11px] text-muted-foreground'>
-                    {result.marketAppreciationAnalysis.liquidity}
-                  </p>
                 </div>
-                <MetricIcon className='bg-flux-lime/30'>
-                  <TrendingUp className='size-5 text-flux-dark/70' />
-                </MetricIcon>
-              </div>
-            </BentoCard>
-          )}
-        </div>
-
-        {!isRentalView && saleScenarios && (
-          <BentoCard
-            title='Cenários de venda'
-            subtitle='Faixas de preço conforme tempo esperado para vender'
-            className='col-span-full'
-          >
-            <div className='mb-3 flex items-center gap-2 text-[11px] text-muted-foreground'>
-              <Clock className='size-3.5 shrink-0' />
-              <span>
-                Baseado no valor estimado de {formatCurrency(result.estimatedValue)} ·
-                ajustes de −10% (rápida), mercado (moderada) e +8% (lenta)
-              </span>
-            </div>
-            <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
-              {saleScenarios.map((scenario) => (
-                <SaleScenarioCard key={scenario.id} scenario={scenario} />
-              ))}
-            </div>
-          </BentoCard>
-        )}
-
+                <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+                  {saleScenarios.map((scenario) => (
+                    <SaleScenarioCard key={scenario.id} scenario={scenario} />
+                  ))}
+                </div>
+              </BentoCard>
+            )}
           </TabsContent>
 
           <TabsContent value='mercado' className='space-y-4'>
-        {/* Row 2 — Bairro dark + critérios + comparáveis + insights */}
-        <div className='grid grid-cols-1 gap-4 lg:grid-cols-4'>
-          {result.neighborhoodAnalysis && (
-            <BentoCard
-              variant='dark'
-              title='Pesquisa avançada do bairro'
-              subtitle={result.neighborhoodAnalysis.qualityOfLife?.slice(0, 55) ?? 'Análise do bairro'}
-              className='min-h-[280px] lg:col-span-2'
-              showMenu={false}
-            >
-              <div className='grid gap-4 sm:grid-cols-2'>
-                <div>
-                  <p className='text-[10px] font-semibold uppercase tracking-wider text-white/40'>
-                    Segurança percebida
-                  </p>
-                  <p className='mt-1 text-base font-semibold leading-snug'>
-                    {result.neighborhoodAnalysis.safetyPerception?.split(/[.,]/)[0] ?? '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className='text-[10px] font-semibold uppercase tracking-wider text-white/40'>
-                    Demanda / liquidez
-                  </p>
-                  <p className='mt-1 text-base font-semibold leading-snug'>
-                    {result.marketAppreciationAnalysis?.demandLevel?.split(/[.,]/)[0] ??
-                      'Alta demanda'}
-                  </p>
-                </div>
-              </div>
-              <p className='mt-3 line-clamp-2 text-[13px] leading-relaxed text-white/60'>
-                {result.neighborhoodAnalysis.overview}
-              </p>
-              <AppreciationBars />
-            </BentoCard>
-          )}
-
-          <BentoCard
-            title='Pontuação por critério'
-            subtitle={`Score geral ${result.score}/100`}
-            className='lg:col-span-1'
-          >
-            <div className='space-y-3'>
-              {result.criteriaScores.map((criterion, i) => (
-                <div key={criterion.id}>
-                  <div className='mb-1 flex justify-between text-[11px]'>
-                    <span className='text-muted-foreground'>{criterion.label}</span>
-                    <span className='font-bold'>{criterion.score}/5</span>
-                  </div>
-                  <div className='h-[6px] overflow-hidden rounded-full bg-muted/80'>
-                    <div
-                      className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
-                      style={{ width: `${(criterion.score / 5) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </BentoCard>
-
-          {marketAnalysis.comparables.length > 0 && (
-            <BentoCard
-              title='Imóveis comparáveis'
-              subtitle={`${marketAnalysis.comparables.length} referências de mercado`}
-              className='lg:col-span-2'
-              showMenu={false}
-            >
-              <div className='space-y-2'>
-                {marketAnalysis.comparables.map((item, i) => (
-                  <div
-                    key={i}
-                    className='group flex items-start justify-between gap-3 rounded-2xl border border-black/[0.04] bg-muted/25 p-3.5 transition-colors hover:bg-muted/50'
-                  >
-                    <div className='min-w-0'>
-                      <p className='truncate text-[13px] font-medium leading-snug'>
-                        {item.title}
-                      </p>
-                      <p className='mt-0.5 text-base font-bold text-flux-dark'>
-                        {item.price}
-                      </p>
-                      {item.area && (
-                        <p className='text-[11px] text-muted-foreground'>{item.area}</p>
-                      )}
-                    </div>
-                    {item.link && (
-                      <a
-                        href={item.link}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-background hover:text-foreground'
-                      >
-                        <ExternalLink className='size-3.5' />
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </BentoCard>
-          )}
-
-          <BentoCard
-            title='Insights da IA'
-            subtitle={`${result.aiInsights.length} conclusões`}
-            className='lg:col-span-2'
-            showMenu={false}
-          >
-            <ul className='space-y-2'>
-              {result.aiInsights.map((insight, i) => (
-                <li
-                  key={i}
-                  className='rounded-2xl bg-muted/35 px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground/85'
+            {/* Row 2 — Bairro dark + critérios + comparáveis + insights */}
+            <div className='grid grid-cols-1 gap-4 lg:grid-cols-4'>
+              {result.neighborhoodAnalysis && (
+                <BentoCard
+                  variant='dark'
+                  title='Pesquisa avançada do bairro'
+                  subtitle={
+                    result.neighborhoodAnalysis.qualityOfLife?.slice(0, 55) ??
+                    'Análise do bairro'
+                  }
+                  className='min-h-[280px] lg:col-span-2'
+                  showMenu={false}
                 >
-                  {insight}
-                </li>
-              ))}
-            </ul>
-          </BentoCard>
-        </div>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <div>
+                      <p className='text-[10px] font-semibold tracking-wider text-white/40 uppercase'>
+                        Segurança percebida
+                      </p>
+                      <p className='mt-1 text-base leading-snug font-semibold'>
+                        {result.neighborhoodAnalysis.safetyPerception?.split(
+                          /[.,]/
+                        )[0] ?? '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className='text-[10px] font-semibold tracking-wider text-white/40 uppercase'>
+                        Demanda / liquidez
+                      </p>
+                      <p className='mt-1 text-base leading-snug font-semibold'>
+                        {result.marketAppreciationAnalysis?.demandLevel?.split(
+                          /[.,]/
+                        )[0] ?? 'Alta demanda'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className='mt-3 line-clamp-2 text-[13px] leading-relaxed text-white/60'>
+                    {result.neighborhoodAnalysis.overview}
+                  </p>
+                  <AppreciationBars />
+                </BentoCard>
+              )}
 
+              <BentoCard
+                title='Pontuação por critério'
+                subtitle={`Score geral ${result.score}/100`}
+                className='lg:col-span-1'
+              >
+                <div className='space-y-3'>
+                  {result.criteriaScores.map((criterion, i) => (
+                    <div key={criterion.id}>
+                      <div className='mb-1 flex justify-between text-[11px]'>
+                        <span className='text-muted-foreground'>
+                          {criterion.label}
+                        </span>
+                        <span className='font-bold'>{criterion.score}/5</span>
+                      </div>
+                      <div className='h-[6px] overflow-hidden rounded-full bg-muted/80'>
+                        <div
+                          className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
+                          style={{ width: `${(criterion.score / 5) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </BentoCard>
+
+              {marketAnalysis.comparables.length > 0 && (
+                <BentoCard
+                  title='Imóveis comparáveis'
+                  subtitle={`${marketAnalysis.comparables.length} referências de mercado`}
+                  className='lg:col-span-2'
+                  showMenu={false}
+                >
+                  <div className='space-y-2'>
+                    {marketAnalysis.comparables.map((item, i) => (
+                      <div
+                        key={i}
+                        className='group flex items-start justify-between gap-3 rounded-2xl border border-black/[0.04] bg-muted/25 p-3.5 transition-colors hover:bg-muted/50'
+                      >
+                        <div className='min-w-0'>
+                          <p className='truncate text-[13px] leading-snug font-medium'>
+                            {item.title}
+                          </p>
+                          <p className='mt-0.5 text-base font-bold text-flux-dark'>
+                            {item.price}
+                          </p>
+                          {item.area && (
+                            <p className='text-[11px] text-muted-foreground'>
+                              {item.area}
+                            </p>
+                          )}
+                        </div>
+                        {item.link && (
+                          <a
+                            href={item.link}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='shrink-0 rounded-full p-1.5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-background hover:text-foreground'
+                          >
+                            <ExternalLink className='size-3.5' />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </BentoCard>
+              )}
+
+              <BentoCard
+                title='Insights da IA'
+                subtitle={`${result.aiInsights.length} conclusões`}
+                className='lg:col-span-2'
+                showMenu={false}
+              >
+                <ul className='space-y-2'>
+                  {result.aiInsights.map((insight, i) => (
+                    <li
+                      key={i}
+                      className='rounded-2xl bg-muted/35 px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground/85'
+                    >
+                      {insight}
+                    </li>
+                  ))}
+                </ul>
+              </BentoCard>
+            </div>
           </TabsContent>
 
           <TabsContent value='tecnico' className='space-y-4'>
-        {/* Row 3 — Fotos + análise avançada + plano diretor */}
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
-          {(result.photoCount > 0 || result.photoPreviews.length > 0) && (
-            <BentoCard
-              title='Fotos analisadas'
-              subtitle={`${result.photoCount || result.photoPreviews.length} imagem(ns)`}
-              showMenu={false}
-            >
-              {result.photoPreviews.length > 0 ? (
-                <div className='grid grid-cols-2 gap-2'>
-                  {result.photoPreviews.slice(0, 4).map((url, i) => (
-                    <div
-                      key={url}
-                      className='aspect-square overflow-hidden rounded-2xl bg-muted ring-1 ring-black/[0.04]'
-                    >
-                      <img
-                        src={url}
-                        alt={`Foto ${i + 1}`}
-                        className='size-full object-cover'
-                      />
+            {/* Row 3 — Fotos + análise avançada + plano diretor */}
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
+              {(result.photoCount > 0 || result.photoPreviews.length > 0) && (
+                <BentoCard
+                  title='Fotos analisadas'
+                  subtitle={`${result.photoCount || result.photoPreviews.length} imagem(ns)`}
+                  showMenu={false}
+                >
+                  {result.photoPreviews.length > 0 ? (
+                    <div className='grid grid-cols-2 gap-2'>
+                      {result.photoPreviews.slice(0, 4).map((url, i) => (
+                        <div
+                          key={url}
+                          className='aspect-square overflow-hidden rounded-2xl bg-muted ring-1 ring-black/[0.04]'
+                        >
+                          <img
+                            src={url}
+                            alt={`Foto ${i + 1}`}
+                            className='size-full object-cover'
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className='text-sm text-muted-foreground'>
+                      {result.photoCount} foto(s) enviadas na avaliação.
+                    </p>
+                  )}
+                </BentoCard>
+              )}
+
+              {(result.marketAppreciationAnalysis ||
+                result.neighborhoodAnalysis) && (
+                <BentoCard
+                  title='Análise avançada'
+                  subtitle='Valorização e bairro'
+                  className='md:col-span-1 lg:col-span-1'
+                  showMenu={false}
+                >
+                  <div className='space-y-2'>
+                    {result.neighborhoodAnalysis && (
+                      <div className='rounded-2xl bg-muted/35 p-3.5'>
+                        <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
+                          <MapPinned className='size-3.5 text-flux-lavender' />
+                          Bairro
+                        </p>
+                        <p className='text-[12px] leading-relaxed text-muted-foreground'>
+                          {result.neighborhoodAnalysis.summary}
+                        </p>
+                      </div>
+                    )}
+                    {result.marketAppreciationAnalysis && (
+                      <div className='rounded-2xl bg-muted/35 p-3.5'>
+                        <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
+                          <TrendingUp className='size-3.5 text-flux-dark' />
+                          Projeção de valorização
+                        </p>
+                        <p className='text-[12px] leading-relaxed text-muted-foreground'>
+                          {result.marketAppreciationAnalysis.projectionSummary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </BentoCard>
+              )}
+
+              <BentoCard
+                title='Plano Diretor'
+                subtitle='Usos e restrições'
+                className='md:col-span-1 lg:col-span-1'
+                showMenu={false}
+              >
+                <div className='grid gap-4 sm:grid-cols-2'>
+                  <div>
+                    <p className='text-[10px] font-semibold tracking-wider text-muted-foreground uppercase'>
+                      Usos permitidos
+                    </p>
+                    <ul className='mt-1.5 space-y-0.5'>
+                      {(masterPlanAnalysis.allowedUses.length > 0
+                        ? masterPlanAnalysis.allowedUses.slice(0, 3)
+                        : ['Não identificado']
+                      ).map((use, i) => (
+                        <li key={i} className='text-[12px] text-foreground/80'>
+                          · {use}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className='text-[10px] font-semibold tracking-wider text-muted-foreground uppercase'>
+                      Restrições
+                    </p>
+                    <ul className='mt-1.5 space-y-0.5'>
+                      {(masterPlanAnalysis.restrictions.length > 0
+                        ? masterPlanAnalysis.restrictions.slice(0, 3)
+                        : ['Nenhuma identificada']
+                      ).map((r, i) => (
+                        <li key={i} className='text-[12px] text-foreground/80'>
+                          · {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              ) : (
-                <p className='text-sm text-muted-foreground'>
-                  {result.photoCount} foto(s) enviadas na avaliação.
+                <p className='mt-4 border-t border-black/[0.04] pt-3 text-[11px] leading-relaxed text-muted-foreground'>
+                  {masterPlanAnalysis.summary}
                 </p>
-              )}
-            </BentoCard>
-          )}
-
-          {(result.marketAppreciationAnalysis ||
-            result.neighborhoodAnalysis) && (
-            <BentoCard
-              title='Análise avançada'
-              subtitle='Valorização e bairro'
-              className='md:col-span-1 lg:col-span-1'
-              showMenu={false}
-            >
-              <div className='space-y-2'>
-                {result.neighborhoodAnalysis && (
-                  <div className='rounded-2xl bg-muted/35 p-3.5'>
-                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
-                      <MapPinned className='size-3.5 text-flux-lavender' />
-                      Bairro
-                    </p>
-                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
-                      {result.neighborhoodAnalysis.summary}
-                    </p>
-                  </div>
-                )}
-                {result.marketAppreciationAnalysis && (
-                  <div className='rounded-2xl bg-muted/35 p-3.5'>
-                    <p className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold'>
-                      <TrendingUp className='size-3.5 text-flux-dark' />
-                      Projeção de valorização
-                    </p>
-                    <p className='text-[12px] leading-relaxed text-muted-foreground'>
-                      {result.marketAppreciationAnalysis.projectionSummary}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </BentoCard>
-          )}
-
-          <BentoCard
-            title='Plano Diretor'
-            subtitle='Usos e restrições'
-            className='md:col-span-1 lg:col-span-1'
-            showMenu={false}
-          >
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <div>
-                <p className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground'>
-                  Usos permitidos
-                </p>
-                <ul className='mt-1.5 space-y-0.5'>
-                  {(masterPlanAnalysis.allowedUses.length > 0
-                    ? masterPlanAnalysis.allowedUses.slice(0, 3)
-                    : ['Não identificado']
-                  ).map((use, i) => (
-                    <li key={i} className='text-[12px] text-foreground/80'>
-                      · {use}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground'>
-                  Restrições
-                </p>
-                <ul className='mt-1.5 space-y-0.5'>
-                  {(masterPlanAnalysis.restrictions.length > 0
-                    ? masterPlanAnalysis.restrictions.slice(0, 3)
-                    : ['Nenhuma identificada']
-                  ).map((r, i) => (
-                    <li key={i} className='text-[12px] text-foreground/80'>
-                      · {r}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              </BentoCard>
             </div>
-            <p className='mt-4 border-t border-black/[0.04] pt-3 text-[11px] leading-relaxed text-muted-foreground'>
-              {masterPlanAnalysis.summary}
-            </p>
-          </BentoCard>
-        </div>
 
-        {/* NBR 14653 — full width */}
-        {result.nbr14653 && (
-          <Nbr14653Panel nbr={result.nbr14653} className='col-span-full' />
-        )}
+            {/* NBR 14653 — full width */}
+            {result.nbr14653 && (
+              <Nbr14653Panel nbr={result.nbr14653} className='col-span-full' />
+            )}
 
-        {/* Fontes */}
-        {result.sources && (
-          <div className='flex flex-wrap items-center gap-2 rounded-2xl bg-muted/30 px-4 py-2.5'>
-            <MapPin className='size-3.5 shrink-0 text-muted-foreground' />
-            <p className='text-[11px] text-muted-foreground'>
-              <span className='font-medium text-foreground/70'>Fontes consultadas:</span>{' '}
-              {result.sources.marketResultsCount} mercado ·{' '}
-              {result.sources.masterPlanResultsCount} plano diretor
-              {result.sources.neighborhoodResultsCount != null && (
-                <> · {result.sources.neighborhoodResultsCount} bairro</>
-              )}
-              {result.sources.appreciationResultsCount != null && (
-                <> · {result.sources.appreciationResultsCount} valorização</>
-              )}
-            </p>
-          </div>
-        )}
+            {/* Fontes */}
+            {result.sources && (
+              <div className='flex flex-wrap items-center gap-2 rounded-2xl bg-muted/30 px-4 py-2.5'>
+                <MapPin className='size-3.5 shrink-0 text-muted-foreground' />
+                <p className='text-[11px] text-muted-foreground'>
+                  <span className='font-medium text-foreground/70'>
+                    Fontes consultadas:
+                  </span>{' '}
+                  {result.sources.marketResultsCount} mercado ·{' '}
+                  {result.sources.masterPlanResultsCount} plano diretor
+                  {result.sources.neighborhoodResultsCount != null && (
+                    <> · {result.sources.neighborhoodResultsCount} bairro</>
+                  )}
+                  {result.sources.appreciationResultsCount != null && (
+                    <>
+                      {' '}
+                      · {result.sources.appreciationResultsCount} valorização
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

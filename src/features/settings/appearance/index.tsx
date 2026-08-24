@@ -1,5 +1,3 @@
-import { ContentSection } from '../components/content-section'
-import { ComingSoon } from '@/components/coming-soon'
 import {
   Card,
   CardContent,
@@ -7,6 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ComingSoon } from '@/components/coming-soon'
+import { ContentSection } from '../components/content-section'
 
 export function SettingsAppearance() {
   return (
@@ -19,7 +19,8 @@ export function SettingsAppearance() {
           <CardHeader>
             <CardTitle>Tema</CardTitle>
             <CardDescription>
-              A interface está fixada no modo claro para manter consistência visual.
+              A interface está fixada no modo claro para manter consistência
+              visual.
             </CardDescription>
           </CardHeader>
           <CardContent className='text-sm'>

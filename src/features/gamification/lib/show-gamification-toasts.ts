@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
-import type { Achievement, GamificationPayload } from '@/lib/gamification-api'
 import { useAuthStore } from '@/stores/auth-store'
+import type { Achievement, GamificationPayload } from '@/lib/gamification-api'
 
 export function showNewAchievements(achievements: Achievement[]) {
   for (const achievement of achievements) {
@@ -16,11 +16,15 @@ export function showNewAchievements(achievements: Achievement[]) {
   }
 }
 
-export function showGamificationUpdates(payload: GamificationPayload | undefined) {
+export function showGamificationUpdates(
+  payload: GamificationPayload | undefined
+) {
   if (!payload) return
 
   if (payload.trialEvaluationsRemaining != null) {
-    useAuthStore.getState().auth.updateCredits(payload.trialEvaluationsRemaining)
+    useAuthStore
+      .getState()
+      .auth.updateCredits(payload.trialEvaluationsRemaining)
   }
 
   if (payload.newAchievements.length > 0) {

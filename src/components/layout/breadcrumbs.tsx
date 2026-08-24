@@ -16,13 +16,22 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   if (items.length === 0) return null
 
   return (
-    <nav aria-label='Breadcrumb' className={cn('flex items-center gap-1 text-sm', className)}>
+    <nav
+      aria-label='Breadcrumb'
+      className={cn('flex items-center gap-1 text-sm', className)}
+    >
       {items.map((item, index) => {
         const isLast = index === items.length - 1
         return (
-          <span key={`${item.label}-${index}`} className='flex items-center gap-1'>
+          <span
+            key={`${item.label}-${index}`}
+            className='flex items-center gap-1'
+          >
             {index > 0 && (
-              <ChevronRight className='size-3.5 text-muted-foreground' aria-hidden />
+              <ChevronRight
+                className='size-3.5 text-muted-foreground'
+                aria-hidden
+              />
             )}
             {item.href && !isLast ? (
               <Link
@@ -34,7 +43,9 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
             ) : (
               <span
                 className={cn(
-                  isLast ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  isLast
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground'
                 )}
                 aria-current={isLast ? 'page' : undefined}
               >

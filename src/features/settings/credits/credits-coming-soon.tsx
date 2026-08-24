@@ -1,5 +1,5 @@
 import { Coins } from 'lucide-react'
-import { ComingSoon } from '@/components/coming-soon'
+import { useCreditsStore } from '@/stores/credits-store'
 import {
   Card,
   CardContent,
@@ -7,8 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ComingSoon } from '@/components/coming-soon'
 import { ContentSection } from '../components/content-section'
-import { useCreditsStore } from '@/stores/credits-store'
 
 export function CreditsComingSoon() {
   const credits = useCreditsStore((s) => s.credits)

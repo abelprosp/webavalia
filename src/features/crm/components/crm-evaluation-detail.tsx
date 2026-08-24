@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { FileDown, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { exportEvaluationPdf } from '@/features/avaliacao/lib/export-evaluation-pdf'
-import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
+import { useCrmStore } from '@/stores/crm-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,16 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { useCrmStore } from '@/stores/crm-store'
+import { Textarea } from '@/components/ui/textarea'
+import { propertyTypes } from '@/features/avaliacao/data/criteria'
+import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
+import { exportEvaluationPdf } from '@/features/avaliacao/lib/export-evaluation-pdf'
 import {
   crmStatuses,
   deserializeEvaluationResult,
   getCrmStatusLabel,
   type CrmEvaluation,
 } from '../data/schema'
-import { propertyTypes } from '@/features/avaliacao/data/criteria'
 
 type CrmEvaluationDetailProps = {
   evaluation: CrmEvaluation | null
@@ -80,9 +80,7 @@ export function CrmEvaluationDetail({
       status,
     })
     toast.success(
-      personalMode
-        ? 'Avaliação atualizada'
-        : 'Avaliação atualizada no CRM'
+      personalMode ? 'Avaliação atualizada' : 'Avaliação atualizada no CRM'
     )
   }
 
@@ -104,9 +102,7 @@ export function CrmEvaluationDetail({
   function handleDelete() {
     removeEvaluation(evaluation!.id)
     toast.success(
-      personalMode
-        ? 'Avaliação removida'
-        : 'Avaliação removida do CRM'
+      personalMode ? 'Avaliação removida' : 'Avaliação removida do CRM'
     )
     onOpenChange(false)
   }

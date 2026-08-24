@@ -79,19 +79,25 @@ export async function resendVerificationRequest(email: string) {
 }
 
 export async function forgotPasswordRequest(email: string) {
-  const { data } = await api.post<{ message: string }>('/auth/forgot-password', {
-    email,
-    _honeypot: '',
-  })
+  const { data } = await api.post<{ message: string }>(
+    '/auth/forgot-password',
+    {
+      email,
+      _honeypot: '',
+    }
+  )
   return data
 }
 
 export async function resetPasswordRequest(token: string, password: string) {
   try {
-    const { data } = await api.post<{ message: string }>('/auth/reset-password', {
-      token,
-      password,
-    })
+    const { data } = await api.post<{ message: string }>(
+      '/auth/reset-password',
+      {
+        token,
+        password,
+      }
+    )
     return data
   } catch (error) {
     if (error instanceof AxiosError) {

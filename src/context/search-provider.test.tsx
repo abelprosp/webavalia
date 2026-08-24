@@ -3,11 +3,17 @@ import { render, type RenderResult } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { SearchProvider } from '@/context/search-provider'
 
-const COMMAND_MENU_PLACEHOLDER = 'Type a command or search...'
+const COMMAND_MENU_PLACEHOLDER = 'Digite um comando ou busque…'
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
-  setTheme: vi.fn(),
+  authUser: null as null | {
+    id: string
+    name: string
+    email: string
+    role: 'corretor' | 'admin'
+    accountType: 'pf' | 'pj'
+  },
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -18,8 +24,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/theme-provider', () => ({
-  useTheme: () => ({ setTheme: mocks.setTheme }),
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: (
+    selector?: (state: { auth: { user: typeof mocks.authUser } }) => unknown
+  ) => {
+    const state = { auth: { user: mocks.authUser } }
+    return selector ? selector(state) : state
+  },
 }))
 
 type ShortcutModifier = 'Control' | 'Meta'
@@ -58,6 +69,7 @@ async function openCommandPalette(
 describe('SearchProvider and CommandMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authUser = null
   })
 
   it('renders the command palette when the palette is open', async () => {
@@ -69,11 +81,9 @@ describe('SearchProvider and CommandMenu', () => {
     await expect
       .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
       .toBeInTheDocument()
-    await expect.element(getByText('Theme')).toBeInTheDocument()
-    await expect.element(getByText('Light')).toBeInTheDocument()
-    await expect.element(getByText('Dark')).toBeInTheDocument()
-    await expect.element(getByText('System')).toBeInTheDocument()
-    await expect.element(getByText('Dashboard')).toBeInTheDocument()
+    await expect.element(getByText('Início')).toBeInTheDocument()
+    await expect.element(getByText('Avaliar imóvel')).toBeInTheDocument()
+    await expect.element(getByText('Perfil')).toBeInTheDocument()
   })
 
   it('does not show the dialog content when search is closed', async () => {
@@ -109,38 +119,35 @@ describe('SearchProvider and CommandMenu', () => {
 
     await openCommandPalette(screen)
 
-    await userEvent.click(screen.getByText('Tasks'))
+    await userEvent.click(screen.getByText('Avaliar imóvel'))
 
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/tasks' })
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/avaliacao' })
     await expect
       .element(screen.getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
       .not.toBeInTheDocument()
   })
 
   it('navigates for nested sidebar items (group with sub-items)', async () => {
+    mocks.authUser = {
+      id: '1',
+      name: 'Broker',
+      email: 'broker@test.com',
+      role: 'corretor',
+      accountType: 'pj',
+    }
+
     const screen = await renderWithSearchProvider()
     const { getByPlaceholder, getByRole } = screen
 
     await openCommandPalette(screen)
 
-    await userEvent.click(getByRole('option', { name: 'Settings Account' }))
+    await userEvent.click(
+      getByRole('option', { name: /Assistente IA.*Chat FoxAi/i })
+    )
 
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/settings/account' })
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/fox-ai/chat' })
     await expect
       .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
-      .not.toBeInTheDocument()
-  })
-
-  it('applies theme and closes the palette when a theme command is chosen', async () => {
-    const screen = await renderWithSearchProvider()
-
-    await openCommandPalette(screen)
-
-    await userEvent.click(screen.getByText('Dark'))
-
-    expect(mocks.setTheme).toHaveBeenCalledWith('dark')
-    await expect
-      .element(screen.getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
       .not.toBeInTheDocument()
   })
 
@@ -155,7 +162,7 @@ describe('SearchProvider and CommandMenu', () => {
     )
 
     await expect
-      .element(screen.getByText('No results found.'))
+      .element(screen.getByText('Nenhum resultado encontrado.'))
       .toBeInTheDocument()
   })
 })

@@ -27,7 +27,8 @@ export function BentoCard({
         variant === 'default' && 'bg-card text-card-foreground',
         variant === 'dark' &&
           'border-white/[0.06] bg-flux-dark text-white shadow-[0_8px_32px_-4px_rgba(0,0,0,0.35)]',
-        variant === 'accent' && 'border-transparent bg-flux-lime text-flux-dark',
+        variant === 'accent' &&
+          'border-transparent bg-flux-lime text-flux-dark',
         variant === 'muted' && 'bg-muted/30 text-card-foreground',
         className
       )}

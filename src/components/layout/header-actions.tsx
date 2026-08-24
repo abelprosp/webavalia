@@ -7,7 +7,9 @@ type HeaderActionsProps = {
   searchClassName?: string
 }
 
-export function HeaderActions({ searchClassName = 'me-auto' }: HeaderActionsProps) {
+export function HeaderActions({
+  searchClassName = 'me-auto',
+}: HeaderActionsProps) {
   return (
     <>
       <Search className={searchClassName} />

@@ -1,13 +1,13 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { loginRequest, isEmailNotVerifiedError } from '@/lib/auth-api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { loginRequest, isEmailNotVerifiedError } from '@/lib/auth-api'
-import { useAuthStore } from '@/stores/auth-store'
 import { AuthHoneypotField } from '../components/auth-honeypot-field'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 
@@ -166,7 +166,11 @@ function SignInForm({ redirectTo }: { redirectTo?: string }) {
             aria-label={reveal ? 'Ocultar senha' : 'Mostrar senha'}
             className='absolute inset-y-0 end-0 flex items-center pe-3 text-muted-foreground transition-colors hover:text-foreground'
           >
-            {reveal ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
+            {reveal ? (
+              <EyeOff className='size-4' />
+            ) : (
+              <Eye className='size-4' />
+            )}
           </button>
         </div>
       </div>

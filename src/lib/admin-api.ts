@@ -162,7 +162,10 @@ export async function adjustUserCredits(
   return data.credits ?? data.leadCredits
 }
 
-export async function adjustUserTrialEvaluations(id: string, remaining: number) {
+export async function adjustUserTrialEvaluations(
+  id: string,
+  remaining: number
+) {
   const { data } = await api.post<{
     credits?: number
     trialEvaluationsRemaining: number
@@ -235,7 +238,10 @@ export async function createAdminBlogPost(payload: {
   status: 'draft' | 'published'
   slug?: string
 }) {
-  const { data } = await api.post<{ post: AdminBlogPost }>('/admin/blog', payload)
+  const { data } = await api.post<{ post: AdminBlogPost }>(
+    '/admin/blog',
+    payload
+  )
   return data.post
 }
 

@@ -97,7 +97,7 @@ describe('UserAuthForm', () => {
       )
 
       await vi.waitFor(() =>
-        expect(navigate).toHaveBeenCalledWith({ to: '/', replace: true })
+        expect(navigate).toHaveBeenCalledWith({ to: '/app', replace: true })
       )
     })
   })

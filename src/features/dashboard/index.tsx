@@ -9,6 +9,13 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
+import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
+import { useLeadsStore } from '@/stores/leads-store'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import { fetchLeads } from '@/lib/leads-api'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,22 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { Main } from '@/components/layout/main'
 import { FirstRunBanner } from '@/components/onboarding/first-run-banner'
-import { isBrokerAccount } from '@/lib/auth-api'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
-import { useAuthStore } from '@/stores/auth-store'
-import { useCreditsStore } from '@/stores/credits-store'
-import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
-import { useLeadsStore } from '@/stores/leads-store'
-import { fetchLeads } from '@/lib/leads-api'
-import { Overview } from './components/overview'
-import { RecentLeads } from './components/recent-leads'
+import { DashboardFoxAiInsights } from '@/features/fox-ai/components/dashboard-fox-ai-insights'
 import { GamificationPanel } from '@/features/gamification/components/gamification-panel'
 import { useGamificationStats } from '@/features/gamification/hooks/use-gamification-stats'
-import { DashboardFoxAiInsights } from '@/features/fox-ai/components/dashboard-fox-ai-insights'
+import { Overview } from './components/overview'
+import { RecentLeads } from './components/recent-leads'
 
 function CreditsStatCard({
   credits,
@@ -44,14 +44,18 @@ function CreditsStatCard({
   const card = (
     <Card className='h-full'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-        <CardTitle className='text-sm font-medium'>Créditos disponíveis</CardTitle>
+        <CardTitle className='text-sm font-medium'>
+          Créditos disponíveis
+        </CardTitle>
         <Coins className='size-4 text-muted-foreground' />
       </CardHeader>
       <CardContent>
         <div className='text-2xl font-bold'>{credits}</div>
         <p className='text-xs text-muted-foreground'>{description}</p>
         {!CREDITS_AND_PLANS_ENABLED && (
-          <p className='mt-1 text-xs text-muted-foreground/80'>Compra em breve</p>
+          <p className='mt-1 text-xs text-muted-foreground/80'>
+            Compra em breve
+          </p>
         )}
       </CardContent>
     </Card>
@@ -62,7 +66,10 @@ function CreditsStatCard({
   }
 
   return (
-    <Link to='/settings/credits' className='block transition-opacity hover:opacity-90'>
+    <Link
+      to='/settings/credits'
+      className='block transition-opacity hover:opacity-90'
+    >
       {card}
     </Link>
   )
@@ -82,7 +89,8 @@ export function Dashboard() {
   const evaluationsTotal =
     gamificationStats?.evaluationsUsed ?? localEvaluationsTotal
   const currentMonth = new Date().getMonth()
-  const monthlyCounts = gamificationStats?.monthlyBreakdown ?? localMonthlyCounts
+  const monthlyCounts =
+    gamificationStats?.monthlyBreakdown ?? localMonthlyCounts
   const evaluationsThisMonth = monthlyCounts[MONTHS[currentMonth]] ?? 0
 
   useEffect(() => {
@@ -144,7 +152,10 @@ export function Dashboard() {
         <FirstRunBanner />
 
         <div className='mb-6'>
-          <GamificationPanel stats={gamificationStats} loading={gamificationLoading} />
+          <GamificationPanel
+            stats={gamificationStats}
+            loading={gamificationLoading}
+          />
         </div>
 
         <div
@@ -156,7 +167,10 @@ export function Dashboard() {
                 credits={credits}
                 description='Para avaliações IA e leads'
               />
-              <Link to='/leads' className='block transition-opacity hover:opacity-90'>
+              <Link
+                to='/leads'
+                className='block transition-opacity hover:opacity-90'
+              >
                 <Card className='h-full'>
                   <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                     <CardTitle className='text-sm font-medium'>
@@ -172,7 +186,10 @@ export function Dashboard() {
                   </CardContent>
                 </Card>
               </Link>
-              <Link to='/leads' className='block transition-opacity hover:opacity-90'>
+              <Link
+                to='/leads'
+                className='block transition-opacity hover:opacity-90'
+              >
                 <Card className='h-full'>
                   <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                     <CardTitle className='text-sm font-medium'>
@@ -190,10 +207,16 @@ export function Dashboard() {
               </Link>
             </>
           ) : (
-            <CreditsStatCard credits={credits} description='Para avaliações com IA' />
+            <CreditsStatCard
+              credits={credits}
+              description='Para avaliações com IA'
+            />
           )}
 
-          <Link to='/avaliacao' className='block transition-opacity hover:opacity-90'>
+          <Link
+            to='/avaliacao'
+            className='block transition-opacity hover:opacity-90'
+          >
             <Card className='h-full'>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                 <CardTitle className='text-sm font-medium'>
@@ -222,7 +245,10 @@ export function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className='ps-2'>
-              <Overview monthlyCounts={monthlyCounts} total={evaluationsTotal} />
+              <Overview
+                monthlyCounts={monthlyCounts}
+                total={evaluationsTotal}
+              />
             </CardContent>
           </Card>
           {isBroker && (
@@ -241,7 +267,7 @@ export function Dashboard() {
         </div>
 
         {isBroker && (
-          <div className='mb-6 mt-6'>
+          <div className='mt-6 mb-6'>
             <DashboardFoxAiInsights dashboardContext={dashboardContext} />
           </div>
         )}
@@ -260,7 +286,11 @@ export function Dashboard() {
             <div
               className={`grid gap-4 ${isBroker ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
             >
-              <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+              <Button
+                variant='outline'
+                className='h-auto flex-col gap-2 py-6'
+                asChild
+              >
                 <Link to='/avaliacao'>
                   <Sparkles className='size-6' />
                   <span>1. Avaliar imóvel</span>
@@ -268,13 +298,21 @@ export function Dashboard() {
               </Button>
               {isBroker && (
                 <>
-                  <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                  <Button
+                    variant='outline'
+                    className='h-auto flex-col gap-2 py-6'
+                    asChild
+                  >
                     <Link to='/leads'>
                       <Users className='size-6' />
                       <span>2. Desbloquear leads</span>
                     </Link>
                   </Button>
-                  <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                  <Button
+                    variant='outline'
+                    className='h-auto flex-col gap-2 py-6'
+                    asChild
+                  >
                     <Link to='/crm'>
                       <Kanban className='size-6' />
                       <span>3. Gerenciar no CRM</span>
@@ -283,7 +321,11 @@ export function Dashboard() {
                 </>
               )}
               {CREDITS_AND_PLANS_ENABLED ? (
-                <Button variant='outline' className='h-auto flex-col gap-2 py-6' asChild>
+                <Button
+                  variant='outline'
+                  className='h-auto flex-col gap-2 py-6'
+                  asChild
+                >
                   <Link to='/settings/credits'>
                     <Coins className='size-6' />
                     <span>

@@ -56,19 +56,19 @@ export function FoxAiMarkdown({ content, className }: FoxAiMarkdownProps) {
 
     if (trimmed.startsWith('### ')) {
       elements.push(
-        <h4 key={i} className='mb-1 mt-3 text-sm font-semibold'>
+        <h4 key={i} className='mt-3 mb-1 text-sm font-semibold'>
           {renderInline(trimmed.slice(4))}
         </h4>
       )
     } else if (trimmed.startsWith('## ')) {
       elements.push(
-        <h3 key={i} className='mb-1 mt-3 text-sm font-semibold'>
+        <h3 key={i} className='mt-3 mb-1 text-sm font-semibold'>
           {renderInline(trimmed.slice(3))}
         </h3>
       )
     } else if (trimmed.startsWith('# ')) {
       elements.push(
-        <h2 key={i} className='mb-1 mt-3 text-base font-semibold'>
+        <h2 key={i} className='mt-3 mb-1 text-base font-semibold'>
           {renderInline(trimmed.slice(2))}
         </h2>
       )

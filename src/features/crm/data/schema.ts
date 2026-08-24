@@ -14,7 +14,10 @@ export const crmStatuses = [
 
 export type CrmEvaluationStatus = (typeof crmStatuses)[number]['value']
 
-export type SerializedEvaluationResult = Omit<EvaluationResult, 'evaluatedAt'> & {
+export type SerializedEvaluationResult = Omit<
+  EvaluationResult,
+  'evaluatedAt'
+> & {
   evaluatedAt: string
 }
 

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { ForbiddenError } from '@/features/errors/forbidden'
 import { GeneralError } from '@/features/errors/general-error'
 import { MaintenanceError } from '@/features/errors/maintenance-error'

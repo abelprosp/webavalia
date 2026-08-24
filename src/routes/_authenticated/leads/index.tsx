@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Leads } from '@/features/leads'
-import { isBrokerAccount } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { Leads } from '@/features/leads'
 
 export const Route = createFileRoute('/_authenticated/leads/')({
   beforeLoad: () => {

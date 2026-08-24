@@ -1,5 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { useMutation } from '@tanstack/react-query'
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react'
+import { generateMarketReport, type MarketReport } from '@/lib/fox-ai-api'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,8 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { generateMarketReport, type MarketReport } from '@/lib/fox-ai-api'
-import { cn } from '@/lib/utils'
 
 const directionIcons = {
   up: ArrowUpRight,
@@ -138,19 +138,27 @@ function ReportContent({ report }: { report: MarketReport }) {
       {chartData.some((d) => d.value > 0) && (
         <div className='space-y-2.5'>
           {chartData.map((entry) => (
-            <div key={entry.name} className='grid grid-cols-[90px_1fr_auto] items-center gap-2'>
+            <div
+              key={entry.name}
+              className='grid grid-cols-[90px_1fr_auto] items-center gap-2'
+            >
               <span className='truncate text-xs text-muted-foreground'>
                 {entry.name}
               </span>
               <div className='h-2 overflow-hidden rounded-full bg-muted'>
                 <div
-                  className={cn('h-full rounded-full transition-all', entry.barClass)}
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    entry.barClass
+                  )}
                   style={{
                     width: `${maxValue > 0 ? (entry.value / maxValue) * 100 : 0}%`,
                   }}
                 />
               </div>
-              <span className='text-xs font-medium tabular-nums'>{entry.display}</span>
+              <span className='text-xs font-medium tabular-nums'>
+                {entry.display}
+              </span>
             </div>
           ))}
         </div>
@@ -158,7 +166,7 @@ function ReportContent({ report }: { report: MarketReport }) {
 
       {report.trends.length > 0 && (
         <div>
-          <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             Tendências
           </p>
           <div className='space-y-2'>
@@ -166,7 +174,10 @@ function ReportContent({ report }: { report: MarketReport }) {
               const direction = resolveTrendDirection(trend.direction)
               const Icon = directionIcons[direction]
               return (
-                <div key={i} className='flex items-start gap-2 rounded-lg border p-3'>
+                <div
+                  key={i}
+                  className='flex items-start gap-2 rounded-lg border p-3'
+                >
                   <Icon
                     className={cn('mt-0.5 size-4', directionColors[direction])}
                   />
@@ -185,7 +196,7 @@ function ReportContent({ report }: { report: MarketReport }) {
 
       {report.risks.length > 0 && (
         <div>
-          <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             Riscos
           </p>
           <div className='space-y-2'>
@@ -207,16 +218,21 @@ function ReportContent({ report }: { report: MarketReport }) {
 
       {report.opportunities.length > 0 && (
         <div>
-          <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+          <p className='mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
             Oportunidades
           </p>
           <div className='space-y-2'>
             {report.opportunities.map((o, i) => (
-              <div key={i} className='rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3'>
+              <div
+                key={i}
+                className='rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3'
+              >
                 <div className='flex items-start justify-between gap-2'>
                   <div>
                     <p className='text-sm font-medium'>{o.title}</p>
-                    <p className='text-xs text-muted-foreground'>{o.description}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      {o.description}
+                    </p>
                   </div>
                   <Badge variant='outline' className='shrink-0 text-xs'>
                     <Sparkles className='me-1 size-3' />
@@ -230,7 +246,7 @@ function ReportContent({ report }: { report: MarketReport }) {
       )}
 
       <div className='rounded-lg border p-3'>
-        <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+        <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
           Previsão — {report.forecast.period}
         </p>
         <p className='mt-1 text-sm'>{report.forecast.outlook}</p>

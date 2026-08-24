@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
+import { fetchBlogPost, type BlogPost } from '@/lib/blog-api'
 import { Button } from '@/components/ui/button'
 import { BlogPostPage } from '@/features/blog/blog-post-page'
-import { fetchBlogPost, type BlogPost } from '@/lib/blog-api'
 
 export const Route = createFileRoute('/blog/$slug')({
   component: BlogPostRoute,

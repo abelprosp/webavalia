@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Inbox, Lock, MapPin, Loader2 } from 'lucide-react'
+import { fetchLeads, type LeadItem } from '@/lib/leads-api'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { fetchLeads, type LeadItem } from '@/lib/leads-api'
 
 export function RecentLeads() {
   const [leads, setLeads] = useState<LeadItem[]>([])

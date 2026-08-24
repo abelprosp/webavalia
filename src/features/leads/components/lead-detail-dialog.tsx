@@ -1,7 +1,10 @@
-import { Kanban, Mail, Phone } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Kanban, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
+import { createDealFromLead } from '@/lib/crm-api'
+import { type LeadItem } from '@/lib/leads-api'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,13 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
 import { EvaluationResultPanel } from '@/features/avaliacao/components/evaluation-result'
-import {
-  getListingIntentLabel,
-} from '@/features/avaliacao/data/evaluation-engine'
-import { type LeadItem } from '@/lib/leads-api'
-import { createDealFromLead } from '@/lib/crm-api'
+import { getListingIntentLabel } from '@/features/avaliacao/data/evaluation-engine'
 import {
   getLeadDisplayValue,
   parseLeadEvaluation,
@@ -52,7 +50,9 @@ export function LeadDetailDialog({
   const displayValue = getLeadDisplayValue(
     lead.propertyInput ?? { listingIntent: lead.listingIntent },
     lead.evaluationResult ??
-      (lead.estimatedValue != null ? { estimatedValue: lead.estimatedValue } : null)
+      (lead.estimatedValue != null
+        ? { estimatedValue: lead.estimatedValue }
+        : null)
   )
 
   return (
@@ -97,7 +97,9 @@ export function LeadDetailDialog({
             )}
           </DialogHeader>
 
-          <div className={`space-y-4 text-sm ${parsedEvaluation ? 'mt-4' : ''}`}>
+          <div
+            className={`space-y-4 text-sm ${parsedEvaluation ? 'mt-4' : ''}`}
+          >
             <div className='grid gap-2 rounded-lg border p-4'>
               <div className='flex items-center gap-2'>
                 <Phone className='size-4 text-muted-foreground' />
@@ -127,7 +129,9 @@ export function LeadDetailDialog({
 
             {!parsedEvaluation && lead.hasEvaluation && (
               <div className='rounded-lg border bg-primary/5 p-4'>
-                <p className='text-xs text-muted-foreground'>{displayValue.label}</p>
+                <p className='text-xs text-muted-foreground'>
+                  {displayValue.label}
+                </p>
                 <p className='text-2xl font-bold'>
                   {lead.displayValue ?? displayValue.formatted}
                 </p>

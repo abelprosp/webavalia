@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { formatCepInput } from '@/lib/address-api'
 import { lookupMarketMapCep } from '@/lib/market-map-api'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import type { MarketCity } from '../data/cities'
 
 type MarketCepSearchProps = {
@@ -55,7 +55,7 @@ export function MarketCepSearch({ onLocationFound }: MarketCepSearchProps) {
           }}
         />
         {loading && (
-          <Loader2 className='absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
+          <Loader2 className='absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
         )}
       </div>
       <p className='text-[11px] text-muted-foreground'>

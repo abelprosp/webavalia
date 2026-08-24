@@ -16,6 +16,16 @@ import {
   UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
+import {
+  fetchRadarOpportunities,
+  generateRadarApproach,
+  runRadarScan,
+  sendRadarOpportunityToCrm,
+  updateRadarOpportunityStatus,
+  type CaptureOpportunity,
+} from '@/lib/capture-radar-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,6 +45,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   Select,
   SelectContent,
@@ -43,21 +54,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { PageHeader } from '@/components/flux/page-header'
 import { Header } from '@/components/layout/header'
 import { HeaderActions } from '@/components/layout/header-actions'
 import { Main } from '@/components/layout/main'
-import { PageHeader } from '@/components/flux/page-header'
-import {
-  fetchRadarOpportunities,
-  generateRadarApproach,
-  runRadarScan,
-  sendRadarOpportunityToCrm,
-  updateRadarOpportunityStatus,
-  type CaptureOpportunity,
-} from '@/lib/capture-radar-api'
-import { useAuthStore } from '@/stores/auth-store'
-import { useCreditsStore } from '@/stores/credits-store'
 
 const PROPERTY_TYPES = [
   { value: 'apartamento', label: 'Apartamento' },
@@ -75,9 +75,33 @@ const PROPERTY_TYPES = [
 ] as const
 
 const UF_LIST = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
-  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
-  'SP', 'SE', 'TO',
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO',
 ] as const
 
 function formatBrl(cents: number) {
@@ -418,7 +442,9 @@ export function Radar() {
         <div className='grid gap-4 sm:grid-cols-4'>
           <Card>
             <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>Oportunidades</CardTitle>
+              <CardTitle className='text-sm font-medium'>
+                Oportunidades
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className='text-2xl font-bold'>{stats.total}</div>
@@ -471,7 +497,9 @@ export function Radar() {
               <Card key={opportunity.id} className='flex flex-col'>
                 <CardHeader className='pb-3'>
                   <div className='flex items-start justify-between gap-2'>
-                    <Badge className={scoreBadgeClass(opportunity.opportunityScore)}>
+                    <Badge
+                      className={scoreBadgeClass(opportunity.opportunityScore)}
+                    >
                       Score {opportunity.opportunityScore ?? '—'}
                     </Badge>
                     <div className='flex items-center gap-1.5'>
@@ -492,7 +520,9 @@ export function Radar() {
                   {opportunity.location && (
                     <CardDescription className='flex items-center gap-1'>
                       <MapPin className='size-3' />
-                      <span className='line-clamp-1'>{opportunity.location}</span>
+                      <span className='line-clamp-1'>
+                        {opportunity.location}
+                      </span>
                     </CardDescription>
                   )}
                 </CardHeader>
@@ -556,8 +586,7 @@ export function Radar() {
                         disabled={busyId === opportunity.id}
                         onClick={() => void handleSendToCrm(opportunity)}
                       >
-                        <Kanban className='size-3.5' />
-                        + CRM
+                        <Kanban className='size-3.5' />+ CRM
                       </Button>
                     )}
                     <Button

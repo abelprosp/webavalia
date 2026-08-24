@@ -18,7 +18,8 @@ describe('ForgotPasswordForm', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     forgotPasswordRequestMock.mockResolvedValue({
-      message: 'Se o e-mail estiver cadastrado, você receberá instruções em breve.',
+      message:
+        'Se o e-mail estiver cadastrado, você receberá instruções em breve.',
     })
 
     screen = await render(<ForgotPasswordForm />)

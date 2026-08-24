@@ -19,7 +19,12 @@ export function BlogLayout({ children }: BlogLayoutProps) {
             <Button variant='ghost' size='sm' asChild>
               <Link to='/blog'>Artigos</Link>
             </Button>
-            <Button variant='outline' size='sm' className='rounded-full' asChild>
+            <Button
+              variant='outline'
+              size='sm'
+              className='rounded-full'
+              asChild
+            >
               <Link to='/sign-in'>Entrar</Link>
             </Button>
           </div>

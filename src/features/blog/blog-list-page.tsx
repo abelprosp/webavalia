@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { Calendar, User } from 'lucide-react'
+import type { BlogPostSummary } from '@/lib/blog-api'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { BlogPostSummary } from '@/lib/blog-api'
 
 type BlogListPageProps = {
   posts: BlogPostSummary[]
@@ -28,8 +28,8 @@ export function BlogListPage({ posts }: BlogListPageProps) {
           Mercado imobiliário e avaliações
         </h1>
         <p className='mt-2 max-w-2xl text-muted-foreground'>
-          Artigos sobre valuation, tendências de mercado, metodologia NBR 14653 e
-          dicas para corretores e investidores.
+          Artigos sobre valuation, tendências de mercado, metodologia NBR 14653
+          e dicas para corretores e investidores.
         </p>
       </div>
 

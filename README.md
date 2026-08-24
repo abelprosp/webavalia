@@ -37,11 +37,11 @@ npm run dev:all
 
 ## URLs
 
-| Serviço    | URL                      |
-|------------|--------------------------|
-| Frontend   | http://localhost:5173    |
-| API        | http://localhost:3001    |
-| PostgreSQL | localhost:5433 (Docker)    |
+| Serviço    | URL                     |
+| ---------- | ----------------------- |
+| Frontend   | http://localhost:5173   |
+| API        | http://localhost:3001   |
+| PostgreSQL | localhost:5433 (Docker) |
 
 ## Primeiro acesso
 
@@ -58,24 +58,26 @@ OPENAI_MODEL=gpt-4o
 ```
 
 A avaliação de imóveis usa:
+
 - **Serper** — busca anúncios em imobiliárias locais (ZAP, Viva Real, etc.) e dados do **Plano Diretor**
 - **ChatGPT** — análise completa com valor estimado, comparáveis, zoneamento e insights
 
 Obtenha as chaves em:
+
 - OpenAI: https://platform.openai.com/api-keys
 - Serper: https://serper.dev/
 
 ## Scripts disponíveis
 
-| Comando           | Descrição                                      |
-|-------------------|------------------------------------------------|
-| `npm run setup`   | Sobe PostgreSQL (Docker) e roda migrations     |
-| `npm run dev:apps`| Inicia API + frontend (sem Docker)             |
-| `npm run dev:all` | Setup + API + frontend                         |
-| `npm run dev`     | Apenas frontend                                |
-| `npm run dev:server` | Apenas API                                  |
-| `npm run docker:up`  | Sobe container PostgreSQL                    |
-| `npm run db:migrate` | Cria tabelas e usuário demo                  |
+| Comando              | Descrição                                  |
+| -------------------- | ------------------------------------------ |
+| `npm run setup`      | Sobe PostgreSQL (Docker) e roda migrations |
+| `npm run dev:apps`   | Inicia API + frontend (sem Docker)         |
+| `npm run dev:all`    | Setup + API + frontend                     |
+| `npm run dev`        | Apenas frontend                            |
+| `npm run dev:server` | Apenas API                                 |
+| `npm run docker:up`  | Sobe container PostgreSQL                  |
+| `npm run db:migrate` | Cria tabelas e usuário demo                |
 
 ## Erro: porta 5432 já em uso
 
@@ -123,4 +125,4 @@ web/
 - **Frontend:** React, Vite, TanStack Router, Shadcn UI, Tailwind CSS
 - **Backend:** Express, PostgreSQL, JWT, bcrypt
 - **Banco:** PostgreSQL 16 (Docker)
-"# webavalia" 
+  "# webavalia"

@@ -6,9 +6,9 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import type { SuggestedPrompt } from '@/lib/fox-ai-api'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 const iconMap = {
   portfolio: Building2,
@@ -43,7 +43,7 @@ export function QuickActionChips({
             key={prompt.id}
             variant='outline'
             className={cn(
-              'cursor-pointer gap-1.5 px-3 py-1.5 text-xs font-normal transition-colors hover:bg-orange-500/10 hover:border-orange-500/40',
+              'cursor-pointer gap-1.5 px-3 py-1.5 text-xs font-normal transition-colors hover:border-orange-500/40 hover:bg-orange-500/10',
               disabled && 'pointer-events-none opacity-50'
             )}
             onClick={() => !disabled && onSelect(prompt.message)}

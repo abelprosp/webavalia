@@ -9,6 +9,9 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react'
+import { getMarketInsights, type MarketInsight } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -18,9 +21,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { getMarketInsights, type MarketInsight } from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { cn } from '@/lib/utils'
 
 const severityStyles: Record<MarketInsight['severity'], string> = {
   info: 'border-blue-500/30 bg-blue-500/5',
@@ -81,8 +81,7 @@ export function LiveInsightsSidebar() {
     )
   }
 
-  const trend =
-    trendLabels[data.appreciationTrend] ?? trendLabels.indeterminado
+  const trend = trendLabels[data.appreciationTrend] ?? trendLabels.indeterminado
 
   return (
     <Card className='flex h-full flex-col'>
@@ -110,15 +109,17 @@ export function LiveInsightsSidebar() {
                 value={`${data.evaluationsThisMonth}`}
                 sub='avaliações'
               />
-              <MetricBox
-                label='Créditos'
-                value={`${data.credits}`}
-              />
+              <MetricBox label='Créditos' value={`${data.credits}`} />
             </div>
 
             <div className='rounded-lg border p-3'>
               <p className='text-xs text-muted-foreground'>Tendência</p>
-              <p className={cn('flex items-center gap-1 font-semibold', trend.color)}>
+              <p
+                className={cn(
+                  'flex items-center gap-1 font-semibold',
+                  trend.color
+                )}
+              >
                 {data.appreciationTrend === 'valorizacao' ? (
                   <ArrowUpRight className='size-4' />
                 ) : data.appreciationTrend === 'desvalorizacao' ? (

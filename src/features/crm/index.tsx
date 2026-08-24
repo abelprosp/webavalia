@@ -10,23 +10,12 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  DEFAULT_EVALUATION_FORM_VALUES,
-  formatCurrency,
-  normalizeEvaluationResult,
-  type EvaluationFormValues,
-  type EvaluationResult,
-} from '@/features/avaliacao/data/evaluation-engine'
-import { propertyTypes } from '@/features/avaliacao/data/criteria'
+import { useCrmStore } from '@/stores/crm-store'
 import { fetchMyEvaluations } from '@/lib/evaluation-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   Table,
   TableBody,
@@ -35,18 +24,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/flux/empty-state'
 import { FluxCard } from '@/components/flux/flux-card'
 import { PageHeader } from '@/components/flux/page-header'
-import { HeaderActions } from '@/components/layout/header-actions'
 import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
 import { Main } from '@/components/layout/main'
-import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { useCrmStore } from '@/stores/crm-store'
-import { crmStatuses, getCrmStatusLabel, type CrmEvaluation } from './data/schema'
+import { propertyTypes } from '@/features/avaliacao/data/criteria'
+import {
+  DEFAULT_EVALUATION_FORM_VALUES,
+  formatCurrency,
+  normalizeEvaluationResult,
+  type EvaluationFormValues,
+  type EvaluationResult,
+} from '@/features/avaliacao/data/evaluation-engine'
 import { CrmEvaluationDetail } from './components/crm-evaluation-detail'
 import { PipelineBoard } from './components/pipeline-board'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  crmStatuses,
+  getCrmStatusLabel,
+  type CrmEvaluation,
+} from './data/schema'
 
 function getPropertyTypeLabel(value: string) {
   return propertyTypes.find((t) => t.value === value)?.label ?? value
@@ -106,10 +105,14 @@ function statusVariant(
 
 export function Crm({ personalMode = false }: { personalMode?: boolean }) {
   const localEvaluations = useCrmStore((s) => s.evaluations)
-  const [serverEvaluations, setServerEvaluations] = useState<CrmEvaluation[]>([])
+  const [serverEvaluations, setServerEvaluations] = useState<CrmEvaluation[]>(
+    []
+  )
   const [loadingServer, setLoadingServer] = useState(personalMode)
   const [selected, setSelected] = useState<CrmEvaluation | null>(null)
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'evaluations'>('pipeline')
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'evaluations'>(
+    'pipeline'
+  )
 
   useEffect(() => {
     if (!personalMode) return
@@ -395,7 +398,9 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
               </Card>
               <Card>
                 <CardHeader className='pb-2'>
-                  <CardTitle className='text-sm font-medium'>Fechadas</CardTitle>
+                  <CardTitle className='text-sm font-medium'>
+                    Fechadas
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className='text-2xl font-bold'>{stats.fechado}</div>
@@ -425,7 +430,8 @@ export function Crm({ personalMode = false }: { personalMode?: boolean }) {
               <div className='mb-4 overflow-hidden rounded-[1.75rem] border border-flux-lavender/30 bg-gradient-to-br from-flux-lavender/10 to-flux-lime/5 p-4'>
                 <p className='flex items-center gap-2 text-sm'>
                   <Sparkles className='size-4 text-flux-lavender' />
-                  Lead Scoring IA · Distribuição automática · Timeline · Tags inteligentes
+                  Lead Scoring IA · Distribuição automática · Timeline · Tags
+                  inteligentes
                 </p>
               </div>
               <PipelineBoard />

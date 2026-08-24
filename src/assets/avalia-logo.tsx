@@ -32,7 +32,7 @@ export function AvaliaLogo({
         <img
           src={LOGO_SRC}
           alt='Avalia Imobe'
-          className='h-full w-auto max-w-none object-left object-contain'
+          className='h-full w-auto max-w-none object-contain object-left'
           draggable={false}
         />
       </div>

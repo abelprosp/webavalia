@@ -1,23 +1,20 @@
-import { Mail, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useSearch } from '@tanstack/react-router'
 import { type AxiosError } from 'axios'
+import { Link, useSearch } from '@tanstack/react-router'
+import { Mail, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { resendVerificationRequest, verifyEmailRequest } from '@/lib/auth-api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  resendVerificationRequest,
-  verifyEmailRequest,
-} from '@/lib/auth-api'
 import { AuthHoneypotField } from '../components/auth-honeypot-field'
 import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 
 export function VerifyEmailPage() {
   const search = useSearch({ from: '/(auth)/verify-email' })
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    search.token ? 'loading' : 'idle'
-  )
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >(search.token ? 'loading' : 'idle')
   const [message, setMessage] = useState('')
   const [resendEmail, setResendEmail] = useState(search.email ?? '')
   const [resending, setResending] = useState(false)
@@ -124,7 +121,10 @@ export function VerifyEmailPage() {
                 )}
 
                 <p className='text-center text-sm text-muted-foreground'>
-                  <Link to='/sign-in' className='text-foreground hover:underline'>
+                  <Link
+                    to='/sign-in'
+                    className='text-foreground hover:underline'
+                  >
                     Voltar para o login
                   </Link>
                 </p>

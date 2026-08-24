@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Building2, Loader2 } from 'lucide-react'
+import { listFoxAiEvaluations } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import {
   Select,
   SelectContent,
@@ -7,8 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { listFoxAiEvaluations } from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 
 type EvaluationPickerProps = {
   value?: string

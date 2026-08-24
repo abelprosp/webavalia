@@ -1,6 +1,4 @@
-import { ContentSection } from '../components/content-section'
 import { useAuthStore } from '@/stores/auth-store'
-import { ComingSoon } from '@/components/coming-soon'
 import {
   Card,
   CardContent,
@@ -8,15 +6,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ComingSoon } from '@/components/coming-soon'
+import { ContentSection } from '../components/content-section'
 
 export function SettingsProfile() {
   const user = useAuthStore((s) => s.auth.user)
 
   return (
-    <ContentSection
-      title='Perfil'
-      desc='Dados da sua conta na Avalia Imob.'
-    >
+    <ContentSection title='Perfil' desc='Dados da sua conta na Avalia Imob.'>
       <div className='space-y-6'>
         <Card>
           <CardHeader>
@@ -37,7 +34,9 @@ export function SettingsProfile() {
             <p>
               <span className='text-muted-foreground'>Tipo:</span>{' '}
               <strong>
-                {user?.accountType === 'pj' ? 'Corretor / Imobiliária (PJ)' : 'Pessoa física (PF)'}
+                {user?.accountType === 'pj'
+                  ? 'Corretor / Imobiliária (PJ)'
+                  : 'Pessoa física (PF)'}
               </strong>
             </p>
           </CardContent>

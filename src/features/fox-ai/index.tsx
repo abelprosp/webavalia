@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Loader2, MessageSquare, Sparkles } from 'lucide-react'
-import { HeaderActions } from '@/components/layout/header-actions'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
+import { getFoxAiStatus } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,13 +11,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getFoxAiStatus } from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
+import { Main } from '@/components/layout/main'
 import { LiveInsightsSidebar } from './components/live-insights-sidebar'
 import { MarketReportCard } from './components/market-report-card'
 
 export function FoxAiPage() {
-  const { data: status, isLoading, isError } = useQuery({
+  const {
+    data: status,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['fox-ai', 'status'],
     queryFn: getFoxAiStatus,
     meta: FOX_AI_QUERY_META,
@@ -70,7 +74,10 @@ export function FoxAiPage() {
                 avaliações e consultar seu histórico.
               </CardDescription>
             </div>
-            <Button asChild className='shrink-0 bg-orange-500 hover:bg-orange-600'>
+            <Button
+              asChild
+              className='shrink-0 bg-orange-500 hover:bg-orange-600'
+            >
               <Link to='/fox-ai/chat'>
                 Abrir chat
                 <ArrowRight className='size-4' />

@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SignOutDialog } from '@/components/sign-out-dialog'
 import { ProfileMenuItems } from '@/components/layout/profile-menu-items'
+import { SignOutDialog } from '@/components/sign-out-dialog'
 
 export function ProfileDropdown() {
   const [open, setOpen] = useDialogState()
@@ -34,7 +34,10 @@ export function ProfileDropdown() {
             aria-label='Menu do perfil'
           >
             <Avatar className='h-8 w-8'>
-              <AvatarImage src='/avatars/01.png' alt={user?.name ?? 'Usuário'} />
+              <AvatarImage
+                src='/avatars/01.png'
+                alt={user?.name ?? 'Usuário'}
+              />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </Button>

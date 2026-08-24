@@ -2,15 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Inbox, RefreshCw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/flux/empty-state'
-import { PageSkeleton } from '@/components/ui/page-skeleton'
 import {
   fetchPipelineBoard,
   moveDealStage,
   type CrmDeal,
   type CrmPipelineBoard,
 } from '@/lib/crm-api'
+import { Button } from '@/components/ui/button'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { EmptyState } from '@/components/flux/empty-state'
 import { DealCard } from './deal-card'
 import { DealDetailSheet } from './deal-detail-sheet'
 
@@ -124,7 +124,8 @@ export function PipelineBoard() {
               className={`min-w-[280px] flex-1 rounded-[1.25rem] border p-3 transition ${
                 dragOverStageId === stage.id
                   ? 'border-flux-lime bg-flux-lime/10'
-                  : stageColorClass[stage.color] ?? 'border-black/[0.06] bg-muted/20'
+                  : (stageColorClass[stage.color] ??
+                    'border-black/[0.06] bg-muted/20')
               }`}
               onDragOver={(e) => {
                 e.preventDefault()

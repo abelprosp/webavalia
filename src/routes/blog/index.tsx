@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
-import { BlogListPage } from '@/features/blog/blog-list-page'
 import { fetchBlogPosts, type BlogPostSummary } from '@/lib/blog-api'
+import { BlogListPage } from '@/features/blog/blog-list-page'
 
 export const Route = createFileRoute('/blog/')({
   component: BlogIndexRoute,

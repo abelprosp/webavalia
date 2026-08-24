@@ -9,6 +9,9 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react'
+import { getMarketInsights, type MarketInsight } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -17,9 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getMarketInsights, type MarketInsight } from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { cn } from '@/lib/utils'
 
 const severityStyles: Record<MarketInsight['severity'], string> = {
   info: 'border-blue-500/30 bg-blue-500/5',
@@ -80,8 +80,7 @@ export function MarketInsightsPanel() {
     )
   }
 
-  const trend =
-    trendLabels[data.appreciationTrend] ?? trendLabels.indeterminado
+  const trend = trendLabels[data.appreciationTrend] ?? trendLabels.indeterminado
 
   return (
     <div className='space-y-4'>
@@ -117,7 +116,9 @@ export function MarketInsightsPanel() {
         <Card>
           <CardHeader className='pb-2'>
             <CardDescription>Tendência de mercado</CardDescription>
-            <CardTitle className={cn('flex items-center gap-1 text-xl', trend.color)}>
+            <CardTitle
+              className={cn('flex items-center gap-1 text-xl', trend.color)}
+            >
               {data.appreciationTrend === 'valorizacao' ? (
                 <ArrowUpRight className='size-5' />
               ) : data.appreciationTrend === 'desvalorizacao' ? (
@@ -157,9 +158,7 @@ export function MarketInsightsPanel() {
               <MapPin className='size-4' />
               Bairros monitorados
             </CardTitle>
-            <CardDescription>
-              Análise granular por região
-            </CardDescription>
+            <CardDescription>Análise granular por região</CardDescription>
           </CardHeader>
           <CardContent>
             <div className='flex flex-wrap gap-2'>
@@ -196,10 +195,7 @@ export function MarketInsightsPanel() {
               return (
                 <div
                   key={insight.id}
-                  className={cn(
-                    'rounded-lg border p-3',
-                    severityClass
-                  )}
+                  className={cn('rounded-lg border p-3', severityClass)}
                 >
                   <div className='flex items-start gap-2'>
                     <Icon className='mt-0.5 size-4 shrink-0' />

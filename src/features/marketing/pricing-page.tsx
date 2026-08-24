@@ -38,11 +38,7 @@ const PJ_PLANS = [
     price: 'R$ 497',
     credits: '80 créditos/mês',
     description: 'Alto volume para equipes e imobiliárias.',
-    features: [
-      'Tudo do Pro',
-      'Ideal para times',
-      'Suporte prioritário',
-    ],
+    features: ['Tudo do Pro', 'Ideal para times', 'Suporte prioritário'],
   },
 ]
 
@@ -85,7 +81,7 @@ export function PricingPage() {
               }`}
             >
               {plan.highlighted ? (
-                <p className='mb-2 text-xs font-semibold uppercase tracking-wide text-flux-dark'>
+                <p className='mb-2 text-xs font-semibold tracking-wide text-flux-dark uppercase'>
                   Mais popular
                 </p>
               ) : null}

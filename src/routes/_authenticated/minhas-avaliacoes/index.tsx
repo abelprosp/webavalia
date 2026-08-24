@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Crm } from '@/features/crm'
-import { isBrokerAccount } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { Crm } from '@/features/crm'
 
 export const Route = createFileRoute('/_authenticated/minhas-avaliacoes/')({
   beforeLoad: () => {

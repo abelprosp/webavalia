@@ -1,9 +1,9 @@
-import { api } from './api'
-import type { GamificationPayload } from './gamification-api'
 import type {
   EvaluationFormValues,
   EvaluationResult,
 } from '@/features/avaliacao/data/evaluation-engine'
+import { api } from './api'
+import type { GamificationPayload } from './gamification-api'
 
 type PhotoPayload = {
   mimeType: string

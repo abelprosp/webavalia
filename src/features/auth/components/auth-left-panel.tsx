@@ -78,10 +78,10 @@ export function AuthLeftPanel({ defaultPaletteIndex = 0 }: AuthLeftPanelProps) {
           <button
             type='button'
             onClick={shuffle}
-            className='group inline-flex items-center gap-2 rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 text-white/75 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30'
+            className='group inline-flex items-center gap-2 rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 text-white/75 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/40 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none'
           >
             <Shuffle className='size-3.5 transition-transform group-hover:rotate-12' />
-            <span className='font-mono text-[10px] uppercase tracking-[0.2em]'>
+            <span className='font-mono text-[10px] tracking-[0.2em] uppercase'>
               {palette.name}
             </span>
           </button>

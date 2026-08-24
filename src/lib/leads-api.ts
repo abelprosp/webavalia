@@ -55,8 +55,11 @@ export async function updateLeadStatus(
   leadId: string,
   status: 'novo' | 'contatado'
 ) {
-  const { data } = await api.patch<{ lead: LeadItem }>(`/leads/${leadId}/status`, {
-    status,
-  })
+  const { data } = await api.patch<{ lead: LeadItem }>(
+    `/leads/${leadId}/status`,
+    {
+      status,
+    }
+  )
   return data.lead
 }

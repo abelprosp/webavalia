@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Users, Sparkles, Coins, CreditCard } from 'lucide-react'
 import {
+  fetchAdminStats,
+  fetchAdminTransactions,
+  type AdminStats,
+  type CreditTransaction,
+} from '@/lib/admin-api'
+import {
   Card,
   CardContent,
   CardDescription,
@@ -15,12 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  fetchAdminStats,
-  fetchAdminTransactions,
-  type AdminStats,
-  type CreditTransaction,
-} from '@/lib/admin-api'
 
 export function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null)

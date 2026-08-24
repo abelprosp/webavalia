@@ -39,7 +39,10 @@ export type MarketMapResult = {
 export async function queryMarketMapPoint(
   input: MarketMapQuery
 ): Promise<MarketMapResult> {
-  const { data } = await api.post<MarketMapResult>('/evaluation/market-map', input)
+  const { data } = await api.post<MarketMapResult>(
+    '/evaluation/market-map',
+    input
+  )
   return data
 }
 

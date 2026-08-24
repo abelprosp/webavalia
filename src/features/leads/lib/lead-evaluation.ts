@@ -55,7 +55,8 @@ export function getLeadDisplayValue(
 
   const listingIntent = getListingIntentFromInput(propertyInput)
   if (listingIntent === 'alugar') {
-    const area = typeof propertyInput?.area === 'number' ? propertyInput.area : 0
+    const area =
+      typeof propertyInput?.area === 'number' ? propertyInput.area : 0
     const standardLevel =
       propertyInput?.standardLevel === 'alto-padrao' ||
       propertyInput?.standardLevel === 'luxo'

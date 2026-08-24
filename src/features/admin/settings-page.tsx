@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  fetchAdminSettings,
+  updateAdminSettings,
+  type PlatformSettings,
+} from '@/lib/admin-api'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -12,11 +17,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import {
-  fetchAdminSettings,
-  updateAdminSettings,
-  type PlatformSettings,
-} from '@/lib/admin-api'
 
 export function AdminSettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null)

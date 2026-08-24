@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import {
+  getDashboardInsight,
+  getFoxAiStatus,
+  type DashboardContext,
+} from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -10,12 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  getDashboardInsight,
-  getFoxAiStatus,
-  type DashboardContext,
-} from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { FoxAiMarkdown } from './fox-ai-markdown'
 
 type DashboardFoxAiInsightsProps = {
@@ -115,8 +115,7 @@ export function DashboardFoxAiInsights({
             {generatedAt && (
               <p className='text-xs text-muted-foreground'>
                 {cached ? 'Cache · ' : ''}
-                Atualizado em{' '}
-                {new Date(generatedAt).toLocaleString('pt-BR')}
+                Atualizado em {new Date(generatedAt).toLocaleString('pt-BR')}
               </p>
             )}
             <FoxAiMarkdown content={analysis} />

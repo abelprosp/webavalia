@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Calendar, User } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import type { BlogPost } from '@/lib/blog-api'
+import { Button } from '@/components/ui/button'
 
 type BlogPostPageProps = {
   post: BlogPost
@@ -49,7 +49,7 @@ export function BlogPostPage({ post }: BlogPostPageProps) {
         )}
       </header>
 
-      <div className='prose prose-neutral max-w-none whitespace-pre-wrap leading-relaxed dark:prose-invert'>
+      <div className='prose prose-neutral dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap'>
         {post.content}
       </div>
     </article>

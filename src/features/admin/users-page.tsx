@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { Coins, Loader2, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { getAccountTypeLabel } from '@/lib/account-type'
+import {
+  adjustUserCredits,
+  adjustUserTrialEvaluations,
+  fetchAdminUsers,
+  updateAdminUser,
+  type AdminUser,
+} from '@/lib/admin-api'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,15 +53,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  adjustUserCredits,
-  adjustUserTrialEvaluations,
-  fetchAdminUsers,
-  updateAdminUser,
-  type AdminUser,
-} from '@/lib/admin-api'
-import { getApiErrorMessage } from '@/lib/api-error'
-import { getAccountTypeLabel } from '@/lib/account-type'
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -114,7 +114,9 @@ export function AdminUsersPage() {
   }
 
   function getSelectedCredits(user: AdminUser) {
-    return user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining ?? 0
+    return (
+      user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining ?? 0
+    )
   }
 
   function parseCreditAmount() {
@@ -128,7 +130,9 @@ export function AdminUsersPage() {
   function openCreditsConfirm() {
     const amount = parseCreditAmount()
     if (amount == null) {
-      toast.error('Informe uma quantidade válida de créditos (diferente de zero).')
+      toast.error(
+        'Informe uma quantidade válida de créditos (diferente de zero).'
+      )
       return
     }
     setConfirmCreditsOpen(true)
@@ -138,7 +142,9 @@ export function AdminUsersPage() {
     if (!selected) return
     const amount = parseCreditAmount()
     if (amount == null) {
-      toast.error('Informe uma quantidade válida de créditos (diferente de zero).')
+      toast.error(
+        'Informe uma quantidade válida de créditos (diferente de zero).'
+      )
       return
     }
 
@@ -291,7 +297,11 @@ export function AdminUsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                      <Badge
+                        variant={
+                          user.role === 'admin' ? 'default' : 'secondary'
+                        }
+                      >
                         {user.role}
                       </Badge>
                     </TableCell>
@@ -305,7 +315,9 @@ export function AdminUsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining}
+                      {user.credits ??
+                        user.leadCredits ??
+                        user.trialEvaluationsRemaining}
                     </TableCell>
                     <TableCell className='text-right'>
                       <Button
@@ -331,33 +343,37 @@ export function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={confirmCreditsOpen} onOpenChange={setConfirmCreditsOpen}>
+      <AlertDialog
+        open={confirmCreditsOpen}
+        onOpenChange={setConfirmCreditsOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar concessão de créditos</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className='space-y-2 text-sm text-muted-foreground'>
-                {selected && (() => {
-                  const amount = parseCreditAmount() ?? 0
-                  const currentBalance = getSelectedCredits(selected)
-                  return (
-                    <>
-                      <p>
-                        Conceder{' '}
-                        <strong>{amount > 0 ? `+${amount}` : amount}</strong>{' '}
-                        crédito(s) para <strong>{selected.name}</strong> (
-                        {selected.email}).
-                      </p>
-                      <p>
-                        Saldo atual: {currentBalance} → novo saldo estimado:{' '}
-                        {Math.max(currentBalance + amount, 0)}
-                      </p>
-                      {creditDescription.trim() && (
-                        <p>Descrição: {creditDescription.trim()}</p>
-                      )}
-                    </>
-                  )
-                })()}
+                {selected &&
+                  (() => {
+                    const amount = parseCreditAmount() ?? 0
+                    const currentBalance = getSelectedCredits(selected)
+                    return (
+                      <>
+                        <p>
+                          Conceder{' '}
+                          <strong>{amount > 0 ? `+${amount}` : amount}</strong>{' '}
+                          crédito(s) para <strong>{selected.name}</strong> (
+                          {selected.email}).
+                        </p>
+                        <p>
+                          Saldo atual: {currentBalance} → novo saldo estimado:{' '}
+                          {Math.max(currentBalance + amount, 0)}
+                        </p>
+                        {creditDescription.trim() && (
+                          <p>Descrição: {creditDescription.trim()}</p>
+                        )}
+                      </>
+                    )
+                  })()}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -414,7 +430,10 @@ export function AdminUsersPage() {
                   <Select
                     value={selected.status ?? 'active'}
                     onValueChange={(value) =>
-                      handleUpdateStatus(selected, value as 'active' | 'suspended')
+                      handleUpdateStatus(
+                        selected,
+                        value as 'active' | 'suspended'
+                      )
                     }
                   >
                     <SelectTrigger>
@@ -432,8 +451,8 @@ export function AdminUsersPage() {
                 <div>
                   <Label>Adicionar créditos</Label>
                   <p className='text-xs text-muted-foreground'>
-                    Saldo atual: {getSelectedCredits(selected)} crédito(s).
-                    Use valor negativo apenas para remover créditos.
+                    Saldo atual: {getSelectedCredits(selected)} crédito(s). Use
+                    valor negativo apenas para remover créditos.
                   </p>
                 </div>
                 <div className='space-y-2'>
@@ -450,7 +469,8 @@ export function AdminUsersPage() {
                 </div>
                 <div className='space-y-2'>
                   <Label htmlFor='credit-description'>
-                    Descrição <span className='text-muted-foreground'>(opcional)</span>
+                    Descrição{' '}
+                    <span className='text-muted-foreground'>(opcional)</span>
                   </Label>
                   <Input
                     id='credit-description'

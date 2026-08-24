@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import {
   Droplets,
   Eye,
@@ -10,6 +9,16 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { getAccountTypeLabel } from '@/lib/account-type'
+import {
+  fetchAdminEvaluation,
+  fetchAdminEvaluations,
+  fetchAdminFeedbacks,
+  type AdminEvaluationDetail,
+  type AdminEvaluationListItem,
+  type AdminFeedbackListItem,
+} from '@/lib/admin-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,15 +44,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  fetchAdminEvaluation,
-  fetchAdminEvaluations,
-  fetchAdminFeedbacks,
-  type AdminEvaluationDetail,
-  type AdminEvaluationListItem,
-  type AdminFeedbackListItem,
-} from '@/lib/admin-api'
-import { getAccountTypeLabel } from '@/lib/account-type'
 import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
 
 function formatDate(value: string) {
@@ -53,7 +53,10 @@ function formatDate(value: string) {
 function FeedbackRatingBadge({ rating }: { rating: 'good' | 'bad' | null }) {
   if (!rating) return <span className='text-muted-foreground'>—</span>
   return (
-    <Badge variant={rating === 'good' ? 'default' : 'destructive'} className='gap-1'>
+    <Badge
+      variant={rating === 'good' ? 'default' : 'destructive'}
+      className='gap-1'
+    >
       {rating === 'good' ? (
         <ThumbsUp className='size-3' />
       ) : (
@@ -145,7 +148,8 @@ export function AdminEvaluationsPage() {
       <div>
         <h2 className='text-xl font-semibold'>Avaliações e feedbacks</h2>
         <p className='text-sm text-muted-foreground'>
-          Visualize todas as avaliações IA e os feedbacks enviados pelos usuários.
+          Visualize todas as avaliações IA e os feedbacks enviados pelos
+          usuários.
         </p>
       </div>
 
@@ -218,10 +222,14 @@ export function AdminEvaluationsPage() {
                         <TableCell>
                           <div className='font-medium'>{item.userName}</div>
                           <div className='text-xs text-muted-foreground'>
-                            {item.userEmail} · {getAccountTypeLabel(item.accountType)}
+                            {item.userEmail} ·{' '}
+                            {getAccountTypeLabel(item.accountType)}
                           </div>
                         </TableCell>
-                        <TableCell className='max-w-48 truncate' title={item.address}>
+                        <TableCell
+                          className='max-w-48 truncate'
+                          title={item.address}
+                        >
                           {item.address}
                         </TableCell>
                         <TableCell>
@@ -308,7 +316,9 @@ export function AdminEvaluationsPage() {
                       <TableRow key={`${item.type}-${item.id}`}>
                         <TableCell>
                           <Badge variant='outline'>
-                            {item.type === 'evaluation' ? 'Avaliação' : 'Alagamento'}
+                            {item.type === 'evaluation'
+                              ? 'Avaliação'
+                              : 'Alagamento'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -317,7 +327,10 @@ export function AdminEvaluationsPage() {
                             {item.userEmail}
                           </div>
                         </TableCell>
-                        <TableCell className='max-w-40 truncate' title={item.address ?? ''}>
+                        <TableCell
+                          className='max-w-40 truncate'
+                          title={item.address ?? ''}
+                        >
                           {item.address ?? '—'}
                         </TableCell>
                         <TableCell className='max-w-md'>
@@ -348,7 +361,10 @@ export function AdminEvaluationsPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => !open && setSelected(null)}
+      >
         <DialogContent className='max-h-[90vh] max-w-3xl overflow-y-auto'>
           <DialogHeader>
             <DialogTitle>Detalhes da avaliação</DialogTitle>
@@ -362,20 +378,28 @@ export function AdminEvaluationsPage() {
             <div className='space-y-4 text-sm'>
               <div className='grid gap-3 sm:grid-cols-2'>
                 <div>
-                  <p className='text-xs font-medium text-muted-foreground'>Usuário</p>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    Usuário
+                  </p>
                   <p>{selected.userName}</p>
                   <p className='text-muted-foreground'>{selected.userEmail}</p>
                 </div>
                 <div>
-                  <p className='text-xs font-medium text-muted-foreground'>Data</p>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    Data
+                  </p>
                   <p>{formatDate(selected.createdAt)}</p>
                 </div>
                 <div className='sm:col-span-2'>
-                  <p className='text-xs font-medium text-muted-foreground'>Endereço</p>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    Endereço
+                  </p>
                   <p>{selected.address}</p>
                 </div>
                 <div>
-                  <p className='text-xs font-medium text-muted-foreground'>Valor estimado</p>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    Valor estimado
+                  </p>
                   <p>
                     {selected.estimatedValue != null
                       ? formatCurrency(selected.estimatedValue)
@@ -383,15 +407,21 @@ export function AdminEvaluationsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs font-medium text-muted-foreground'>Score</p>
-                  <p>{selected.score != null ? `${selected.score}/100` : '—'}</p>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    Score
+                  </p>
+                  <p>
+                    {selected.score != null ? `${selected.score}/100` : '—'}
+                  </p>
                 </div>
               </div>
 
               {selected.evaluationFeedback && (
                 <div className='rounded-lg border p-3'>
                   <p className='mb-2 font-medium'>Feedback da avaliação</p>
-                  <FeedbackRatingBadge rating={selected.evaluationFeedback.rating} />
+                  <FeedbackRatingBadge
+                    rating={selected.evaluationFeedback.rating}
+                  />
                   <p className='mt-2 text-muted-foreground'>
                     {selected.evaluationFeedback.comment}
                   </p>
@@ -415,7 +445,9 @@ export function AdminEvaluationsPage() {
                           />
                         </div>
                         {item.comment && (
-                          <p className='mt-1 text-muted-foreground'>{item.comment}</p>
+                          <p className='mt-1 text-muted-foreground'>
+                            {item.comment}
+                          </p>
                         )}
                         <p className='mt-1 text-xs text-muted-foreground'>
                           {formatDate(item.createdAt)}

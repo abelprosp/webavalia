@@ -1,3 +1,4 @@
+import type { Control } from 'react-hook-form'
 import { KeyRound, Sparkles, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -12,7 +13,6 @@ import {
   type EvaluationFormValues,
   type ListingIntent,
 } from '../data/evaluation-engine'
-import type { Control } from 'react-hook-form'
 
 const INTENT_ICONS: Record<ListingIntent, typeof KeyRound> = {
   alugar: KeyRound,
@@ -32,7 +32,7 @@ export function ListingIntentSelector({ control }: ListingIntentSelectorProps) {
             <Sparkles className='size-5' />
           </div>
           <div>
-            <p className='text-xs font-bold uppercase tracking-[0.2em] text-flux-dark/70'>
+            <p className='text-xs font-bold tracking-[0.2em] text-flux-dark/70 uppercase'>
               Disponibilizar para
             </p>
             <h3 className='mt-1 text-xl font-bold tracking-tight sm:text-[1.35rem]'>
@@ -91,7 +91,7 @@ export function ListingIntentSelector({ control }: ListingIntentSelectorProps) {
                             </div>
                             <span
                               className={cn(
-                                'rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                                'rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase',
                                 isSelected
                                   ? 'bg-flux-dark text-white'
                                   : 'bg-muted text-muted-foreground'
@@ -105,7 +105,9 @@ export function ListingIntentSelector({ control }: ListingIntentSelectorProps) {
                             <p
                               className={cn(
                                 'text-lg font-bold tracking-tight',
-                                isSelected ? 'text-flux-dark' : 'text-foreground'
+                                isSelected
+                                  ? 'text-flux-dark'
+                                  : 'text-foreground'
                               )}
                             >
                               {option.label}

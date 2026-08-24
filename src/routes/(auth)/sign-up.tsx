@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, isRedirect } from '@tanstack/react-router'
-import { fetchMe } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { fetchMe } from '@/lib/auth-api'
 import { SignUp } from '@/features/auth/sign-up'
 
 export const Route = createFileRoute('/(auth)/sign-up')({

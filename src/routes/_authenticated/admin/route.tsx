@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { fetchMe, isAdmin } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { fetchMe, isAdmin } from '@/lib/auth-api'
 import { AdminLayout } from '@/features/admin/layout'
 
 export const Route = createFileRoute('/_authenticated/admin')({

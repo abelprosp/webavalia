@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Radar } from '@/features/radar'
-import { isBrokerAccount } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { Radar } from '@/features/radar'
 
 export const Route = createFileRoute('/_authenticated/radar/')({
   beforeLoad: () => {

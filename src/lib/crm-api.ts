@@ -104,7 +104,9 @@ export async function fetchPipelineBoard() {
 }
 
 export async function createDealFromLead(leadId: string) {
-  const { data } = await api.post<{ deal: CrmDeal }>(`/crm/deals/from-lead/${leadId}`)
+  const { data } = await api.post<{ deal: CrmDeal }>(
+    `/crm/deals/from-lead/${leadId}`
+  )
   return data.deal
 }
 
@@ -123,9 +125,12 @@ export async function createDealFromEvaluation(input: {
 }
 
 export async function moveDealStage(dealId: string, stageId: string) {
-  const { data } = await api.patch<{ deal: CrmDeal }>(`/crm/deals/${dealId}/stage`, {
-    stageId,
-  })
+  const { data } = await api.patch<{ deal: CrmDeal }>(
+    `/crm/deals/${dealId}/stage`,
+    {
+      stageId,
+    }
+  )
   return data.deal
 }
 
@@ -139,7 +144,9 @@ export async function fetchDealDetails(dealId: string) {
 }
 
 export async function rescoreDeal(dealId: string) {
-  const { data } = await api.post<{ deal: CrmDeal }>(`/crm/deals/${dealId}/score`)
+  const { data } = await api.post<{ deal: CrmDeal }>(
+    `/crm/deals/${dealId}/score`
+  )
   return data.deal
 }
 
@@ -148,7 +155,10 @@ export async function updateDealNotes(dealId: string, notes: string) {
 }
 
 export async function updateDeal(dealId: string, payload: UpdateDealPayload) {
-  const { data } = await api.patch<{ deal: CrmDeal }>(`/crm/deals/${dealId}`, payload)
+  const { data } = await api.patch<{ deal: CrmDeal }>(
+    `/crm/deals/${dealId}`,
+    payload
+  )
   return data.deal
 }
 

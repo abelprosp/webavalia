@@ -23,7 +23,11 @@ export type PortfolioSnapshot = {
   averageValue: number | null
   averageValuePerSqm: number | null
   topNeighborhoods: { name: string; count: number; avgValue: number | null }[]
-  appreciationTrend: 'valorizacao' | 'estavel' | 'desvalorizacao' | 'indeterminado'
+  appreciationTrend:
+    | 'valorizacao'
+    | 'estavel'
+    | 'desvalorizacao'
+    | 'indeterminado'
   riskDistribution: { level: string; count: number }[]
   monthlyVolume: Record<string, number>
   leadsTotal: number | null
@@ -67,8 +71,16 @@ export type EvaluationSummary = {
 
 export type MarketReport = {
   summary: string
-  trends: { title: string; description: string; direction: 'up' | 'down' | 'stable' }[]
-  risks: { title: string; description: string; severity: 'low' | 'medium' | 'high' }[]
+  trends: {
+    title: string
+    description: string
+    direction: 'up' | 'down' | 'stable'
+  }[]
+  risks: {
+    title: string
+    description: string
+    severity: 'low' | 'medium' | 'high'
+  }[]
   opportunities: { title: string; description: string; action: string }[]
   forecast: { period: string; outlook: string; confidence: number }
   metrics: { label: string; value: string; change?: number }[]

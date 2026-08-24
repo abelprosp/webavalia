@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react'
-import {
-  CheckCircle2,
-  EyeOff,
-  KeyRound,
-  Loader2,
-  Tag,
-} from 'lucide-react'
+import { CheckCircle2, EyeOff, KeyRound, Loader2, Tag } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   getEvaluationLeadStatus,
   publishEvaluationAsLead,
   unpublishEvaluationAsLead,
 } from '@/lib/evaluation-api'
-import { getApiErrorMessage } from '@/lib/api-error'
-import { getListingIntentLabel, type ListingIntent } from '@/features/avaliacao/data/evaluation-engine'
-import { useAuthStore } from '@/stores/auth-store'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +30,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  getListingIntentLabel,
+  type ListingIntent,
+} from '@/features/avaliacao/data/evaluation-engine'
 
 type PublishPropertyLeadProps = {
   evaluationId: string
@@ -210,7 +207,9 @@ export function PublishPropertyLead({
                 ) : (
                   <EyeOff className='size-4' />
                 )}
-                {withdrawing ? 'Indisponibilizando…' : 'Indisponibilizar imóvel'}
+                {withdrawing
+                  ? 'Indisponibilizando…'
+                  : 'Indisponibilizar imóvel'}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -249,8 +248,8 @@ export function PublishPropertyLead({
         </CardTitle>
         <CardDescription>
           Disponibilize a avaliação completa para imobiliárias que atuam na
-          região. Elas poderão desbloquear todos os detalhes — comparáveis,
-          NBR 14653, aluguel ou valor de venda — e entrar em contato com você.
+          região. Elas poderão desbloquear todos os detalhes — comparáveis, NBR
+          14653, aluguel ou valor de venda — e entrar em contato com você.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
@@ -276,8 +275,8 @@ export function PublishPropertyLead({
             className='cursor-pointer text-sm leading-relaxed font-normal'
           >
             Autorizo o compartilhamento do meu nome, telefone, e-mail e da
-            avaliação completa deste imóvel com imobiliárias interessadas.
-            Antes do desbloqueio, somente a região e um resumo do imóvel serão
+            avaliação completa deste imóvel com imobiliárias interessadas. Antes
+            do desbloqueio, somente a região e um resumo do imóvel serão
             exibidos.
           </Label>
         </div>

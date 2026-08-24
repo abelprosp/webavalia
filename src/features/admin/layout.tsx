@@ -8,12 +8,12 @@ import {
   Newspaper,
   Sparkles,
 } from 'lucide-react'
-import { Breadcrumbs } from '@/components/layout/breadcrumbs'
-import { HeaderActions } from '@/components/layout/header-actions'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
+import { Main } from '@/components/layout/main'
 import { AdminSidebarNav } from './components/admin-sidebar-nav'
 
 const adminNavItems = [

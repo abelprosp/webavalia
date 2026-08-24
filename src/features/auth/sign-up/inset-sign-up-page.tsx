@@ -1,22 +1,22 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { ACCOUNT_TYPE_OPTIONS } from '@/lib/account-type'
+import { registerRequest, type AccountType } from '@/lib/auth-api'
+import { documentDigits, formatDocumentForAccountType } from '@/lib/document'
+import {
+  validatePassword,
+  TRIAL_EVALUATIONS_TOTAL,
+} from '@/lib/password-policy'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { registerRequest, type AccountType } from '@/lib/auth-api'
-import { ACCOUNT_TYPE_OPTIONS } from '@/lib/account-type'
-import {
-  documentDigits,
-  formatDocumentForAccountType,
-} from '@/lib/document'
-import { validatePassword, TRIAL_EVALUATIONS_TOTAL } from '@/lib/password-policy'
-import { useAuthStore } from '@/stores/auth-store'
-import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 import { AuthHoneypotField } from '../components/auth-honeypot-field'
-import { cn } from '@/lib/utils'
+import { AuthLeftPanel, AvaliaBrandMark } from '../components/auth-left-panel'
 
 function PageBackdrop() {
   return (
@@ -56,9 +56,7 @@ function SignUpPanel() {
         </div>
 
         <div className='mt-12 flex flex-col gap-1.5'>
-          <h1 className='text-2xl font-semibold tracking-tight'>
-            Criar conta
-          </h1>
+          <h1 className='text-2xl font-semibold tracking-tight'>Criar conta</h1>
           <p className='text-sm text-muted-foreground'>
             Escolha o tipo de conta. Você começa com {TRIAL_EVALUATIONS_TOTAL}{' '}
             avaliações grátis com IA e pode ganhar mais 1 bônus ao usar a
@@ -134,13 +132,13 @@ function SignUpForm() {
         password,
         document: documentValue,
         companyName: accountType === 'pj' ? companyName.trim() : undefined,
-        tradeName: accountType === 'pj' ? tradeName.trim() || undefined : undefined,
+        tradeName:
+          accountType === 'pj' ? tradeName.trim() || undefined : undefined,
       })
 
       if (result.needsEmailVerification) {
         toast.success(
-          result.message ??
-            'Enviamos um link de confirmação para o seu e-mail.'
+          result.message ?? 'Enviamos um link de confirmação para o seu e-mail.'
         )
         navigate({
           to: '/verify-email',
@@ -237,7 +235,9 @@ function SignUpForm() {
         <Input
           id='signup-name'
           required
-          placeholder={accountType === 'pj' ? 'Corretor responsável' : 'Seu nome'}
+          placeholder={
+            accountType === 'pj' ? 'Corretor responsável' : 'Seu nome'
+          }
           autoComplete='name'
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -253,10 +253,14 @@ function SignUpForm() {
           id='signup-document'
           required
           inputMode='numeric'
-          placeholder={accountType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00'}
+          placeholder={
+            accountType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00'
+          }
           value={document}
           onChange={(e) =>
-            setDocument(formatDocumentForAccountType(accountType, e.target.value))
+            setDocument(
+              formatDocumentForAccountType(accountType, e.target.value)
+            )
           }
         />
       </div>
@@ -297,7 +301,11 @@ function SignUpForm() {
             aria-label={reveal ? 'Ocultar senha' : 'Mostrar senha'}
             className='absolute inset-y-0 end-0 flex items-center pe-3 text-muted-foreground transition-colors hover:text-foreground'
           >
-            {reveal ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
+            {reveal ? (
+              <EyeOff className='size-4' />
+            ) : (
+              <Eye className='size-4' />
+            )}
           </button>
         </div>
         <p className='text-xs text-muted-foreground'>

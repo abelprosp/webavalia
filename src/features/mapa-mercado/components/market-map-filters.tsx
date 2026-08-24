@@ -1,4 +1,4 @@
-import { propertyTypeGroups, isLandOnlyPropertyType } from '@/features/avaliacao/data/criteria'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -9,10 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import {
+  propertyTypeGroups,
+  isLandOnlyPropertyType,
+} from '@/features/avaliacao/data/criteria'
 import type { MarketCity } from '../data/cities'
-import { MarketCitySearch } from './market-city-search'
 import { MarketCepSearch } from './market-cep-search'
+import { MarketCitySearch } from './market-city-search'
 
 export type MarketMapFiltersState = {
   propertyType: string
@@ -48,7 +51,7 @@ export function MarketMapFilters({
 
       <div className='relative'>
         <div className='absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-border/60' />
-        <p className='relative mx-auto w-fit bg-card px-2 text-[10px] uppercase tracking-wider text-muted-foreground'>
+        <p className='relative mx-auto w-fit bg-card px-2 text-[10px] tracking-wider text-muted-foreground uppercase'>
           ou busque por cidade
         </p>
       </div>
@@ -124,7 +127,8 @@ export function MarketMapFilters({
       </div>
 
       <p className='text-[11px] text-muted-foreground'>
-        Use <strong>0</strong> ou deixe em branco para considerar qualquer tamanho na consulta.
+        Use <strong>0</strong> ou deixe em branco para considerar qualquer
+        tamanho na consulta.
       </p>
     </div>
   )

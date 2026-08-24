@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, Menu, Sparkles } from 'lucide-react'
-import { HeaderActions } from '@/components/layout/header-actions'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
+import { getFoxAiConversation, type FoxAiMessage } from '@/lib/fox-ai-api'
+import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -12,12 +12,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import {
-  getFoxAiConversation,
-  type FoxAiMessage,
-} from '@/lib/fox-ai-api'
-import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
+import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/layout/header-actions'
+import { Main } from '@/components/layout/main'
 import { ConversationSidebar } from './components/conversation-sidebar'
 import { FoxAiChat } from './components/fox-ai-chat'
 
@@ -37,7 +34,8 @@ export function FoxAiChatPage() {
     useQuery({
       queryKey: ['fox-ai', 'conversation', conversationId],
       queryFn: () => getFoxAiConversation(conversationId!),
-      enabled: Boolean(conversationId) && !loading && storeMessages.length === 0,
+      enabled:
+        Boolean(conversationId) && !loading && storeMessages.length === 0,
       meta: FOX_AI_QUERY_META,
     })
 

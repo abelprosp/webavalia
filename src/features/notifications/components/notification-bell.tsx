@@ -1,5 +1,6 @@
-import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { Bell, CheckCheck, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -9,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
 import { useNotifications } from '../context/notifications-provider'
 
 function formatWhen(iso: string) {

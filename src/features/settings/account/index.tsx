@@ -1,5 +1,3 @@
-import { ContentSection } from '../components/content-section'
-import { ComingSoon } from '@/components/coming-soon'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   Card,
@@ -8,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ComingSoon } from '@/components/coming-soon'
+import { ContentSection } from '../components/content-section'
 
 export function SettingsAccount() {
   const user = useAuthStore((s) => s.auth.user)
@@ -22,7 +22,8 @@ export function SettingsAccount() {
           <CardHeader>
             <CardTitle>Resumo</CardTitle>
             <CardDescription>
-              Idioma, fuso e preferências avançadas estarão disponíveis em breve.
+              Idioma, fuso e preferências avançadas estarão disponíveis em
+              breve.
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-2 text-sm'>

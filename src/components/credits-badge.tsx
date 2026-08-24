@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { Coins } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
 import { useCreditsStore } from '@/stores/credits-store'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import { Badge } from '@/components/ui/badge'
 
 export function CreditsBadge() {
   const credits = useCreditsStore((s) => s.credits)

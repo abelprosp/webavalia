@@ -9,9 +9,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Textarea } from '@/components/ui/textarea'
+import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import {
   getSuggestedPrompts,
   streamFoxAiMessage,
@@ -20,8 +18,10 @@ import {
   type SuggestedPrompt,
 } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
-import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Textarea } from '@/components/ui/textarea'
 import { EvaluationPicker } from './evaluation-picker'
 import { FoxAiMarkdown } from './fox-ai-markdown'
 import { QuickActionChips } from './quick-action-chips'
@@ -186,11 +186,7 @@ function FoxAiChatView({
       <ScrollArea
         className={cn(
           'flex-1',
-          compact
-            ? 'h-72'
-            : pageMode
-              ? 'min-h-0'
-              : 'h-[min(55vh,480px)]'
+          compact ? 'h-72' : pageMode ? 'min-h-0' : 'h-[min(55vh,480px)]'
         )}
       >
         <div
@@ -223,7 +219,8 @@ function FoxAiChatView({
                 <p
                   className={cn(
                     'font-medium text-foreground',
-                    pageMode && 'text-2xl font-semibold tracking-tight sm:text-3xl'
+                    pageMode &&
+                      'text-2xl font-semibold tracking-tight sm:text-3xl'
                   )}
                 >
                   {pageMode
@@ -250,7 +247,7 @@ function FoxAiChatView({
                 className={cn(
                   'max-w-[90%] rounded-2xl px-4 py-2.5',
                   message.role === 'user'
-                    ? 'bg-primary text-primary-foreground text-sm leading-relaxed'
+                    ? 'bg-primary text-sm leading-relaxed text-primary-foreground'
                     : 'bg-muted text-foreground'
                 )}
               >
@@ -269,7 +266,7 @@ function FoxAiChatView({
                     </span>
                   )
                 ) : (
-                  <p className='whitespace-pre-wrap text-sm leading-relaxed'>
+                  <p className='text-sm leading-relaxed whitespace-pre-wrap'>
                     {message.content}
                   </p>
                 )}
@@ -317,7 +314,9 @@ function FoxAiChatView({
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              pageMode ? 'Pergunte qualquer coisa sobre imóveis...' : placeholder
+              pageMode
+                ? 'Pergunte qualquer coisa sobre imóveis...'
+                : placeholder
             }
             rows={compact ? 2 : pageMode ? 2 : 3}
             disabled={loading}

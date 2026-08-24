@@ -1,6 +1,10 @@
-import { Check, Copy, Loader2, QrCode } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Check, Copy, Loader2, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  pollLeadCreditsPixStatus,
+  type PixPaymentResponse,
+} from '@/lib/payment-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { pollLeadCreditsPixStatus, type PixPaymentResponse } from '@/lib/payment-api'
 
 type PixPaymentDialogProps = {
   open: boolean

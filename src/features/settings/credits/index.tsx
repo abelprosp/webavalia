@@ -1,8 +1,22 @@
-import { CheckCircle2, Coins, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
+import { CheckCircle2, Coins, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useAuthStore } from '@/stores/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { fetchMe, isBrokerAccount } from '@/lib/auth-api'
+import { formatDocumentForAccountType } from '@/lib/document'
+import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import {
+  cancelPlanSubscription,
+  createLeadCreditsPix,
+  fetchMonthlyCharges,
+  fetchPaymentPricing,
+  type MonthlyCharge,
+  type PaymentPricing,
+  type PixPaymentResponse,
+} from '@/lib/payment-api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,25 +36,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ContentSection } from '../components/content-section'
-import { useAuthStore } from '@/stores/auth-store'
-import { fetchMe, isBrokerAccount } from '@/lib/auth-api'
-import { formatDocumentForAccountType } from '@/lib/document'
-import { useCreditsStore } from '@/stores/credits-store'
-import {
-  cancelPlanSubscription,
-  createLeadCreditsPix,
-  fetchMonthlyCharges,
-  fetchPaymentPricing,
-  type MonthlyCharge,
-  type PaymentPricing,
-  type PixPaymentResponse,
-} from '@/lib/payment-api'
+import { CreditsComingSoon } from './credits-coming-soon'
 import { PixPaymentDialog } from './pix-payment-dialog'
 import { TransparentCheckoutForm } from './transparent-checkout-form'
-import { getApiErrorMessage } from '@/lib/api-error'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
-import { CreditsComingSoon } from './credits-coming-soon'
 
 function formatChargeDate(value: string) {
   return new Date(value).toLocaleDateString('pt-BR', {
@@ -81,7 +81,9 @@ export function CreditsSettings() {
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
   const setUser = useAuthStore((s) => s.auth.setUser)
-  const signupBonus = useAuthStore((s) => s.auth.user?.trialEvaluationsTotal ?? 2)
+  const signupBonus = useAuthStore(
+    (s) => s.auth.user?.trialEvaluationsTotal ?? 2
+  )
   const user = useAuthStore((s) => s.auth.user)
   const isBroker = isBrokerAccount(user)
 
@@ -129,15 +131,15 @@ export function CreditsSettings() {
 
   useEffect(() => {
     if (user?.document) {
-      setCpfCnpj(
-        formatDocumentForAccountType(user.accountType, user.document)
-      )
+      setCpfCnpj(formatDocumentForAccountType(user.accountType, user.document))
     }
   }, [user?.document, user?.accountType])
 
   useEffect(() => {
     if (search.payment === 'success') {
-      toast.success('Pagamento recebido! Seus créditos serão atualizados em instantes.')
+      toast.success(
+        'Pagamento recebido! Seus créditos serão atualizados em instantes.'
+      )
       void refreshUser()
     } else if (search.payment === 'cancelled') {
       toast.info('Pagamento cancelado.')
@@ -268,8 +270,10 @@ export function CreditsSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='grid gap-2 max-w-sm'>
-              <Label htmlFor='cpfCnpj'>{isBroker ? 'CPF ou CNPJ' : 'CPF'}</Label>
+            <div className='grid max-w-sm gap-2'>
+              <Label htmlFor='cpfCnpj'>
+                {isBroker ? 'CPF ou CNPJ' : 'CPF'}
+              </Label>
               <Input
                 id='cpfCnpj'
                 inputMode='numeric'
@@ -356,7 +360,10 @@ export function CreditsSettings() {
                 planSlug={selectedPlan?.slug}
                 planPriceLabel={selectedPlan?.priceLabel}
                 onSuccess={async (result) => {
-                  if (result.status === 'paid' || result.status === 'approved') {
+                  if (
+                    result.status === 'paid' ||
+                    result.status === 'approved'
+                  ) {
                     toast.success(
                       'Assinatura confirmada! Seus créditos já estão disponíveis.'
                     )
@@ -401,7 +408,9 @@ export function CreditsSettings() {
                   <TableBody>
                     {charges.map((charge) => (
                       <TableRow key={charge.id}>
-                        <TableCell>{formatChargeDate(charge.chargedAt)}</TableCell>
+                        <TableCell>
+                          {formatChargeDate(charge.chargedAt)}
+                        </TableCell>
                         <TableCell>{charge.label}</TableCell>
                         <TableCell>+{charge.credits}</TableCell>
                         <TableCell>{formatMoney(charge.amountCents)}</TableCell>

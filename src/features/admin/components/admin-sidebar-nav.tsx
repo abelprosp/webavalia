@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { LucideIcon } from 'lucide-react'
 
 type AdminSidebarNavProps = {
   pathname: string

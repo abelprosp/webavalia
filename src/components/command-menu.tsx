@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, ChevronRight } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
 import { useSearch } from '@/context/search-provider'
 import {
   CommandDialog,
@@ -11,7 +12,6 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { getSidebarNavGroups } from './layout/data/sidebar-data'
-import { useAuthStore } from '@/stores/auth-store'
 import { ScrollArea } from './ui/scroll-area'
 
 export function CommandMenu() {

@@ -1,6 +1,10 @@
-import { ThumbsDown, ThumbsUp, Loader2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { ThumbsDown, ThumbsUp, Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { submitEvaluationFeedback } from '@/lib/evaluation-api'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -10,11 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { submitEvaluationFeedback } from '@/lib/evaluation-api'
-import { getApiErrorMessage } from '@/lib/api-error'
 import { showGamificationUpdates } from '@/features/gamification/lib/show-gamification-toasts'
-import { useAuthStore } from '@/stores/auth-store'
-import { cn } from '@/lib/utils'
 
 type EvaluationFeedbackPanelProps = {
   evaluationId: string
@@ -101,7 +101,7 @@ export function EvaluationFeedbackPanel({
             className={cn(
               'h-auto flex-col gap-2 rounded-2xl py-4',
               rating === 'good' &&
-                'bg-flux-lime text-flux-dark hover:bg-flux-lime/90 ring-2 ring-flux-lime ring-offset-2'
+                'bg-flux-lime text-flux-dark ring-2 ring-flux-lime ring-offset-2 hover:bg-flux-lime/90'
             )}
             onClick={() => setRating('good')}
           >
@@ -113,8 +113,7 @@ export function EvaluationFeedbackPanel({
             variant={rating === 'bad' ? 'default' : 'outline'}
             className={cn(
               'h-auto flex-col gap-2 rounded-2xl py-4',
-              rating === 'bad' &&
-                'ring-2 ring-destructive ring-offset-2'
+              rating === 'bad' && 'ring-2 ring-destructive ring-offset-2'
             )}
             onClick={() => setRating('bad')}
           >

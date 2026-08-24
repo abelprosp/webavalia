@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Home, Sparkles, Users, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { isBrokerAccount } from '@/lib/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { isBrokerAccount } from '@/lib/auth-api'
+import { Button } from '@/components/ui/button'
 
 const STORAGE_KEY_PJ = 'avalia-onboarding-dismissed'
 const STORAGE_KEY_PF = 'avalia-onboarding-pf-dismissed'
@@ -89,8 +89,8 @@ export function FirstRunBanner() {
             Primeiros passos na Avalia Imob
           </p>
           <p className='max-w-xl text-sm text-muted-foreground'>
-            Siga o funil: avalie um imóvel → desbloqueie oportunidades → gerencie
-            no pipeline do CRM.
+            Siga o funil: avalie um imóvel → desbloqueie oportunidades →
+            gerencie no pipeline do CRM.
           </p>
           <ol className='flex flex-wrap gap-2 pt-1 text-xs font-medium'>
             <li className='rounded-full bg-background px-3 py-1 shadow-sm'>

@@ -1,7 +1,11 @@
 import { AlertCircle, MapPin, TrendingUp } from 'lucide-react'
-import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
-import { BentoCard, FluxBadge, MetricIcon } from '@/features/avaliacao/components/bento-card'
 import type { MarketMapResult } from '@/lib/market-map-api'
+import {
+  BentoCard,
+  FluxBadge,
+  MetricIcon,
+} from '@/features/avaliacao/components/bento-card'
+import { formatCurrency } from '@/features/avaliacao/data/evaluation-engine'
 
 type MarketMapResultPanelProps = {
   result: MarketMapResult | null
@@ -16,7 +20,11 @@ export function MarketMapResultPanel({
 }: MarketMapResultPanelProps) {
   if (loading) {
     return (
-      <BentoCard variant='muted' title='Consultando região' subtitle='Aguarde...'>
+      <BentoCard
+        variant='muted'
+        title='Consultando região'
+        subtitle='Aguarde...'
+      >
         <p className='text-sm text-muted-foreground'>
           Analisando comparáveis de mercado na região selecionada.
         </p>
@@ -54,7 +62,11 @@ export function MarketMapResultPanel({
 
   return (
     <div className='space-y-3'>
-      <BentoCard variant='accent' title='Preço por m²' subtitle={result.address}>
+      <BentoCard
+        variant='accent'
+        title='Preço por m²'
+        subtitle={result.address}
+      >
         <div className='flex items-center gap-3'>
           <MetricIcon className='bg-flux-dark/10'>
             <TrendingUp className='size-5 text-flux-dark' />

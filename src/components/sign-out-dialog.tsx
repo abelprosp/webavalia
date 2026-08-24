@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from '@tanstack/react-router'
-import { getAuthRedirectPath } from '@/lib/redirect-path'
 import { useAuthStore } from '@/stores/auth-store'
+import { getAuthRedirectPath } from '@/lib/redirect-path'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 interface SignOutDialogProps {

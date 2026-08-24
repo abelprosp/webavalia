@@ -27,7 +27,10 @@ export const LISTING_INTENT_OPTIONS: Array<{
 ]
 
 export function getListingIntentLabel(intent: ListingIntent) {
-  return LISTING_INTENT_OPTIONS.find((option) => option.value === intent)?.label ?? intent
+  return (
+    LISTING_INTENT_OPTIONS.find((option) => option.value === intent)?.label ??
+    intent
+  )
 }
 
 const MONTHLY_YIELD_BY_STANDARD: Record<
@@ -52,88 +55,90 @@ export function estimateMonthlyRent(
   return { monthlyRent, rentPerSqm, annualYieldPercent, monthlyYield }
 }
 
-export const evaluationFormSchema = z.object({
-  listingIntent: z.enum(listingIntentValues, {
-    message: 'Selecione se deseja alugar ou vender',
-  }),
-  cep: z.union([
-    z.literal(''),
-    z.string().regex(/^\d{5}-?\d{3}$/, 'Informe um CEP válido'),
-  ]),
-  streetNumber: z.string().optional(),
-  address: z.string().min(5, 'Informe o endereço completo'),
-  propertyType: z.string().min(1, 'Selecione o tipo de imóvel'),
-  area: z.number().min(10, 'Área mínima de 10 m²'),
-  lotArea: z.number().min(10, 'Metragem mínima de 10 m²').optional(),
-  bedrooms: z.number().min(0),
-  bathrooms: z.number().min(0),
-  parking: z.number().min(0),
-  buildingAge: z.enum(buildingAgeValues, {
-    message: 'Selecione a idade da construção',
-  }),
-  conservation: z.string().min(1, 'Selecione o estado de conservação'),
-  standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']),
-  furnishing: z.enum(['sem', 'semi', 'completo']),
-  finishLevel: z.enum(['basico', 'padrao', 'alto-padrao', 'luxo']),
-  condominiumLevel: z.enum(['nao-aplica', 'padrao', 'alto-padrao', 'clube']),
-  viewType: z
-    .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
-    .optional(),
-  amenities: z.array(z.string()),
-  highEndFurnitureValue: z
-    .number()
-    .min(1, 'Informe o valor estimado dos móveis')
-    .optional(),
-  askingPrice: z.number().optional(),
-  notes: z.string().optional(),
-  floor: z.number().int().min(0).max(200).optional(),
-  hasMezzanine: z.boolean().optional(),
-  structureType: z.enum(['alvenaria', 'pre-moldado']).optional(),
-}).superRefine((data, ctx) => {
-  if (
-    data.amenities.includes(HIGH_END_FURNITURE_AMENITY) &&
-    data.highEndFurnitureValue == null
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['highEndFurnitureValue'],
-      message: 'Informe o valor estimado de todos os móveis juntos.',
-    })
-  }
+export const evaluationFormSchema = z
+  .object({
+    listingIntent: z.enum(listingIntentValues, {
+      message: 'Selecione se deseja alugar ou vender',
+    }),
+    cep: z.union([
+      z.literal(''),
+      z.string().regex(/^\d{5}-?\d{3}$/, 'Informe um CEP válido'),
+    ]),
+    streetNumber: z.string().optional(),
+    address: z.string().min(5, 'Informe o endereço completo'),
+    propertyType: z.string().min(1, 'Selecione o tipo de imóvel'),
+    area: z.number().min(10, 'Área mínima de 10 m²'),
+    lotArea: z.number().min(10, 'Metragem mínima de 10 m²').optional(),
+    bedrooms: z.number().min(0),
+    bathrooms: z.number().min(0),
+    parking: z.number().min(0),
+    buildingAge: z.enum(buildingAgeValues, {
+      message: 'Selecione a idade da construção',
+    }),
+    conservation: z.string().min(1, 'Selecione o estado de conservação'),
+    standardLevel: z.enum(['padrao', 'alto-padrao', 'luxo']),
+    furnishing: z.enum(['sem', 'semi', 'completo']),
+    finishLevel: z.enum(['basico', 'padrao', 'alto-padrao', 'luxo']),
+    condominiumLevel: z.enum(['nao-aplica', 'padrao', 'alto-padrao', 'clube']),
+    viewType: z
+      .enum(['nenhuma', 'cidade', 'mar', 'montanha', 'parque', 'lago'])
+      .optional(),
+    amenities: z.array(z.string()),
+    highEndFurnitureValue: z
+      .number()
+      .min(1, 'Informe o valor estimado dos móveis')
+      .optional(),
+    askingPrice: z.number().optional(),
+    notes: z.string().optional(),
+    floor: z.number().int().min(0).max(200).optional(),
+    hasMezzanine: z.boolean().optional(),
+    structureType: z.enum(['alvenaria', 'pre-moldado']).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.amenities.includes(HIGH_END_FURNITURE_AMENITY) &&
+      data.highEndFurnitureValue == null
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['highEndFurnitureValue'],
+        message: 'Informe o valor estimado de todos os móveis juntos.',
+      })
+    }
 
-  const pavilionTypes = ['galpao', 'galpao-industrial', 'barracao']
-  if (pavilionTypes.includes(data.propertyType) && !data.structureType) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['structureType'],
-      message: 'Informe se a estrutura é Alvenaria ou Pré-moldado.',
-    })
-  }
+    const pavilionTypes = ['galpao', 'galpao-industrial', 'barracao']
+    if (pavilionTypes.includes(data.propertyType) && !data.structureType) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['structureType'],
+        message: 'Informe se a estrutura é Alvenaria ou Pré-moldado.',
+      })
+    }
 
-  if (data.propertyType === 'loja' && data.hasMezzanine == null) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['hasMezzanine'],
-      message: 'Informe se o imóvel tem mezanino.',
-    })
-  }
+    if (data.propertyType === 'loja' && data.hasMezzanine == null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['hasMezzanine'],
+        message: 'Informe se o imóvel tem mezanino.',
+      })
+    }
 
-  const floorTypes = [
-    'apartamento',
-    'cobertura',
-    'studio',
-    'kitnet',
-    'loft',
-    'flat',
-  ]
-  if (floorTypes.includes(data.propertyType) && data.floor == null) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['floor'],
-      message: 'Informe o andar do imóvel.',
-    })
-  }
-})
+    const floorTypes = [
+      'apartamento',
+      'cobertura',
+      'studio',
+      'kitnet',
+      'loft',
+      'flat',
+    ]
+    if (floorTypes.includes(data.propertyType) && data.floor == null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['floor'],
+        message: 'Informe o andar do imóvel.',
+      })
+    }
+  })
 
 export type EvaluationFormValues = z.infer<typeof evaluationFormSchema>
 
@@ -395,7 +400,8 @@ export function normalizeEvaluationResult(
       zoning: result.masterPlanAnalysis?.zoning ?? '—',
       allowedUses: result.masterPlanAnalysis?.allowedUses ?? [],
       restrictions: result.masterPlanAnalysis?.restrictions ?? [],
-      developmentPotential: result.masterPlanAnalysis?.developmentPotential ?? '',
+      developmentPotential:
+        result.masterPlanAnalysis?.developmentPotential ?? '',
       summary: result.masterPlanAnalysis?.summary ?? '',
     },
     neighborhoodAnalysis: result.neighborhoodAnalysis,
@@ -414,7 +420,9 @@ export function getSaleScenarios(
   result: Pick<EvaluationResult, 'estimatedValue' | 'saleScenarios'>,
   area: number
 ) {
-  return result.saleScenarios ?? computeSaleScenarios(result.estimatedValue, area)
+  return (
+    result.saleScenarios ?? computeSaleScenarios(result.estimatedValue, area)
+  )
 }
 
 export function formatCurrency(value: number) {
