@@ -9,10 +9,10 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   LISTING_INTENT_OPTIONS,
+  type EvaluationFormValues,
   type ListingIntent,
 } from '../data/evaluation-engine'
 import type { Control } from 'react-hook-form'
-import type { EvaluationFormValues } from '../data/evaluation-engine'
 
 const INTENT_ICONS: Record<ListingIntent, typeof KeyRound> = {
   alugar: KeyRound,

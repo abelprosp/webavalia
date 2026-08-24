@@ -6,8 +6,7 @@ import {
   formatLocationFloodKnowledgeForPrompt,
   getLocationFloodKnowledge,
 } from './location-flood-feedback-service.js'
-import type { SerperResult } from './serper.js'
-import { extractLocationHint } from './serper.js'
+import { extractLocationHint, type SerperResult } from './serper.js'
 
 const FLOOD_TERMS =
   /\b(enchente|enchentes|alagamento|alagamentos|inundaç|inundac|cheia|cheias|alagou|alagaram|cota de cheia|área alagável|area alagavel|risco hídrico|risco hidrico|defesa civil|bueiro|enxurrada)\b/i
@@ -61,7 +60,7 @@ function extractLocationParts(address: string) {
 
 function snippetMatchesLocation(text: string, location: ReturnType<typeof extractLocationParts>) {
   const normalized = text.toLowerCase()
-  const tokens = [location.neighborhood, ...location.cityState.split(/[,\/]/)]
+  const tokens = [location.neighborhood, ...location.cityState.split(/[,/]/)]
     .map((t) => t.trim().toLowerCase())
     .filter((t) => t.length >= 4)
 

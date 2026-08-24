@@ -11,8 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { CrmDeal } from '@/lib/crm-api'
-import { getUrgencyLabel } from '@/lib/crm-api'
+import { getUrgencyLabel, type CrmDeal } from '@/lib/crm-api'
 
 type DealCardProps = {
   deal: CrmDeal

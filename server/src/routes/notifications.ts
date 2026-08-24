@@ -24,7 +24,7 @@ router.get('/unread-count', requireAuth, async (req: AuthRequest, res) => {
   try {
     const unreadCount = await getUnreadCount(req.user!.id)
     return res.json({ unreadCount })
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: 'Erro ao carregar notificações.' })
   }
 })
@@ -33,7 +33,7 @@ router.patch('/read-all', requireAuth, async (req: AuthRequest, res) => {
   try {
     await markAllNotificationsRead(req.user!.id)
     return res.json({ message: 'Notificações marcadas como lidas.' })
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: 'Erro ao atualizar notificações.' })
   }
 })

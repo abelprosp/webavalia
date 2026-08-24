@@ -75,7 +75,7 @@ export function slugify(title: string) {
 }
 
 async function ensureUniqueSlug(base: string, excludeId?: string) {
-  let slug = base || 'post'
+  const slug = base || 'post'
   let suffix = 0
 
   while (true) {

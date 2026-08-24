@@ -620,7 +620,7 @@ Regras:
     choices?: Array<{ message?: { content?: string } }>
   }
   const content = data.choices?.[0]?.message?.content
-  let message: string | null = null
+  let message: string | null
   try {
     message = content ? String(JSON.parse(content).message ?? '') : null
   } catch {

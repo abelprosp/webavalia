@@ -33,7 +33,6 @@ import {
   AuthLockoutError,
   countRecentEmailFailures,
   countRecentIpFailures,
-  HoneypotError,
   logAuthAttempt,
   recordFailedLogin,
   recordSuccessfulLogin,

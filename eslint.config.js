@@ -25,6 +25,8 @@ export default defineConfig(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Mass of legitimate data fetches / sync in useEffect; do not block CI
+      'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
@@ -54,6 +56,13 @@ export default defineConfig(
       ],
       // Prevent duplicate imports from the same module
       'no-duplicate-imports': 'error',
+    },
+  },
+  // Backend logging is intentional operational output
+  {
+    files: ['server/**/*.{ts,tsx,js,mjs,cjs}'],
+    rules: {
+      'no-console': 'off',
     },
   }
 )

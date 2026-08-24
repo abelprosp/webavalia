@@ -401,7 +401,7 @@ export async function exportEvaluationPdf({
   y = addBulletList(doc, result.aiInsights, y)
 
   if (result.photoPreviews.length > 0) {
-    y = await addPhotos(doc, result.photoPreviews, y)
+    await addPhotos(doc, result.photoPreviews, y)
   }
 
   const pageCount = doc.getNumberOfPages()

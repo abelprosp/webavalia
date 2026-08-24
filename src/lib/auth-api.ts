@@ -96,7 +96,9 @@ export async function resetPasswordRequest(token: string, password: string) {
   } catch (error) {
     if (error instanceof AxiosError) {
       const message = (error.response?.data as { message?: string })?.message
-      throw new Error(message ?? 'Não foi possível redefinir a senha.')
+      throw new Error(message ?? 'Não foi possível redefinir a senha.', {
+        cause: error,
+      })
     }
     throw error
   }

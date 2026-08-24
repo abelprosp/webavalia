@@ -211,7 +211,7 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
   const userId = req.user!.id
   const isPfAccount = req.user!.accountType === 'pf'
   let trialEvaluationsRemaining: number
-  let chargedCredits = 0
+  let chargedCredits: number
   let freeEvaluationsRemaining: number | undefined
 
   try {

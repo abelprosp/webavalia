@@ -85,7 +85,8 @@ export async function generateEfiPaymentToken(input: {
     }
   } catch (error) {
     throw new Error(
-      getErrorMessage(error) ?? 'Falha ao tokenizar cartão com a Efí.'
+      getErrorMessage(error) ?? 'Falha ao tokenizar cartão com a Efí.',
+      { cause: error }
     )
   }
 }

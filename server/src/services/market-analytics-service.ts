@@ -31,14 +31,7 @@ type EvaluationRow = {
   created_at: Date
 }
 
-const APPRECIATION_TRENDS = [
-  'valorizacao',
-  'estavel',
-  'desvalorizacao',
-  'indeterminado',
-] as const satisfies readonly PortfolioSnapshot['appreciationTrend'][]
-
-type AppreciationTrend = (typeof APPRECIATION_TRENDS)[number]
+type AppreciationTrend = PortfolioSnapshot['appreciationTrend']
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)

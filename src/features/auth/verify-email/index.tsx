@@ -1,7 +1,7 @@
 import { Mail, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearch } from '@tanstack/react-router'
-import { AxiosError } from 'axios'
+import { type AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

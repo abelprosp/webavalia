@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { emitCreditsUpdated, useCreditsStore } from '@/stores/credits-store'
-import { logoutRequest } from '@/lib/auth-api'
-import type { AuthUser } from '@/lib/auth-api'
+import { logoutRequest, type AuthUser } from '@/lib/auth-api'
 
 function resolveUserCredits(user: AuthUser) {
   return user.credits ?? user.leadCredits ?? user.trialEvaluationsRemaining ?? 0

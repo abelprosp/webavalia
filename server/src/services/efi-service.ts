@@ -117,7 +117,7 @@ async function withEfi<T>(fn: (efi: EfiClient) => Promise<T>): Promise<T> {
   } catch (error) {
     const message = formatEfiError(error)
     console.error('[efi]', message, error)
-    throw new Error(message)
+    throw new Error(message, { cause: error })
   }
 }
 

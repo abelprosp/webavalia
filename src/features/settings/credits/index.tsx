@@ -24,10 +24,9 @@ import {
 } from '@/components/ui/table'
 import { ContentSection } from '../components/content-section'
 import { useAuthStore } from '@/stores/auth-store'
-import { isBrokerAccount } from '@/lib/auth-api'
+import { fetchMe, isBrokerAccount } from '@/lib/auth-api'
 import { formatDocumentForAccountType } from '@/lib/document'
 import { useCreditsStore } from '@/stores/credits-store'
-import { fetchMe } from '@/lib/auth-api'
 import {
   cancelPlanSubscription,
   createLeadCreditsPix,
@@ -79,10 +78,6 @@ function formatCpfCnpj(value: string) {
 }
 
 export function CreditsSettings() {
-  if (!CREDITS_AND_PLANS_ENABLED) {
-    return <CreditsComingSoon />
-  }
-
   const credits = useCreditsStore((s) => s.credits)
   const setCredits = useCreditsStore((s) => s.setCredits)
   const setUser = useAuthStore((s) => s.auth.setUser)
@@ -210,6 +205,10 @@ export function CreditsSettings() {
     } finally {
       setCancelling(false)
     }
+  }
+
+  if (!CREDITS_AND_PLANS_ENABLED) {
+    return <CreditsComingSoon />
   }
 
   const creditsPerUnit = pricing?.leadCreditPack.credits ?? 1
