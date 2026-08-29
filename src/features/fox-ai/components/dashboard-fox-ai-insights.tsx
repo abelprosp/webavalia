@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { AxiosError } from 'axios'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import { FOX_AI_ENABLED } from '@/lib/feature-flags'
 import {
   getDashboardInsight,
   getFoxAiStatus,
@@ -22,7 +23,12 @@ type DashboardFoxAiInsightsProps = {
   dashboardContext: DashboardContext
 }
 
-export function DashboardFoxAiInsights({
+export function DashboardFoxAiInsights(props: DashboardFoxAiInsightsProps) {
+  if (!FOX_AI_ENABLED) return null
+  return <DashboardFoxAiInsightsContent {...props} />
+}
+
+function DashboardFoxAiInsightsContent({
   dashboardContext,
 }: DashboardFoxAiInsightsProps) {
   const autoLoadedRef = useRef(false)

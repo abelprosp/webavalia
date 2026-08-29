@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ExternalLink, Loader2, Sparkles, X } from 'lucide-react'
 import { useFoxAiChatStore } from '@/stores/fox-ai-chat-store'
+import { FOX_AI_ENABLED } from '@/lib/feature-flags'
 import { getSuggestedPrompts, type DashboardContext } from '@/lib/fox-ai-api'
 import { FOX_AI_QUERY_META } from '@/lib/query-meta'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,12 @@ type FoxAiWidgetProps = {
   dashboardContext?: DashboardContext
 }
 
-export function FoxAiWidget({ dashboardContext }: FoxAiWidgetProps) {
+export function FoxAiWidget(props: FoxAiWidgetProps) {
+  if (!FOX_AI_ENABLED) return null
+  return <FoxAiWidgetContent {...props} />
+}
+
+function FoxAiWidgetContent({ dashboardContext }: FoxAiWidgetProps) {
   const [open, setOpen] = useState(false)
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null)
   const pathname = useRouterState({

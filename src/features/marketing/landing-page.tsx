@@ -8,15 +8,18 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
+import { CAPTURE_RADAR_ENABLED, FOX_AI_ENABLED } from '@/lib/feature-flags'
 import { Button } from '@/components/ui/button'
 import { AvaliaBrandMark } from '@/features/auth/components/auth-left-panel'
 
 const PJ_HIGHLIGHTS = [
   'Avaliações com IA e comparáveis de mercado',
-  'Radar de captação: IA encontra imóveis de proprietários',
+  ...(CAPTURE_RADAR_ENABLED
+    ? ['Radar de captação: IA encontra imóveis de proprietários']
+    : []),
   'Leads de proprietários da sua região',
   'CRM com scoring e pipeline',
-  'Mapa de mercado + FoxAi',
+  FOX_AI_ENABLED ? 'Mapa de mercado + FoxAi' : 'Mapa de mercado',
 ]
 
 const PF_HIGHLIGHTS = [

@@ -6,6 +6,7 @@ import { SearchProvider } from '@/context/search-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SkipToMain } from '@/components/skip-to-main'
+import { FOX_AI_ENABLED } from '@/lib/feature-flags'
 import { FoxAiWidget } from '@/features/fox-ai/components/fox-ai-widget'
 import { NotificationsProvider } from '@/features/notifications/context/notifications-provider'
 
@@ -37,7 +38,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               )}
             >
               {children ?? <Outlet />}
-              <FoxAiWidget />
+              {FOX_AI_ENABLED ? <FoxAiWidget /> : null}
             </SidebarInset>
           </SidebarProvider>
         </NotificationsProvider>

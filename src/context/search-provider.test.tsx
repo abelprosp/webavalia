@@ -127,7 +127,7 @@ describe('SearchProvider and CommandMenu', () => {
       .not.toBeInTheDocument()
   })
 
-  it('navigates for nested sidebar items (group with sub-items)', async () => {
+  it('navigates for broker sidebar items in the command palette', async () => {
     mocks.authUser = {
       id: '1',
       name: 'Broker',
@@ -137,15 +137,16 @@ describe('SearchProvider and CommandMenu', () => {
     }
 
     const screen = await renderWithSearchProvider()
-    const { getByPlaceholder, getByRole } = screen
+    const { getByPlaceholder, getByRole, queryByText } = screen
 
     await openCommandPalette(screen)
 
-    await userEvent.click(
-      getByRole('option', { name: /Assistente IA.*Chat FoxAi/i })
-    )
+    await expect.element(queryByText('Radar de captação')).not.toBeInTheDocument()
+    await expect.element(queryByText('Assistente IA')).not.toBeInTheDocument()
 
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/fox-ai/chat' })
+    await userEvent.click(getByRole('option', { name: /Pipeline \(CRM\)/i }))
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/crm' })
     await expect
       .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
       .not.toBeInTheDocument()

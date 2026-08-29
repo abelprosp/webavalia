@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
+import { CAPTURE_RADAR_ENABLED, FOX_AI_ENABLED } from '@/lib/feature-flags'
 import { Button } from '@/components/ui/button'
 import { AvaliaBrandMark } from '@/features/auth/components/auth-left-panel'
 
@@ -12,7 +13,9 @@ const PJ_PLANS = [
     description: 'Ideal para corretor solo começar a captar.',
     features: [
       'Avaliações IA',
-      'Radar de captação IA (1 crédito/varredura)',
+      ...(CAPTURE_RADAR_ENABLED
+        ? ['Radar de captação IA (1 crédito/varredura)']
+        : []),
       'Desbloqueio de leads (2 créditos)',
       'CRM básico',
     ],
@@ -22,13 +25,15 @@ const PJ_PLANS = [
     name: 'Pro',
     price: 'R$ 197',
     credits: '30 créditos/mês',
-    description: 'Melhor custo por crédito — mapa, FoxAi e scoring.',
+    description: FOX_AI_ENABLED
+      ? 'Melhor custo por crédito — mapa, FoxAi e scoring.'
+      : 'Melhor custo por crédito — mapa e scoring.',
     highlighted: true,
     features: [
       'Tudo do Starter',
-      'Radar de captação IA em volume',
+      ...(CAPTURE_RADAR_ENABLED ? ['Radar de captação IA em volume'] : []),
       'Mapa de mercado',
-      'FoxAi',
+      ...(FOX_AI_ENABLED ? ['FoxAi'] : []),
       'Lead Scoring IA',
     ],
   },

@@ -18,8 +18,37 @@ import {
   Radar,
 } from 'lucide-react'
 import { isAdmin, isBrokerAccount, type AuthUser } from '@/lib/auth-api'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import {
+  CAPTURE_RADAR_ENABLED,
+  CREDITS_AND_PLANS_ENABLED,
+  FOX_AI_ENABLED,
+} from '@/lib/feature-flags'
 import { type NavGroup, type NavItem, type SidebarData } from '../types'
+
+const radarNavItem: NavItem = {
+  title: 'Radar de captação',
+  url: '/radar',
+  icon: Radar,
+  badge: 'Novo',
+}
+
+const foxAiNavItem: NavItem = {
+  title: 'Assistente IA',
+  icon: Sparkles,
+  badge: 'IA',
+  items: [
+    {
+      title: 'Central FoxAi',
+      url: '/fox-ai',
+      icon: LayoutDashboard,
+    },
+    {
+      title: 'Chat FoxAi',
+      url: '/fox-ai/chat',
+      icon: MessageSquare,
+    },
+  ],
+}
 
 export const sidebarData: SidebarData = {
   user: {
@@ -54,18 +83,15 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
   ]
 
   if (broker) {
+    platformItems.push({
+      title: 'Oportunidades (Leads)',
+      url: '/leads',
+      icon: Users,
+    })
+    if (CAPTURE_RADAR_ENABLED) {
+      platformItems.push(radarNavItem)
+    }
     platformItems.push(
-      {
-        title: 'Oportunidades (Leads)',
-        url: '/leads',
-        icon: Users,
-      },
-      {
-        title: 'Radar de captação',
-        url: '/radar',
-        icon: Radar,
-        badge: 'Novo',
-      },
       {
         title: 'Pipeline (CRM)',
         url: '/crm',
@@ -75,25 +101,11 @@ export function getSidebarNavGroups(user: AuthUser | null): NavGroup[] {
         title: 'Mapa de mercado',
         url: '/mapa-de-mercado',
         icon: Map,
-      },
-      {
-        title: 'Assistente IA',
-        icon: Sparkles,
-        badge: 'IA',
-        items: [
-          {
-            title: 'Central FoxAi',
-            url: '/fox-ai',
-            icon: LayoutDashboard,
-          },
-          {
-            title: 'Chat FoxAi',
-            url: '/fox-ai/chat',
-            icon: MessageSquare,
-          },
-        ],
       }
     )
+    if (FOX_AI_ENABLED) {
+      platformItems.push(foxAiNavItem)
+    }
   } else {
     platformItems.push({
       title: 'Minhas avaliações',

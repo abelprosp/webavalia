@@ -14,7 +14,7 @@ import { useCreditsStore } from '@/stores/credits-store'
 import { MONTHS, useEvaluationsStore } from '@/stores/evaluations-store'
 import { useLeadsStore } from '@/stores/leads-store'
 import { isBrokerAccount } from '@/lib/auth-api'
-import { CREDITS_AND_PLANS_ENABLED } from '@/lib/feature-flags'
+import { CREDITS_AND_PLANS_ENABLED, FOX_AI_ENABLED } from '@/lib/feature-flags'
 import { fetchLeads } from '@/lib/leads-api'
 import { Button } from '@/components/ui/button'
 import {
@@ -266,7 +266,7 @@ export function Dashboard() {
           )}
         </div>
 
-        {isBroker && (
+        {isBroker && FOX_AI_ENABLED && (
           <div className='mt-6 mb-6'>
             <DashboardFoxAiInsights dashboardContext={dashboardContext} />
           </div>
