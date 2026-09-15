@@ -43,7 +43,7 @@ const queryClient = new QueryClient({
 
         if (error instanceof AxiosError) {
           if (error.response?.status === 304) {
-            toast.error('Content not modified!')
+            toast.error('Nenhuma alteração encontrada.')
           }
         }
       },
@@ -53,7 +53,7 @@ const queryClient = new QueryClient({
     onError: (error, query) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
+          toast.error('Sua sessão expirou. Entre novamente.')
           useAuthStore.getState().auth.reset({ skipServer: true })
           const redirect = `${router.history.location.href}`
           router.navigate({ to: '/sign-in', search: { redirect } })
@@ -63,7 +63,7 @@ const queryClient = new QueryClient({
             query.meta?.skipGlobalErrorRedirect === true ||
             isFoxAiQueryKey(query.queryKey)
           if (!skipRedirect) {
-            toast.error('Internal Server Error!')
+            toast.error('O servidor encontrou um problema. Tente novamente.')
             // Only navigate to error page in production to avoid disrupting HMR in development
             if (import.meta.env.PROD) {
               router.navigate({ to: '/500' })

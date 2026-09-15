@@ -29,6 +29,8 @@ export type EvaluationCriteriaInput = {
   notes?: string
   /** Andar (apartamento e derivados). */
   floor?: number
+  totalFloors?: number
+  elevatorAccess?: 'sim' | 'nao' | 'desconhecido'
   /** Mezanino (loja). */
   hasMezzanine?: boolean
   /** Estrutura do pavilhão/galpão. */
@@ -88,6 +90,8 @@ export type NbrHomogenizedComparable = {
   title: string
   source: string
   link?: string
+  floor?: number | null
+  elevatorAccess?: 'sim' | 'nao' | 'desconhecido'
   declaredPrice: string
   area?: string
   areaSqm?: number | null
@@ -122,12 +126,26 @@ export type Nbr14653Draft = {
   disclaimer: string
 }
 
+export type EvaluationSampleQuality = {
+  status: 'insuficiente' | 'limitada' | 'disponivel'
+  receivedCount: number
+  usedCount: number
+  duplicatesRemoved: number
+  excludedCount: number
+  matchedSourceCount: number
+  sourceCheckPerformed: boolean
+  observedValueRange: { min: number; max: number } | null
+  warnings: string[]
+}
+
 export type Nbr14653Analysis = Nbr14653Draft & {
+  sampleQuality?: EvaluationSampleQuality
+  aggregationMethod?: 'mediana' | 'media-ponderada'
   standard: string
   referenceDate: string
-  specificationGrade: 'I' | 'II' | 'III'
+  specificationGrade: 'I' | 'II' | 'III' | null
   specificationGradeLabel: string
-  maxDeviationPercent: number
+  maxDeviationPercent: number | null
   specificationDescription: string
 }
 

@@ -16,6 +16,7 @@ export const NBR_HOMOGENIZATION_FACTORS = [
   { id: 'parking', label: 'Vagas de garagem' },
   { id: 'condominium', label: 'Padrão do condomínio' },
   { id: 'view', label: 'Vista e exposição' },
+  { id: 'floor_access', label: 'Andar e acesso por elevador' },
   { id: 'market', label: 'Oferta e demanda local' },
 ] as const
 
@@ -45,33 +46,3 @@ export const NBR_METHODS = {
       'Identifica o custo de reprodução ou substituição do bem, com depreciação aplicada.',
   },
 } as const
-
-export const NBR_SPECIFICATION_GRADES = {
-  I: {
-    grade: 'I' as const,
-    label: 'Grau de especificação I',
-    maxDeviationPercent: 10,
-    description:
-      'Maior rigor metodológico — amostra ampla e homogeneização detalhada.',
-  },
-  II: {
-    grade: 'II' as const,
-    label: 'Grau de especificação II',
-    maxDeviationPercent: 15,
-    description:
-      'Rigor intermediário — amostra adequada com tratamento técnico dos comparáveis.',
-  },
-  III: {
-    grade: 'III' as const,
-    label: 'Grau de especificação III',
-    maxDeviationPercent: 20,
-    description:
-      'Estimativa preliminar — amostra limitada ou dados de mercado incompletos.',
-  },
-}
-
-export function inferSpecificationGrade(comparableCount: number) {
-  if (comparableCount >= 6) return NBR_SPECIFICATION_GRADES.II
-  if (comparableCount >= 3) return NBR_SPECIFICATION_GRADES.II
-  return NBR_SPECIFICATION_GRADES.III
-}

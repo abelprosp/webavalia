@@ -7,7 +7,7 @@ export function handleServerError(error: unknown) {
     console.log(error)
   }
 
-  let errMsg = 'Something went wrong!'
+  let errMsg = 'Não foi possível concluir a operação. Tente novamente.'
 
   if (
     error &&
@@ -15,13 +15,18 @@ export function handleServerError(error: unknown) {
     'status' in error &&
     Number(error.status) === 204
   ) {
-    errMsg = 'No content.'
+    errMsg = 'Nenhum conteúdo disponível.'
   }
 
   if (error instanceof AxiosError) {
-    const title = error.response?.data?.title
-    if (typeof title === 'string' && title.length > 0) {
-      errMsg = title
+    if (error.code === 'ERR_CANCELED') return
+    const data = error.response?.data
+    const message = data?.message ?? data?.title
+    if (typeof message === 'string' && message.trim()) {
+      errMsg = message
+    } else if (!error.response) {
+      errMsg =
+        'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.'
     }
   }
 

@@ -39,8 +39,8 @@ import {
   type EvaluationResult,
   type SaleScenario,
 } from '../data/evaluation-engine'
-import { exportEvaluationPdf } from '../lib/export-evaluation-pdf'
 import { BentoCard, FluxBadge, MetricIcon } from './bento-card'
+import { EvaluationEvidence } from './evaluation-evidence'
 import { Nbr14653Panel } from './nbr-14653-panel'
 
 type EvaluationResultPanelProps = {
@@ -52,6 +52,15 @@ type EvaluationResultPanelProps = {
 
 function getPropertyHighlights(property: EvaluationFormValues) {
   const highlights: string[] = []
+  if (property.floor != null) {
+    highlights.push(
+      property.floor === 0 ? 'Térreo' : `${property.floor}º andar`
+    )
+    if (property.elevatorAccess === 'sim')
+      highlights.push('Elevador até a unidade')
+    if (property.elevatorAccess === 'nao')
+      highlights.push('Sem elevador até a unidade')
+  }
   if (property.standardLevel && property.standardLevel !== 'padrao') {
     highlights.push(getStandardLevelLabel(property.standardLevel))
   }
@@ -303,6 +312,8 @@ export function EvaluationResultPanel({
   async function handleExportPdf() {
     setIsExporting(true)
     try {
+      const { exportEvaluationPdf } =
+        await import('../lib/export-evaluation-pdf')
       await exportEvaluationPdf({ result, property })
       toast.success('PDF exportado com sucesso!')
     } catch {
@@ -352,6 +363,12 @@ export function EvaluationResultPanel({
             Prévia da avaliação. Desbloqueie o lead para ver contato, e-mail e
             endereço completo.
           </div>
+        )}
+        {result.nbr14653?.sampleQuality && (
+          <EvaluationEvidence
+            quality={result.nbr14653.sampleQuality}
+            showRange={!isRentalView}
+          />
         )}
         {/* Header */}
         <div className='flex flex-wrap items-end justify-between gap-4'>
@@ -445,8 +462,8 @@ export function EvaluationResultPanel({
                           aluguel
                         </p>
                         <p className='mt-1 text-xs text-muted-foreground/80'>
-                          Valor de venda de referência:{' '}
-                          {formatCurrency(result.estimatedValue)} (
+                          Simulação por rendimento estimado. Valor de venda de
+                          referência: {formatCurrency(result.estimatedValue)} (
                           {rentalEstimate.annualYieldPercent.toFixed(1)}% a.a.)
                         </p>
                       </>

@@ -3,16 +3,10 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { getApiErrorMessage } from '@/lib/api-error'
-import {
-  updateProfileRequest,
-  type AccountType,
-} from '@/lib/auth-api'
-import {
-  documentDigits,
-  formatDocumentForAccountType,
-} from '@/lib/document'
 import { useAuthStore } from '@/stores/auth-store'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { updateProfileRequest, type AccountType } from '@/lib/auth-api'
+import { documentDigits, formatDocumentForAccountType } from '@/lib/document'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -28,10 +22,7 @@ import { Input } from '@/components/ui/input'
 function buildProfileSchema(accountType: AccountType) {
   return z
     .object({
-      name: z
-        .string()
-        .trim()
-        .min(2, 'Nome deve ter ao menos 2 caracteres.'),
+      name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres.'),
       email: z.email('E-mail inválido.'),
       document: z.string().trim().min(1, 'Informe o documento.'),
       companyName: z.string().trim().optional(),
@@ -195,9 +186,7 @@ export function ProfileForm() {
               <FormControl>
                 <Input
                   inputMode='numeric'
-                  placeholder={
-                    isPj ? '00.000.000/0000-00' : '000.000.000-00'
-                  }
+                  placeholder={isPj ? '00.000.000/0000-00' : '000.000.000-00'}
                   {...field}
                   onChange={(e) =>
                     field.onChange(

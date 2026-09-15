@@ -18,13 +18,15 @@ describe('handleServerError', () => {
   it('shows a generic message when the error is not recognised', () => {
     handleServerError(new Error('network'))
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith(
+      'Não foi possível concluir a operação. Tente novamente.'
+    )
   })
 
   it('maps a plain object with status 204 to the no-content message', () => {
     handleServerError({ status: 204 })
 
-    expect(toastError).toHaveBeenCalledWith('No content.')
+    expect(toastError).toHaveBeenCalledWith('Nenhum conteúdo disponível.')
   })
 
   it('prefers the API title when the error is an Axios error with response data', () => {
@@ -48,7 +50,9 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith(
+      'Não foi possível concluir a operação. Tente novamente.'
+    )
   })
 
   it('falls back to the generic message when Axios data.title is an empty string', () => {
@@ -60,7 +64,9 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith(
+      'Não foi possível concluir a operação. Tente novamente.'
+    )
   })
 
   it('logs the error to the console in development', () => {
@@ -87,4 +93,17 @@ describe('handleServerError', () => {
 
     log.mockRestore()
   })
+})
+
+it('uses the API message and ignores canceled requests', () => {
+  const error = new AxiosError('Bad request')
+  error.response = {
+    status: 400,
+    data: { message: 'Revise o andar informado.' },
+  } as AxiosError['response']
+  handleServerError(error)
+  expect(toastError).toHaveBeenCalledWith('Revise o andar informado.')
+  toastError.mockClear()
+  handleServerError(new AxiosError('Canceled', 'ERR_CANCELED'))
+  expect(toastError).not.toHaveBeenCalled()
 })

@@ -1,10 +1,10 @@
-import type { EvaluationRequest } from '../types/evaluation.js'
 import { getEvaluationArea } from '../constants/evaluation-defaults.js'
-import { computeSaleScenarios } from '../utils/sale-scenarios.js'
+import type { EvaluationRequest } from '../types/evaluation.js'
 import { sanitizeEvaluationComparables } from '../utils/comparable-location-filter.js'
 import { enrichEvaluationWithRadarScores } from '../utils/opportunity-score.js'
-import { evaluateWithOpenAI } from './openai-evaluator.js'
+import { computeSaleScenarios } from '../utils/sale-scenarios.js'
 import { applyNbr14653ToEvaluation } from './nbr-14653-service.js'
+import { evaluateWithOpenAI } from './openai-evaluator.js'
 import {
   searchMarketAppreciation,
   searchMarketListings,
@@ -41,7 +41,8 @@ export async function runPropertyEvaluation(input: EvaluationRequest) {
   const withNbr = applyNbr14653ToEvaluation(
     sanitizedAiResult,
     input,
-    marketResults.length
+    marketResults.length,
+    marketResults.map((result) => result.link)
   )
 
   const listingIntent = input.listingIntent ?? 'vender'

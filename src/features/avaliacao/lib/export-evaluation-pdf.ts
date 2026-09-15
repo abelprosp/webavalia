@@ -176,6 +176,15 @@ export async function exportEvaluationPdf({
     landOnly
       ? `Metragem do terreno: ${property.area} m²`
       : `Área: ${property.area} m² · Quartos: ${property.bedrooms} · Banheiros: ${property.bathrooms} · Vagas: ${property.parking}`,
+    property.floor != null
+      ? `Andar da unidade: ${property.floor === 0 ? 'térreo' : property.floor + 'º'}`
+      : null,
+    property.totalFloors != null
+      ? `Último andar do prédio: ${property.totalFloors}`
+      : null,
+    property.floor != null
+      ? `Elevador atende a unidade: ${property.elevatorAccess ?? 'não informado'}`
+      : null,
     property.lotArea ? `Terreno: ${property.lotArea} m²` : null,
     !landOnly
       ? `Idade da construção: ${getBuildingAgeLabel(property.buildingAge)} · Conservação: ${getConservationLabel(property.conservation)}`
@@ -208,7 +217,7 @@ export async function exportEvaluationPdf({
     const rental = estimateMonthlyRent(result.estimatedValue, property)
     y = addParagraph(
       doc,
-      `Aluguel estimado: ${formatCurrency(rental.monthlyRent)}/mês`,
+      `Simulação de aluguel por rendimento: ${formatCurrency(rental.monthlyRent)}/mês`,
       y,
       { bold: true, fontSize: 12 }
     )
@@ -356,9 +365,30 @@ export async function exportEvaluationPdf({
     y = addSectionTitle(doc, 'Metodologia ABNT NBR 14653', y)
     y = addParagraph(doc, `${nbr.standard}`, y)
     y = addParagraph(doc, `Objetivo: ${nbr.purpose}`, y)
+    if (nbr.sampleQuality) {
+      const quality = nbr.sampleQuality
+      y = addParagraph(
+        doc,
+        `Amostra: ${quality.usedCount} comparáveis usados; ${quality.duplicatesRemoved} repetidos removidos; ${quality.excludedCount} excluídos.`,
+        y
+      )
+      y = addParagraph(
+        doc,
+        'Preços de oferta. Precisão e atualidade dos anúncios não certificadas.',
+        y
+      )
+      if (quality.observedValueRange && listingIntent !== 'alugar') {
+        y = addParagraph(
+          doc,
+          `Faixa observada para a área do imóvel: ${formatCurrency(quality.observedValueRange.min)} a ${formatCurrency(quality.observedValueRange.max)}. Não é intervalo de confiança.`,
+          y
+        )
+      }
+    }
+
     y = addParagraph(
       doc,
-      `${nbr.specificationGradeLabel} — tolerância máxima de ±${nbr.maxDeviationPercent}%`,
+      'Estimativa automatizada — grau e precisão não aferidos',
       y
     )
     y = addParagraph(

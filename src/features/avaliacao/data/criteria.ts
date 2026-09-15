@@ -77,6 +77,14 @@ export const apartmentLikePropertyTypes = [
   'flat',
 ] as const
 
+/** Unidades em edifícios, incluindo salas e andares comerciais. */
+export function hasFloorInformation(type: string) {
+  return (
+    isApartmentLikePropertyType(type) ||
+    ['comercial', 'consultorio', 'andar-corporativo'].includes(type)
+  )
+}
+
 /** Pavilhão / galpão — pedem Alvenaria ou Pré-moldado. */
 export const pavilionPropertyTypes = [
   'galpao',

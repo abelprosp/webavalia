@@ -1,19 +1,19 @@
 import { z } from 'zod'
 import { config } from '../config.js'
+import { getBuildingAgeLabel } from '../constants/building-age.js'
+import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 import type {
   EvaluationAIDraftResponse,
   EvaluationRequest,
   PhotoInput,
 } from '../types/evaluation.js'
-import type { SerperResult } from './serper.js'
-import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
-import { isHighStandardProperty } from './nbr-14653-service.js'
-import { getBuildingAgeLabel } from '../constants/building-age.js'
-import { isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 import {
   extractCityFromAddress,
   extractNeighborhoodFromAddress,
 } from '../utils/address-parsing.js'
+import { buildFeedbackLearningPrompt } from './evaluation-feedback-service.js'
+import { isHighStandardProperty } from './nbr-14653-service.js'
+import type { SerperResult } from './serper.js'
 
 const aiResponseSchema = z.object({
   estimatedValue: z.number(),
@@ -78,7 +78,12 @@ const aiResponseSchema = z.object({
     summary: z.string(),
   }),
   marketAppreciationAnalysis: z.object({
-    trend: z.enum(['valorizacao', 'estavel', 'desvalorizacao', 'indeterminado']),
+    trend: z.enum([
+      'valorizacao',
+      'estavel',
+      'desvalorizacao',
+      'indeterminado',
+    ]),
     trendLabel: z.string(),
     annualGrowthEstimatePercent: z.number().nullable(),
     historicalContext: z.string(),
@@ -111,6 +116,8 @@ const aiResponseSchema = z.object({
           title: z.string(),
           source: z.string(),
           link: z.string().optional(),
+          floor: z.number().int().min(0).nullable().optional(),
+          elevatorAccess: z.enum(['sim', 'nao', 'desconhecido']).optional(),
           declaredPrice: z.string(),
           area: z.string().optional(),
           areaSqm: z.number().nullable().optional(),
@@ -214,7 +221,9 @@ const AMENITY_LABELS: Record<string, string> = {
 
 function formatAmenities(amenities: string[] | undefined) {
   if (!amenities?.length) return 'nenhum informado'
-  return amenities.map((amenity) => AMENITY_LABELS[amenity] ?? amenity).join(', ')
+  return amenities
+    .map((amenity) => AMENITY_LABELS[amenity] ?? amenity)
+    .join(', ')
 }
 
 function buildImageContent(photos: PhotoInput[]) {
@@ -272,7 +281,6 @@ Dados do terreno/lote:
 - Endereço: ${input.address}
 - Tipo: ${input.propertyType} (somente terreno — sem edificação)
 - Área do terreno: ${input.area} m²
-- Valor pedido: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
 - Observações: ${input.notes || 'nenhuma'}
 `
     : `
@@ -292,18 +300,19 @@ Dados do imóvel:
 - Acabamento: ${FINISH_LEVEL_LABELS[input.finishLevel] ?? input.finishLevel}
 - Condomínio: ${CONDOMINIUM_LEVEL_LABELS[input.condominiumLevel] ?? input.condominiumLevel}
 - Vista: ${input.viewType ? (VIEW_TYPE_LABELS[input.viewType] ?? input.viewType) : 'não informada'}
-- Andar: ${input.floor != null ? `${input.floor}º andar` : 'não informado'}
+- Andar: ${input.floor === 0 ? 'térreo' : input.floor != null ? `${input.floor}º andar` : 'não informado'}
+- Último andar do prédio: ${input.totalFloors ?? 'não informado'}
+- Elevador atende o andar: ${input.elevatorAccess ?? 'desconhecido'}
 - Mezanino: ${input.hasMezzanine == null ? 'não informado' : input.hasMezzanine ? 'sim' : 'não'}
 - Estrutura (pavilhão/galpão): ${
-  input.structureType === 'alvenaria'
-    ? 'Alvenaria'
-    : input.structureType === 'pre-moldado'
-      ? 'Pré-moldado'
-      : 'não informada'
-}
+        input.structureType === 'alvenaria'
+          ? 'Alvenaria'
+          : input.structureType === 'pre-moldado'
+            ? 'Pré-moldado'
+            : 'não informada'
+      }
 - Diferenciais: ${formatAmenities(input.amenities)}
 - Valor estimado dos móveis alto padrão: ${input.highEndFurnitureValue ? `R$ ${input.highEndFurnitureValue.toLocaleString('pt-BR')}` : 'não informado'}
-- Valor pedido / desejado pelo proprietário: ${input.askingPrice ? `R$ ${input.askingPrice}` : 'não informado'}
 - Observações: ${input.notes || 'nenhuma'}
 `
 
@@ -332,13 +341,13 @@ REGRAS ESPECÍFICAS PARA TERRENO/LOTE:
   const systemPrompt = `Você é um avaliador imobiliário sênior no mercado brasileiro, com rigor técnico conforme ABNT NBR 14653-1 e NBR 14653-2 (imóveis urbanos).
 ${locationRuleBlock}
 AVALIAÇÃO AVANÇADA — OBRIGATÓRIO:
-1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, andar, mezanino, estrutura, amenidades, móveis alto padrão'}, valor pedido/desejado e observações) na homogeneização e no score final.
+1. Integre TODAS as características informadas (tipo, área${isLand ? ' do terreno' : ', terreno, idade, conservação, padrão, acabamento, mobília, condomínio, vista, andar, mezanino, estrutura, amenidades, móveis alto padrão'}, e observações) na homogeneização e no score final.
 2. Pesquisa de bairro: analise infraestrutura, serviços, mobilidade, segurança percebida e qualidade de vida com base nos resultados Serper.
 3. Valorização de mercado: estime tendência (valorização/estável/desvalorização), crescimento anual estimado quando possível, demanda, liquidez e projeção — cruzando pesquisa de mercado e valorização.
 4. O score (0-100) e criteriaScores devem refletir perfil do bairro e tendência de valorização, além das características ${isLand ? 'do terreno e zoneamento' : 'físicas do imóvel'}.
 4b. OBRIGATÓRIO — scores do radar (0-100, inteiros, NÃO cosméticos/vazios): finishScore (acabamento), conservationScore (conservação), constructionScore (construção/padrão), locationScore (localização), appreciationScore (valorização). Eles DEVEM ser coerentes com criteriaScores e marketAppreciationAnalysis.
 5. Inclua em aiInsights conclusões acionáveis sobre valorização e diferenciais ${isLand ? 'do terreno' : 'do imóvel'}.
-5b. Considere explicitamente o valor desejado/pedido pelo proprietário (askingPrice) na calibração — não ignore.
+5b. Valor pedido é uma expectativa comercial, nunca uma variável para elevar ou reduzir a estimativa independente de mercado.
 ${landMethodologyBlock}
 METODOLOGIA OBRIGATÓRIA (NBR 14653):
 1. Objetivo: determinação do valor de mercado ${isLand ? 'do terreno avaliando' : 'do imóvel avaliando'}.
@@ -352,7 +361,10 @@ ${isLand ? landPriceRule : builtPriceRule}
       ? `${isLand ? 'TERRENO' : 'IMÓVEL DE ALTO PADRÃO'}: use MEDIANA (não média) dos valores unitários homogeneizados — mais realista em segmentos com dispersão de preços. O campo marketAnalysis.averagePricePerSqm deve ser a mediana R$/m² dos comparáveis do mesmo padrão. nbr14653.calculationMemory.homogenizedAveragePriceSqm = mediana unitária. Valor final = mediana × área do ${isLand ? 'terreno' : 'imóvel'}${isLand ? '' : ' (+ móveis)'}.`
       : `Obtenha média ponderada dos valores unitários homogeneizados (pesos somando 1,0). Valor final = média unitária × área ${isLand ? 'do terreno' : 'do imóvel'}${isLand ? '' : ' (+ móveis se houver)'}.`
   }
-8. Calibração: se houver valor pedido, o estimatedValue deve ficar em faixa plausível (em geral entre 75% e 115% do valor pedido, salvo evidência forte em contrário). Não subestime sistematicamente.
+8. Não ancore o resultado no valor pedido. Não imponha percentuais mínimos ou máximos em relação a ele.
+8a. ANDAR E ACESSO: diferencie térreo (0), andar da unidade e último andar do prédio. Para unidades em edifícios, registre floor e elevatorAccess de cada comparável apenas se documentados na fonte. Ausência da amenidade elevador não significa ausência de elevador. Use fator único floor_access para andar/acesso; sem andar e acesso conhecidos em ambos os imóveis, mantenha fator 1 e declare a limitação. Não presuma prêmio linear por andar, vista livre ou cobertura apenas por altura. Sem elevador, considere acessibilidade e esforço de escadas a partir de evidências locais. No último andar, avalie cobertura, calor e manutenção apenas quando documentados. Não duplique esses efeitos nos fatores vista, condomínio ou padrão.
+8b. Evite dupla contagem entre padrão, acabamento, conservação, idade e amenidades correlacionadas. Justifique cada diferença com dados do comparável e do avaliando; atributo desconhecido usa fator neutro. Mobília adicionada separadamente não deve receber também prêmio nos fatores.
+8c. Os valores monetários são de VENDA. Mesmo se o objetivo da interface for alugar, ela deriva o aluguel separadamente por rendimento estimado. Nunca misture anúncios de locação com preços de venda.
 9. Registre memória de cálculo passo a passo e limitações da amostra.
 10. CONSISTÊNCIA OBRIGATÓRIA: estimatedValue = valuePerSqm × ${input.area} m² (área ${isLand ? 'do terreno' : 'útil/construída'}). Os três campos (estimatedValue, valuePerSqm, nbr14653.calculationMemory.finalValue) devem ser coerentes entre si.
 
@@ -438,8 +450,10 @@ Responda APENAS com JSON válido, sem markdown, seguindo exatamente esta estrutu
         "area": "string?",
         "areaSqm": number,
         "unitPriceSqm": number,
+        "floor": null,
+        "elevatorAccess": "desconhecido",
         "factors": [
-          { "id": "location|area|conservation|standard|age|layout|parking|condominium|view|market", "label": "string", "value": 0.95, "justification": "string" }
+          { "id": "location|area|conservation|standard|age|layout|parking|condominium|view|floor_access|market", "label": "string", "value": 0.95, "justification": "string" }
         ],
         "homogenizedUnitPriceSqm": number,
         "weight": 0.25

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AxiosError } from 'axios'
-import { useForm } from 'react-hook-form'
+import { useForm, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { Sparkles, Home, Loader2, Camera, Gem, MapPin } from 'lucide-react'
@@ -57,6 +57,7 @@ import { showGamificationUpdates } from '@/features/gamification/lib/show-gamifi
 import { EvaluationDraftBanner } from './components/evaluation-draft-banner'
 import { EvaluationFeedbackPanel } from './components/evaluation-feedback'
 import { EvaluationResultPanel } from './components/evaluation-result'
+import { EvaluationReview } from './components/evaluation-review'
 import { EvaluationWizardSteps } from './components/evaluation-wizard-steps'
 import { FloodExperienceFeedback } from './components/flood-experience-feedback'
 import { ListingIntentSelector } from './components/listing-intent-selector'
@@ -68,7 +69,7 @@ import {
   conservationStates,
   finishLevels,
   furnishingOptions,
-  isApartmentLikePropertyType,
+  hasFloorInformation,
   isLandOnlyPropertyType,
   isPavilionPropertyType,
   isStoreLikePropertyType,
@@ -109,6 +110,13 @@ export function Avaliacao() {
   const saveDraft = useEvaluationDraftStore((s) => s.saveDraft)
   const getDraftForUser = useEvaluationDraftStore((s) => s.getDraftForUser)
   const clearDraft = useEvaluationDraftStore((s) => s.clearDraft)
+  const resultRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (result) {
+      resultRef.current?.focus()
+      resultRef.current?.scrollIntoView({ block: 'start' })
+    }
+  }, [result])
   const photosRef = useRef(photos)
   photosRef.current = photos
   const draftRestoredRef = useRef(false)
@@ -196,7 +204,7 @@ export function Avaliacao() {
   )
   const showLotArea = showsLotAreaField(propertyType)
   const isLandOnly = isLandOnlyPropertyType(propertyType)
-  const showFloor = isApartmentLikePropertyType(propertyType)
+  const showFloor = hasFloorInformation(propertyType)
   const showMezzanine = isStoreLikePropertyType(propertyType)
   const showStructure = isPavilionPropertyType(propertyType)
   const areaLabel = isLandOnly
@@ -235,23 +243,67 @@ export function Avaliacao() {
     }
   }
 
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
+  const fieldsByStep: (keyof EvaluationFormValues)[][] = [
+    [
+      'listingIntent',
+      'cep',
+      'streetNumber',
+      'address',
+      'propertyType',
+      'area',
+      'lotArea',
+      'conservation',
+      'buildingAge',
+      'bedrooms',
+      'bathrooms',
+      'parking',
+      'askingPrice',
+      'notes',
+      'floor',
+      'totalFloors',
+      'elevatorAccess',
+      'hasMezzanine',
+      'structureType',
+    ],
+    [
+      'standardLevel',
+      'furnishing',
+      'finishLevel',
+      'condominiumLevel',
+      'viewType',
+      'amenities',
+      'highEndFurnitureValue',
+    ],
+    [],
+  ]
+  function changeStep(step: number) {
+    setWizardStep(step)
+    setSubmissionError(null)
+    requestAnimationFrame(() => {
+      stepHeadingRef.current?.focus()
+      stepHeadingRef.current?.scrollIntoView({ block: 'start' })
+    })
+  }
   async function advanceWizardStep() {
-    const fieldsByStep: (keyof EvaluationFormValues)[][] = [
-      [
-        'listingIntent',
-        'cep',
-        'address',
-        'propertyType',
-        'area',
-        'floor',
-        'hasMezzanine',
-        'structureType',
-      ],
-      ['standardLevel', 'conservation'],
-      [],
-    ]
-    const valid = await form.trigger(fieldsByStep[wizardStep - 1])
-    if (valid) setWizardStep((s) => Math.min(s + 1, 3))
+    const valid = await form.trigger(fieldsByStep[wizardStep - 1], {
+      shouldFocus: true,
+    })
+    if (valid) changeStep(Math.min(wizardStep + 1, 3))
+    else
+      setSubmissionError(
+        'Revise os campos destacados para continuar. Seus dados foram mantidos.'
+      )
+  }
+  function onInvalid(errors: FieldErrors<EvaluationFormValues>) {
+    const stepIndex = fieldsByStep.findIndex((fields) =>
+      fields.some((field) => errors[field])
+    )
+    if (stepIndex >= 0) changeStep(stepIndex + 1)
+    setSubmissionError(
+      'Há informações incompletas. Revise os campos destacados antes de avaliar.'
+    )
   }
 
   async function onSubmit(values: EvaluationFormValues) {
@@ -270,6 +322,8 @@ export function Avaliacao() {
       return
     }
 
+    if (isEvaluating) return
+    setSubmissionError(null)
     setIsEvaluating(true)
     setResult(null)
     setEvaluatedProperty(null)
@@ -321,6 +375,10 @@ export function Avaliacao() {
           : error instanceof Error
             ? error.message
             : undefined
+      setSubmissionError(
+        message ??
+          'Não foi possível concluir a avaliação. Seus dados foram mantidos; tente novamente.'
+      )
       if (
         error instanceof AxiosError &&
         (error.response?.status === 402 || error.response?.status === 429)
@@ -382,10 +440,12 @@ export function Avaliacao() {
               </>
             )}
           </p>
-          {isBroker && credits === 0 && (
+          {isBroker && credits < 5 && (
             <p className='mt-2 text-sm text-destructive'>
-              Você não tem créditos. Compre em Configurações → Créditos para
-              continuar avaliando.
+              Esta avaliação requer 5 créditos. Seu saldo é de {credits}.
+              {CREDITS_AND_PLANS_ENABLED
+                ? ' Consulte os planos em Configurações → Créditos.'
+                : ' A compra de créditos estará disponível em breve.'}
             </p>
           )}
         </div>
@@ -417,12 +477,54 @@ export function Avaliacao() {
                 }}
               >
                 <Sparkles className='size-4' />
-                Nova avaliação
+                Reavaliar este imóvel
               </Button>
             </div>
           )}
 
-          {!result && <EvaluationWizardSteps currentStep={wizardStep} />}
+          {!result && (
+            <>
+              <EvaluationWizardSteps
+                currentStep={wizardStep}
+                onStepChange={changeStep}
+                disabled={isEvaluating}
+              />
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className='scroll-mt-24 text-xl font-semibold outline-none'
+              >
+                {wizardStep === 1
+                  ? '1. Identifique o imóvel'
+                  : wizardStep === 2
+                    ? '2. Conte os diferenciais'
+                    : '3. Adicione fotos e revise'}
+              </h2>
+              <p className='-mt-4 text-sm text-muted-foreground'>
+                {wizardStep === 3
+                  ? 'Fotos são opcionais. Confira o resumo antes de iniciar a pesquisa.'
+                  : 'Preencha o que você conhece. Campos opcionais podem ficar em branco.'}
+              </p>
+              {submissionError && (
+                <div
+                  role='alert'
+                  className='rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'
+                >
+                  {submissionError}
+                </div>
+              )}
+              {isEvaluating && (
+                <div
+                  role='status'
+                  aria-live='polite'
+                  className='rounded-xl border bg-muted/40 p-4 text-sm'
+                >
+                  Estamos pesquisando o mercado e preparando os comparáveis.
+                  Isso pode levar alguns minutos. Mantenha esta página aberta.
+                </div>
+              )}
+            </>
+          )}
           {!result && (
             <div className='grid gap-6 lg:grid-cols-2'>
               <Form {...form}>
@@ -433,64 +535,580 @@ export function Avaliacao() {
                       void advanceWizardStep()
                       return
                     }
-                    void form.handleSubmit(onSubmit)(event)
+                    void form.handleSubmit(onSubmit, onInvalid)(event)
                   }}
                   className='space-y-6'
+                  aria-busy={isEvaluating}
                 >
-                  {wizardStep === 1 && (
-                    <>
-                      <ListingIntentSelector control={form.control} />
+                  <fieldset
+                    disabled={isEvaluating}
+                    className='min-w-0 space-y-6'
+                  >
+                    {wizardStep === 1 && (
+                      <>
+                        <ListingIntentSelector control={form.control} />
 
-                      <Card className='rounded-[1.75rem] border-0 shadow-sm'>
-                        <CardHeader>
-                          <CardTitle className='flex items-center gap-2'>
-                            <Home className='size-5' />
-                            Dados do imóvel
-                          </CardTitle>
-                          <CardDescription>
-                            Informe as características básicas do imóvel
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className='space-y-4'>
-                          <div className='grid gap-4 sm:grid-cols-2'>
-                            <FormField
-                              control={form.control}
-                              name='cep'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>CEP</FormLabel>
-                                  <FormControl>
-                                    <div className='relative'>
+                        <Card className='rounded-[1.75rem] border-0 shadow-sm'>
+                          <CardHeader>
+                            <CardTitle className='flex items-center gap-2'>
+                              <Home className='size-5' />
+                              Dados do imóvel
+                            </CardTitle>
+                            <CardDescription>
+                              Informe as características básicas do imóvel
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className='space-y-4'>
+                            <div className='grid gap-4 sm:grid-cols-2'>
+                              <FormField
+                                control={form.control}
+                                name='cep'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>CEP</FormLabel>
+                                    <FormControl>
+                                      <div className='relative'>
+                                        <Input
+                                          placeholder='00000-000'
+                                          inputMode='numeric'
+                                          maxLength={9}
+                                          value={field.value ?? ''}
+                                          onChange={(e) => {
+                                            const formatted = formatCepInput(
+                                              e.target.value
+                                            )
+                                            field.onChange(formatted)
+                                            if (
+                                              formatted.replace(/\D/g, '')
+                                                .length === 8
+                                            ) {
+                                              void handleCepLookup(formatted)
+                                            }
+                                          }}
+                                          onBlur={() => {
+                                            if (field.value) {
+                                              void handleCepLookup(field.value)
+                                            }
+                                          }}
+                                        />
+                                        {cepLoading && (
+                                          <Loader2 className='absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                    <FormDescription>
+                                      Preenche o endereço automaticamente
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name='streetNumber'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Número</FormLabel>
+                                    <FormControl>
                                       <Input
-                                        placeholder='00000-000'
-                                        inputMode='numeric'
-                                        maxLength={9}
-                                        value={field.value ?? ''}
+                                        placeholder='Ex: 123'
+                                        {...field}
                                         onChange={(e) => {
-                                          const formatted = formatCepInput(
-                                            e.target.value
-                                          )
-                                          field.onChange(formatted)
-                                          if (
-                                            formatted.replace(/\D/g, '')
-                                              .length === 8
-                                          ) {
-                                            void handleCepLookup(formatted)
-                                          }
-                                        }}
-                                        onBlur={() => {
-                                          if (field.value) {
-                                            void handleCepLookup(field.value)
+                                          field.onChange(e.target.value)
+                                          if (cepLookup) {
+                                            updateAddressFromCep(
+                                              cepLookup,
+                                              e.target.value
+                                            )
                                           }
                                         }}
                                       />
-                                      {cepLoading && (
-                                        <Loader2 className='absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground' />
-                                      )}
-                                    </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            <FormField
+                              control={form.control}
+                              name='address'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-2'>
+                                    <MapPin className='size-4' />
+                                    Endereço
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder='Rua, bairro, cidade — UF'
+                                      {...field}
+                                    />
                                   </FormControl>
                                   <FormDescription>
-                                    Preenche o endereço automaticamente
+                                    Preenchido pelo CEP; você pode ajustar se
+                                    necessário
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <div className='grid gap-4 sm:grid-cols-2'>
+                              <FormField
+                                control={form.control}
+                                name='propertyType'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Tipo</FormLabel>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        field.onChange(value)
+                                        if (!hasFloorInformation(value)) {
+                                          form.setValue('floor', undefined)
+                                          form.setValue(
+                                            'totalFloors',
+                                            undefined
+                                          )
+                                          form.setValue(
+                                            'elevatorAccess',
+                                            undefined
+                                          )
+                                        }
+                                        if (!isStoreLikePropertyType(value)) {
+                                          form.setValue(
+                                            'hasMezzanine',
+                                            undefined
+                                          )
+                                        }
+                                        if (!isPavilionPropertyType(value)) {
+                                          form.setValue(
+                                            'structureType',
+                                            undefined
+                                          )
+                                        }
+                                      }}
+                                      value={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder='Selecione' />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent className='max-h-72'>
+                                        {propertyTypeGroups.map((group) => (
+                                          <SelectGroup key={group.label}>
+                                            <SelectLabel>
+                                              {group.label}
+                                            </SelectLabel>
+                                            {group.types.map((type) => (
+                                              <SelectItem
+                                                key={type.value}
+                                                value={type.value}
+                                              >
+                                                {type.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectGroup>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name='conservation'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Conservação</FormLabel>
+                                    <Select
+                                      onValueChange={field.onChange}
+                                      defaultValue={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder='Selecione' />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {conservationStates.map((state) => (
+                                          <SelectItem
+                                            key={state.value}
+                                            value={state.value}
+                                          >
+                                            {state.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {(showFloor || showMezzanine || showStructure) && (
+                              <div className='grid gap-4 sm:grid-cols-2'>
+                                {showFloor && (
+                                  <FormField
+                                    control={form.control}
+                                    name='floor'
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Andar</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type='number'
+                                            min={0}
+                                            placeholder='Ex: 3'
+                                            value={field.value ?? ''}
+                                            onChange={(e) =>
+                                              field.onChange(
+                                                e.target.value === ''
+                                                  ? undefined
+                                                  : Number(e.target.value)
+                                              )
+                                            }
+                                          />
+                                        </FormControl>
+                                        <FormDescription>
+                                          Use 0 para térreo. Em duplex/triplex,
+                                          informe o piso de acesso da unidade.
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {showFloor && (
+                                  <>
+                                    <FormField
+                                      control={form.control}
+                                      name='totalFloors'
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>
+                                            Último andar do prédio
+                                          </FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              type='number'
+                                              min={0}
+                                              max={200}
+                                              step={1}
+                                              value={field.value ?? ''}
+                                              onChange={(e) =>
+                                                field.onChange(
+                                                  e.target.value === ''
+                                                    ? undefined
+                                                    : Number(e.target.value)
+                                                )
+                                              }
+                                              placeholder='Ex.: 12'
+                                            />
+                                          </FormControl>
+                                          <FormDescription>
+                                            Opcional. Numeração do último andar,
+                                            sem contar subsolos.
+                                          </FormDescription>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      control={form.control}
+                                      name='elevatorAccess'
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>
+                                            Elevador atende este andar?
+                                          </FormLabel>
+                                          <Select
+                                            value={
+                                              field.value ?? 'desconhecido'
+                                            }
+                                            onValueChange={field.onChange}
+                                          >
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value='desconhecido'>
+                                                Não informado
+                                              </SelectItem>
+                                              <SelectItem value='sim'>
+                                                Sim
+                                              </SelectItem>
+                                              <SelectItem value='nao'>
+                                                Não
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormDescription>
+                                            Andar alto não garante valorização.
+                                            Acesso, vista e comparáveis locais
+                                            são analisados em conjunto.
+                                          </FormDescription>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </>
+                                )}
+
+                                {showMezzanine && (
+                                  <FormField
+                                    control={form.control}
+                                    name='hasMezzanine'
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Tem mezanino?</FormLabel>
+                                        <div className='flex gap-2'>
+                                          <Button
+                                            type='button'
+                                            variant={
+                                              field.value === true
+                                                ? 'default'
+                                                : 'outline'
+                                            }
+                                            onClick={() => field.onChange(true)}
+                                          >
+                                            Sim
+                                          </Button>
+                                          <Button
+                                            type='button'
+                                            variant={
+                                              field.value === false
+                                                ? 'default'
+                                                : 'outline'
+                                            }
+                                            onClick={() =>
+                                              field.onChange(false)
+                                            }
+                                          >
+                                            Não
+                                          </Button>
+                                        </div>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {showStructure && (
+                                  <FormField
+                                    control={form.control}
+                                    name='structureType'
+                                    render={({ field }) => (
+                                      <FormItem className='sm:col-span-2'>
+                                        <FormLabel>
+                                          Estrutura do pavilhão
+                                        </FormLabel>
+                                        <div className='flex flex-wrap gap-2'>
+                                          {structureTypeOptions.map(
+                                            (option) => (
+                                              <Button
+                                                key={option.value}
+                                                type='button'
+                                                variant={
+                                                  field.value === option.value
+                                                    ? 'default'
+                                                    : 'outline'
+                                                }
+                                                onClick={() =>
+                                                  field.onChange(option.value)
+                                                }
+                                              >
+                                                {option.label}
+                                              </Button>
+                                            )
+                                          )}
+                                        </div>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                            <div className='grid gap-4 sm:grid-cols-2'>
+                              <FormField
+                                control={form.control}
+                                name='area'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>{areaLabel}</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type='number'
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(Number(e.target.value))
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {showLotArea && (
+                                <FormField
+                                  control={form.control}
+                                  name='lotArea'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        Metragem do terreno (m²)
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type='number'
+                                          placeholder='Ex: 360'
+                                          value={field.value ?? ''}
+                                          onChange={(e) =>
+                                            field.onChange(
+                                              e.target.value
+                                                ? Number(e.target.value)
+                                                : undefined
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+
+                              {!isLandOnly && (
+                                <FormField
+                                  control={form.control}
+                                  name='buildingAge'
+                                  render={({ field }) => (
+                                    <FormItem
+                                      className={
+                                        showLotArea ? 'sm:col-span-2' : ''
+                                      }
+                                    >
+                                      <FormLabel>Idade da construção</FormLabel>
+                                      <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder='Selecione' />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {buildingAgeOptions.map((option) => (
+                                            <SelectItem
+                                              key={option.value}
+                                              value={option.value}
+                                            >
+                                              {option.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </div>
+
+                            <div className='grid gap-4 sm:grid-cols-3'>
+                              <FormField
+                                control={form.control}
+                                name='bedrooms'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Quartos</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type='number'
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(Number(e.target.value))
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name='bathrooms'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Banheiros</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type='number'
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(Number(e.target.value))
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name='parking'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Vagas</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type='number'
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(Number(e.target.value))
+                                        }
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            <FormField
+                              control={form.control}
+                              name='askingPrice'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Valor pedido (opcional)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type='number'
+                                      placeholder='Ex: 450000'
+                                      value={field.value ?? ''}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          e.target.value
+                                            ? Number(e.target.value)
+                                            : undefined
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Informe para comparar com a estimativa da IA
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
@@ -499,114 +1117,46 @@ export function Avaliacao() {
 
                             <FormField
                               control={form.control}
-                              name='streetNumber'
+                              name='notes'
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Número</FormLabel>
+                                  <FormLabel>Observações</FormLabel>
                                   <FormControl>
-                                    <Input
-                                      placeholder='Ex: 123'
+                                    <Textarea
+                                      placeholder='Detalhes adicionais sobre o imóvel...'
+                                      className='min-h-20'
                                       {...field}
-                                      onChange={(e) => {
-                                        field.onChange(e.target.value)
-                                        if (cepLookup) {
-                                          updateAddressFromCep(
-                                            cepLookup,
-                                            e.target.value
-                                          )
-                                        }
-                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                          </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
 
-                          <FormField
-                            control={form.control}
-                            name='address'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className='flex items-center gap-2'>
-                                  <MapPin className='size-4' />
-                                  Endereço
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder='Rua, bairro, cidade — UF'
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Preenchido pelo CEP; você pode ajustar se
-                                  necessário
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
+                    {wizardStep === 2 && (
+                      <Card className='rounded-[1.75rem] border-0 shadow-sm'>
+                        <CardHeader>
+                          <CardTitle className='flex items-center gap-2'>
+                            <Gem className='size-5' />
+                            Características e diferenciais
+                          </CardTitle>
+                          <CardDescription>
+                            Informações de padrão, acabamento e amenidades para
+                            uma avaliação mais precisa
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className='space-y-4'>
                           <div className='grid gap-4 sm:grid-cols-2'>
                             <FormField
                               control={form.control}
-                              name='propertyType'
+                              name='standardLevel'
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Tipo</FormLabel>
-                                  <Select
-                                    onValueChange={(value) => {
-                                      field.onChange(value)
-                                      if (!isApartmentLikePropertyType(value)) {
-                                        form.setValue('floor', undefined)
-                                      }
-                                      if (!isStoreLikePropertyType(value)) {
-                                        form.setValue('hasMezzanine', undefined)
-                                      }
-                                      if (!isPavilionPropertyType(value)) {
-                                        form.setValue(
-                                          'structureType',
-                                          undefined
-                                        )
-                                      }
-                                    }}
-                                    value={field.value}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder='Selecione' />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className='max-h-72'>
-                                      {propertyTypeGroups.map((group) => (
-                                        <SelectGroup key={group.label}>
-                                          <SelectLabel>
-                                            {group.label}
-                                          </SelectLabel>
-                                          {group.types.map((type) => (
-                                            <SelectItem
-                                              key={type.value}
-                                              value={type.value}
-                                            >
-                                              {type.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectGroup>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name='conservation'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Conservação</FormLabel>
+                                  <FormLabel>Padrão do imóvel</FormLabel>
                                   <Select
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
@@ -617,12 +1167,105 @@ export function Avaliacao() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {conservationStates.map((state) => (
+                                      {standardLevels.map((level) => (
                                         <SelectItem
-                                          key={state.value}
-                                          value={state.value}
+                                          key={level.value}
+                                          value={level.value}
                                         >
-                                          {state.label}
+                                          {level.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name='furnishing'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Mobília</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder='Selecione' />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {furnishingOptions.map((option) => (
+                                        <SelectItem
+                                          key={option.value}
+                                          value={option.value}
+                                        >
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name='finishLevel'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Acabamento</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder='Selecione' />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {finishLevels.map((level) => (
+                                        <SelectItem
+                                          key={level.value}
+                                          value={level.value}
+                                        >
+                                          {level.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name='condominiumLevel'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Condomínio</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder='Selecione' />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {condominiumLevels.map((level) => (
+                                        <SelectItem
+                                          key={level.value}
+                                          value={level.value}
+                                        >
+                                          {level.label}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -633,649 +1276,207 @@ export function Avaliacao() {
                             />
                           </div>
 
-                          {(showFloor || showMezzanine || showStructure) && (
-                            <div className='grid gap-4 sm:grid-cols-2'>
-                              {showFloor && (
+                          <FormField
+                            control={form.control}
+                            name='viewType'
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Vista</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder='Selecione (opcional)' />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {viewTypes.map((view) => (
+                                      <SelectItem
+                                        key={view.value}
+                                        value={view.value}
+                                      >
+                                        {view.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div>
+                            <FormLabel className='mb-3 block'>
+                              Diferenciais e amenidades
+                            </FormLabel>
+                            <div className='grid gap-3 sm:grid-cols-2'>
+                              {propertyAmenities.map((amenity) => (
                                 <FormField
+                                  key={amenity.value}
                                   control={form.control}
-                                  name='floor'
+                                  name='amenities'
                                   render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Andar</FormLabel>
+                                    <FormItem className='flex items-center gap-2 space-y-0'>
                                       <FormControl>
-                                        <Input
-                                          type='number'
-                                          min={0}
-                                          placeholder='Ex: 3'
-                                          value={field.value ?? ''}
-                                          onChange={(e) =>
+                                        <Checkbox
+                                          checked={field.value?.includes(
+                                            amenity.value
+                                          )}
+                                          onCheckedChange={(checked) => {
+                                            const current = field.value ?? []
                                             field.onChange(
-                                              e.target.value === ''
-                                                ? undefined
-                                                : Number(e.target.value)
+                                              checked
+                                                ? [...current, amenity.value]
+                                                : current.filter(
+                                                    (value) =>
+                                                      value !== amenity.value
+                                                  )
                                             )
-                                          }
+                                            if (
+                                              !checked &&
+                                              amenity.value ===
+                                                HIGH_END_FURNITURE_AMENITY
+                                            ) {
+                                              form.setValue(
+                                                'highEndFurnitureValue',
+                                                undefined
+                                              )
+                                            }
+                                          }}
                                         />
                                       </FormControl>
-                                      <FormDescription>
-                                        Informe o andar do apartamento
-                                      </FormDescription>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              )}
-
-                              {showMezzanine && (
-                                <FormField
-                                  control={form.control}
-                                  name='hasMezzanine'
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Tem mezanino?</FormLabel>
-                                      <div className='flex gap-2'>
-                                        <Button
-                                          type='button'
-                                          variant={
-                                            field.value === true
-                                              ? 'default'
-                                              : 'outline'
-                                          }
-                                          onClick={() => field.onChange(true)}
-                                        >
-                                          Sim
-                                        </Button>
-                                        <Button
-                                          type='button'
-                                          variant={
-                                            field.value === false
-                                              ? 'default'
-                                              : 'outline'
-                                          }
-                                          onClick={() => field.onChange(false)}
-                                        >
-                                          Não
-                                        </Button>
-                                      </div>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              )}
-
-                              {showStructure && (
-                                <FormField
-                                  control={form.control}
-                                  name='structureType'
-                                  render={({ field }) => (
-                                    <FormItem className='sm:col-span-2'>
-                                      <FormLabel>
-                                        Estrutura do pavilhão
+                                      <FormLabel className='cursor-pointer font-normal'>
+                                        {amenity.label}
                                       </FormLabel>
-                                      <div className='flex flex-wrap gap-2'>
-                                        {structureTypeOptions.map((option) => (
-                                          <Button
-                                            key={option.value}
-                                            type='button'
-                                            variant={
-                                              field.value === option.value
-                                                ? 'default'
-                                                : 'outline'
-                                            }
-                                            onClick={() =>
-                                              field.onChange(option.value)
-                                            }
-                                          >
-                                            {option.label}
-                                          </Button>
-                                        ))}
-                                      </div>
-                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
-                              )}
+                              ))}
                             </div>
+                          </div>
+
+                          {hasHighEndFurniture && (
+                            <FormField
+                              control={form.control}
+                              name='highEndFurnitureValue'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Valor estimado dos móveis (todos juntos)
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type='number'
+                                      placeholder='Ex: 85000'
+                                      value={field.value ?? ''}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          e.target.value
+                                            ? Number(e.target.value)
+                                            : undefined
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Soma estimada de todos os móveis alto padrão
+                                    do imóvel
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           )}
-
-                          <div className='grid gap-4 sm:grid-cols-2'>
-                            <FormField
-                              control={form.control}
-                              name='area'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{areaLabel}</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type='number'
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(Number(e.target.value))
-                                      }
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            {showLotArea && (
-                              <FormField
-                                control={form.control}
-                                name='lotArea'
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>
-                                      Metragem do terreno (m²)
-                                    </FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type='number'
-                                        placeholder='Ex: 360'
-                                        value={field.value ?? ''}
-                                        onChange={(e) =>
-                                          field.onChange(
-                                            e.target.value
-                                              ? Number(e.target.value)
-                                              : undefined
-                                          )
-                                        }
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            )}
-
-                            {!isLandOnly && (
-                              <FormField
-                                control={form.control}
-                                name='buildingAge'
-                                render={({ field }) => (
-                                  <FormItem
-                                    className={
-                                      showLotArea ? 'sm:col-span-2' : ''
-                                    }
-                                  >
-                                    <FormLabel>Idade da construção</FormLabel>
-                                    <Select
-                                      onValueChange={field.onChange}
-                                      value={field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder='Selecione' />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {buildingAgeOptions.map((option) => (
-                                          <SelectItem
-                                            key={option.value}
-                                            value={option.value}
-                                          >
-                                            {option.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            )}
-                          </div>
-
-                          <div className='grid gap-4 sm:grid-cols-3'>
-                            <FormField
-                              control={form.control}
-                              name='bedrooms'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Quartos</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type='number'
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(Number(e.target.value))
-                                      }
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name='bathrooms'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Banheiros</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type='number'
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(Number(e.target.value))
-                                      }
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name='parking'
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Vagas</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type='number'
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(Number(e.target.value))
-                                      }
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <FormField
-                            control={form.control}
-                            name='askingPrice'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Valor pedido (opcional)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type='number'
-                                    placeholder='Ex: 450000'
-                                    value={field.value ?? ''}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        e.target.value
-                                          ? Number(e.target.value)
-                                          : undefined
-                                      )
-                                    }
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Informe para comparar com a estimativa da IA
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name='notes'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Observações</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder='Detalhes adicionais sobre o imóvel...'
-                                    className='min-h-20'
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                         </CardContent>
                       </Card>
-                    </>
-                  )}
+                    )}
 
-                  {wizardStep === 2 && (
-                    <Card className='rounded-[1.75rem] border-0 shadow-sm'>
-                      <CardHeader>
-                        <CardTitle className='flex items-center gap-2'>
-                          <Gem className='size-5' />
-                          Características e diferenciais
-                        </CardTitle>
-                        <CardDescription>
-                          Informações de padrão, acabamento e amenidades para
-                          uma avaliação mais precisa
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className='space-y-4'>
-                        <div className='grid gap-4 sm:grid-cols-2'>
-                          <FormField
-                            control={form.control}
-                            name='standardLevel'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Padrão do imóvel</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder='Selecione' />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {standardLevels.map((level) => (
-                                      <SelectItem
-                                        key={level.value}
-                                        value={level.value}
-                                      >
-                                        {level.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                    {wizardStep === 3 && (
+                      <Card className='rounded-[1.75rem] border-0 shadow-sm'>
+                        <CardHeader>
+                          <CardTitle className='flex items-center gap-2'>
+                            <Camera className='size-5' />
+                            Fotos do imóvel
+                          </CardTitle>
+                          <CardDescription>
+                            Envie fotos para a IA analisar acabamentos,
+                            conservação e apresentação visual
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <PhotoUpload photos={photos} onChange={setPhotos} />
+                        </CardContent>
+                      </Card>
+                    )}
 
-                          <FormField
-                            control={form.control}
-                            name='furnishing'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Mobília</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder='Selecione' />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {furnishingOptions.map((option) => (
-                                      <SelectItem
-                                        key={option.value}
-                                        value={option.value}
-                                      >
-                                        {option.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name='finishLevel'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Acabamento</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder='Selecione' />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {finishLevels.map((level) => (
-                                      <SelectItem
-                                        key={level.value}
-                                        value={level.value}
-                                      >
-                                        {level.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name='condominiumLevel'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Condomínio</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder='Selecione' />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {condominiumLevels.map((level) => (
-                                      <SelectItem
-                                        key={level.value}
-                                        value={level.value}
-                                      >
-                                        {level.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name='viewType'
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Vista</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder='Selecione (opcional)' />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {viewTypes.map((view) => (
-                                    <SelectItem
-                                      key={view.value}
-                                      value={view.value}
-                                    >
-                                      {view.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
+                    <div className='sticky bottom-0 z-10 -mx-1 flex gap-2 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80'>
+                      {wizardStep > 1 && (
+                        <Button
+                          type='button'
+                          variant='outline'
+                          className='flex-1 rounded-full'
+                          onClick={() => changeStep(wizardStep - 1)}
+                        >
+                          Voltar
+                        </Button>
+                      )}
+                      {wizardStep < 3 ? (
+                        <Button
+                          type='button'
+                          className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
+                          onClick={() => void advanceWizardStep()}
+                        >
+                          Continuar
+                        </Button>
+                      ) : (
+                        <Button
+                          key='evaluate-submit'
+                          type='button'
+                          size='lg'
+                          className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
+                          disabled={isEvaluating || (isBroker && credits < 5)}
+                          onClick={() =>
+                            void form.handleSubmit(onSubmit, onInvalid)()
+                          }
+                        >
+                          {isEvaluating ? (
+                            <>
+                              <Loader2 className='size-4 animate-spin' />
+                              {evaluatingStep || 'Analisando mercado'}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className='size-4' />
+                              Avaliar com IA
+                            </>
                           )}
-                        />
-
-                        <div>
-                          <FormLabel className='mb-3 block'>
-                            Diferenciais e amenidades
-                          </FormLabel>
-                          <div className='grid gap-3 sm:grid-cols-2'>
-                            {propertyAmenities.map((amenity) => (
-                              <FormField
-                                key={amenity.value}
-                                control={form.control}
-                                name='amenities'
-                                render={({ field }) => (
-                                  <FormItem className='flex items-center gap-2 space-y-0'>
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(
-                                          amenity.value
-                                        )}
-                                        onCheckedChange={(checked) => {
-                                          const current = field.value ?? []
-                                          field.onChange(
-                                            checked
-                                              ? [...current, amenity.value]
-                                              : current.filter(
-                                                  (value) =>
-                                                    value !== amenity.value
-                                                )
-                                          )
-                                          if (
-                                            !checked &&
-                                            amenity.value ===
-                                              HIGH_END_FURNITURE_AMENITY
-                                          ) {
-                                            form.setValue(
-                                              'highEndFurnitureValue',
-                                              undefined
-                                            )
-                                          }
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className='cursor-pointer font-normal'>
-                                      {amenity.label}
-                                    </FormLabel>
-                                  </FormItem>
-                                )}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        {hasHighEndFurniture && (
-                          <FormField
-                            control={form.control}
-                            name='highEndFurnitureValue'
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  Valor estimado dos móveis (todos juntos)
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type='number'
-                                    placeholder='Ex: 85000'
-                                    value={field.value ?? ''}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        e.target.value
-                                          ? Number(e.target.value)
-                                          : undefined
-                                      )
-                                    }
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Soma estimada de todos os móveis alto padrão
-                                  do imóvel
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {wizardStep === 3 && (
-                    <Card className='rounded-[1.75rem] border-0 shadow-sm'>
-                      <CardHeader>
-                        <CardTitle className='flex items-center gap-2'>
-                          <Camera className='size-5' />
-                          Fotos do imóvel
-                        </CardTitle>
-                        <CardDescription>
-                          Envie fotos para a IA analisar acabamentos,
-                          conservação e apresentação visual
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <PhotoUpload photos={photos} onChange={setPhotos} />
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <div className='sticky bottom-0 z-10 -mx-1 flex gap-2 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80'>
-                    {wizardStep > 1 && (
-                      <Button
-                        type='button'
-                        variant='outline'
-                        className='flex-1 rounded-full'
-                        onClick={() => setWizardStep((s) => s - 1)}
-                      >
-                        Voltar
-                      </Button>
-                    )}
-                    {wizardStep < 3 ? (
-                      <Button
-                        type='button'
-                        className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                        onClick={() => void advanceWizardStep()}
-                      >
-                        Continuar
-                      </Button>
-                    ) : (
-                      <Button
-                        key='evaluate-submit'
-                        type='button'
-                        size='lg'
-                        className='flex-1 rounded-full bg-flux-lime font-semibold text-flux-dark hover:bg-flux-lime/90'
-                        disabled={isEvaluating || (isBroker && credits === 0)}
-                        onClick={() => void form.handleSubmit(onSubmit)()}
-                      >
-                        {isEvaluating ? (
-                          <>
-                            <Loader2 className='size-4 animate-spin' />
-                            {evaluatingStep || 'Analisando mercado'}
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className='size-4' />
-                            Avaliar com IA
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                        </Button>
+                      )}
+                    </div>
+                  </fieldset>
                 </form>
               </Form>
 
-              <Card className='hidden min-h-100 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-muted-foreground/20 bg-card shadow-sm lg:flex'>
-                <CardContent className='flex flex-col items-center gap-4 py-12 text-center'>
-                  <div className='flex size-16 items-center justify-center rounded-full bg-flux-lime/30'>
-                    <Sparkles className='size-8 text-flux-dark' />
-                  </div>
-                  <div>
-                    <h3 className='text-lg font-semibold'>
-                      Resultado da avaliação
-                    </h3>
-                    <p className='mt-1 max-w-sm text-sm text-muted-foreground'>
-                      Preencha os dados do imóvel e clique em &quot;Avaliar com
-                      IA&quot; para obter a estimativa de valor.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <EvaluationReview
+                control={form.control}
+                photoCount={photos.length}
+                currentStep={wizardStep}
+                busy={isEvaluating}
+                cost={isBroker ? 5 : null}
+                onEdit={changeStep}
+              />
             </div>
           )}
 
           {result && evaluatedProperty && (
-            <div className='space-y-6'>
+            <div
+              ref={resultRef}
+              tabIndex={-1}
+              aria-label='Resultado da avaliação'
+              className='scroll-mt-24 space-y-6 outline-none'
+            >
               <EvaluationResultPanel
                 result={result}
                 property={evaluatedProperty}

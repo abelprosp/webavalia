@@ -5,7 +5,6 @@ import {
   LAND_PROPERTY_MAX_UNIT_PRICE_SQM,
 } from '../constants/evaluation-defaults.js'
 import {
-  inferSpecificationGrade,
   NBR_14653_DISCLAIMER,
   NBR_14653_PURPOSE,
   NBR_14653_STANDARD,
@@ -22,6 +21,11 @@ import {
   buildCrossNeighborhoodLimitation,
   filterComparablesByNeighborhood,
 } from '../utils/comparable-location-filter.js'
+import {
+  canonicalListingUrl,
+  filterDuplicateComparables,
+} from '../utils/comparable-quality.js'
+
 const FACTOR_PRODUCT_MIN = 0.75
 const FACTOR_PRODUCT_MAX = 1.25
 const HIGH_STANDARD_LEVELS = new Set(['alto-padrao', 'luxo'])
@@ -58,7 +62,7 @@ function computeAggregateUnitPrice(
   }
 
   const totalWeight = unitPrices.reduce((sum, item) => sum + item.weight, 0)
-  if (totalWeight <= 0) return fallback
+  if (totalWeight <= 0) return median(unitPrices.map((item) => item.value))
 
   return (
     unitPrices.reduce((sum, item) => sum + item.value * item.weight, 0) /
@@ -66,17 +70,26 @@ function computeAggregateUnitPrice(
   )
 }
 
+export function parseMarketNumber(text: string): number | null {
+  const match = text.match(/\d[\d.,]*/)
+  if (!match) return null
+  let value = match[0].replace(/[.,]+$/, '')
+  if (value.includes(',')) value = value.replace(/\./g, '').replace(',', '.')
+  else if (/^\d{1,3}(\.\d{3})+$/.test(value)) value = value.replace(/\./g, '')
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
 function parseAreaSqm(area?: string | null) {
-  if (!area) return null
-  const match = area.replace(/\./g, '').match(/(\d+)/)
-  return match ? Number(match[1]) : null
+  return area ? parseMarketNumber(area) : null
 }
 
 function parsePriceBrl(price: string) {
-  const digits = price.replace(/[^\d]/g, '')
-  if (!digits) return null
-  const value = Number(digits)
-  return Number.isFinite(value) && value > 0 ? value : null
+  const value = parseMarketNumber(price)
+  if (!value) return null
+  if (/\bmilh(?:ão|ões|ao|oes)\b/i.test(price)) return value * 1_000_000
+  if (/\bmil\b/i.test(price)) return value * 1_000
+  return value
 }
 
 function roundCurrency(value: number) {
@@ -91,39 +104,17 @@ function clampFactorProduct(factors: NbrHomogenizedComparable['factors']) {
 function inferUnitPriceSqm(
   declaredPrice: string,
   areaSqm: number | null,
-  marketAvgPerSqm: number | null,
+  _marketAvgPerSqm: number | null,
   minUnitPriceSqm: number,
   maxUnitPriceSqm: number
 ) {
   const price = parsePriceBrl(declaredPrice)
   if (!price) return null
 
-  const priceLooksPerSqm =
-    /\/\s*m[²2]|por\s*m[²2]|\/m2/i.test(declaredPrice) ||
-    (price >= minUnitPriceSqm &&
-      price <= maxUnitPriceSqm &&
-      (!areaSqm || price < areaSqm * 0.5))
-
-  if (priceLooksPerSqm) {
-    return price
-  }
-
+  const priceLooksPerSqm = /\/\s*m[²2]|por\s*m[²2]/i.test(declaredPrice)
+  if (priceLooksPerSqm) return price
   if (!areaSqm || areaSqm <= 0) return null
-
   const unitFromTotal = price / areaSqm
-
-  if (marketAvgPerSqm && unitFromTotal < marketAvgPerSqm * 0.35) {
-    if (
-      price >= marketAvgPerSqm * 0.45 &&
-      price <= marketAvgPerSqm * 3
-    ) {
-      return price
-    }
-  }
-
-  if (unitFromTotal < minUnitPriceSqm && price >= minUnitPriceSqm) {
-    return price
-  }
 
   if (unitFromTotal < minUnitPriceSqm || unitFromTotal > maxUnitPriceSqm) {
     return null
@@ -146,25 +137,6 @@ function resolveComparableUnitPrice(
   minUnitPriceSqm: number,
   maxUnitPriceSqm: number
 ) {
-  if (
-    item.homogenizedUnitPriceSqm != null &&
-    isPlausibleUnitPrice(
-      item.homogenizedUnitPriceSqm,
-      minUnitPriceSqm,
-      maxUnitPriceSqm
-    )
-  ) {
-    return item.homogenizedUnitPriceSqm
-  }
-
-  if (
-    item.unitPriceSqm != null &&
-    isPlausibleUnitPrice(item.unitPriceSqm, minUnitPriceSqm, maxUnitPriceSqm)
-  ) {
-    const factorProduct = clampFactorProduct(item.factors)
-    return item.unitPriceSqm * factorProduct
-  }
-
   const area = item.areaSqm ?? parseAreaSqm(item.area ?? undefined)
   const unitPrice = inferUnitPriceSqm(
     item.declaredPrice,
@@ -179,108 +151,111 @@ function resolveComparableUnitPrice(
   return unitPrice * factorProduct
 }
 
-function calibrateFinalValue(input: {
-  calculatedValue: number
-  calculatedValuePerSqm: number
-  aiEstimatedValue: number
-  aiValuePerSqm: number
-  area: number
-  askingPrice?: number
-  highEndFurnitureValue?: number
-  marketAvgPerSqm: number | null
-  minUnitPriceSqm: number
-  isLand: boolean
-}) {
-  const {
-    calculatedValue,
-    calculatedValuePerSqm,
-    aiEstimatedValue,
-    aiValuePerSqm,
-    area,
-    askingPrice,
-    highEndFurnitureValue,
-    marketAvgPerSqm,
-    minUnitPriceSqm,
-    isLand,
-  } = input
-
-  const furnitureValue = highEndFurnitureValue ?? 0
-  const aiBaseValue = Math.max(0, aiEstimatedValue - furnitureValue)
-
-  let valuePerSqm = calculatedValuePerSqm
-
-  const marketFloor =
-    marketAvgPerSqm != null
-      ? roundCurrency(marketAvgPerSqm * area * (isLand ? 0.65 : 0.72))
-      : null
-
-  let baseValue =
-    valuePerSqm > 0
-      ? roundCurrency(valuePerSqm * area)
-      : calculatedValue
-
-  if (marketFloor != null && baseValue < marketFloor) {
-    baseValue = marketFloor
-    valuePerSqm = roundCurrency(baseValue / area)
-  }
-
-  const askingBase =
-    askingPrice && askingPrice > 0
-      ? Math.max(0, askingPrice - furnitureValue)
-      : null
-
-  if (askingBase && askingBase > 0 && baseValue < askingBase * 0.55) {
-    baseValue = roundCurrency(baseValue * 0.35 + askingBase * 0.65 * 0.88)
-    valuePerSqm = roundCurrency(baseValue / area)
-  }
-
-  if (
-    aiBaseValue > baseValue * 1.35 &&
-    aiValuePerSqm >= minUnitPriceSqm
-  ) {
-    valuePerSqm = roundCurrency(
-      valuePerSqm * 0.45 + aiValuePerSqm * 0.55
-    )
-    baseValue = roundCurrency(valuePerSqm * area)
-  }
-
-  if (valuePerSqm < minUnitPriceSqm && aiValuePerSqm >= minUnitPriceSqm) {
-    valuePerSqm = roundCurrency(aiValuePerSqm)
-    baseValue = roundCurrency(valuePerSqm * area)
-  }
-
-  const finalValue = baseValue + furnitureValue
-
-  return { finalValue, valuePerSqm }
-}
-
 export function buildNbr14653Analysis(
   aiResult: EvaluationAIDraftResponse,
   input: EvaluationRequest,
-  marketResultsCount: number
+  marketResultsCount: number,
+  sourceLinks?: string[]
 ): Nbr14653Analysis {
   const aiNbr = aiResult.nbr14653
   const isLand = isLandOnlyPropertyType(input.propertyType)
   const rawComparables = aiNbr?.homogenizedComparables ?? []
+  const deduplicated = filterDuplicateComparables(rawComparables)
   const neighborhoodFilter = filterComparablesByNeighborhood(
-    rawComparables,
+    deduplicated.unique,
     input.address,
     { propertyType: input.propertyType }
   )
-  const comparables =
+  const selectedComparables =
     neighborhoodFilter.filtered.length > 0
       ? neighborhoodFilter.filtered
       : isLand
         ? []
-        : rawComparables
+        : deduplicated.unique
   const useMedian = isHighStandardProperty(input) || isLand
   const evaluationArea = getEvaluationArea(input)
   const minUnitPriceSqm = getMinUnitPriceSqm(input.propertyType)
   const maxUnitPriceSqm = isLand ? LAND_PROPERTY_MAX_UNIT_PRICE_SQM : 80_000
   const marketAvgPerSqm = aiResult.marketAnalysis.averagePricePerSqm
-  const grade = inferSpecificationGrade(
-    Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)
+  const floorApplicable = [
+    'apartamento',
+    'cobertura',
+    'studio',
+    'kitnet',
+    'loft',
+    'flat',
+    'comercial',
+    'consultorio',
+    'andar-corporativo',
+  ].includes(input.propertyType)
+  const normalizedComparables = selectedComparables.map((item) => {
+    const factors = item.factors.map((factor) => {
+      if (
+        !/(?:^|[\s_-])(?:floor|andar|andares|elevator|elevador|vertical)(?:$|[\s_-])/i.test(
+          `${factor.id} ${factor.label}`
+        )
+      )
+        return factor
+      const knownAccess =
+        input.elevatorAccess === 'sim' || input.elevatorAccess === 'nao'
+      const knownComparableAccess =
+        item.elevatorAccess === 'sim' || item.elevatorAccess === 'nao'
+      if (
+        floorApplicable &&
+        input.floor != null &&
+        item.floor != null &&
+        knownAccess &&
+        knownComparableAccess
+      )
+        return factor
+      return {
+        ...factor,
+        value: 1,
+        justification:
+          'Ajuste neutro: andar e acesso por elevador precisam estar documentados para ambos os imóveis.',
+      }
+    })
+    const normalized = { ...item, factors }
+    return {
+      ...normalized,
+      homogenizedUnitPriceSqm: resolveComparableUnitPrice(
+        normalized,
+        marketAvgPerSqm,
+        minUnitPriceSqm,
+        maxUnitPriceSqm
+      ),
+    }
+  })
+
+  const sourceUrls = new Set(
+    (sourceLinks ?? []).map(canonicalListingUrl).filter(Boolean)
   )
+  const comparables = normalizedComparables.filter((item) => {
+    const numeric = item.homogenizedUnitPriceSqm
+    const source = canonicalListingUrl(item.link)
+    return (
+      numeric != null &&
+      Number.isFinite(numeric) &&
+      isPlausibleUnitPrice(numeric, minUnitPriceSqm, maxUnitPriceSqm) &&
+      (sourceLinks === undefined || (source != null && sourceUrls.has(source)))
+    )
+  })
+  if (sourceLinks !== undefined && comparables.length === 0) {
+    throw new Error(
+      'Não encontramos comparáveis utilizáveis nas fontes pesquisadas. Revise o endereço e as características do imóvel antes de tentar novamente.'
+    )
+  }
+  const sumWeights = comparables.reduce(
+    (sum, item) =>
+      sum + (Number.isFinite(item.weight) && item.weight > 0 ? item.weight : 0),
+    0
+  )
+  const aggregateByMedian = useMedian || sumWeights <= 0
+  for (const item of comparables) {
+    item.weight = aggregateByMedian
+      ? 1 / comparables.length
+      : Math.max(0, item.weight) / sumWeights
+  }
 
   const unitPrices = comparables
     .map((item) => {
@@ -296,68 +271,112 @@ export function buildNbr14653Analysis(
       ) {
         return null
       }
-      return { value: unitPrice, weight: item.weight }
+      return {
+        value: unitPrice,
+        weight:
+          Number.isFinite(item.weight) && item.weight > 0 ? item.weight : 0,
+      }
     })
     .filter((item): item is { value: number; weight: number } => item != null)
 
   const homogenizedAverage = computeAggregateUnitPrice(
     unitPrices,
-    useMedian,
+    aggregateByMedian,
     marketAvgPerSqm
   )
 
-  const marketReferencePerSqm =
-    unitPrices.length > 0 && useMedian
-      ? median(unitPrices.map((item) => item.value))
-      : marketAvgPerSqm
+  const baseUnitPrice = homogenizedAverage ?? aiResult.valuePerSqm
+  if (!Number.isFinite(baseUnitPrice) || baseUnitPrice <= 0) {
+    throw new Error('Não há dados suficientes para estimar o valor do imóvel.')
+  }
+  const furnitureValue =
+    !isLand && input.amenities?.includes('moveis-alto-padrao')
+      ? (input.highEndFurnitureValue ?? 0)
+      : 0
+  const baseValue = roundCurrency(baseUnitPrice * evaluationArea)
+  const calculatedValue = baseValue + furnitureValue
+  const calculatedValuePerSqm = roundCurrency(calculatedValue / evaluationArea)
 
-  const rawCalculatedValuePerSqm =
-    homogenizedAverage != null
-      ? roundCurrency(homogenizedAverage)
-      : aiResult.valuePerSqm
+  const aggregateLabel = aggregateByMedian ? 'mediana' : 'média ponderada'
 
-  const rawCalculatedValue =
-    rawCalculatedValuePerSqm > 0
-      ? roundCurrency(rawCalculatedValuePerSqm * evaluationArea)
-      : aiResult.estimatedValue
-
-  const calibrated = calibrateFinalValue({
-    calculatedValue: rawCalculatedValue,
-    calculatedValuePerSqm: rawCalculatedValuePerSqm,
-    aiEstimatedValue: aiResult.estimatedValue,
-    aiValuePerSqm: aiResult.valuePerSqm,
-    area: evaluationArea,
-    askingPrice: input.askingPrice,
-    highEndFurnitureValue: input.highEndFurnitureValue,
-    marketAvgPerSqm: marketReferencePerSqm,
-    minUnitPriceSqm,
-    isLand,
-  })
-
-  const calculatedValue = calibrated.finalValue
-  const calculatedValuePerSqm = calibrated.valuePerSqm
-
-  const aggregateLabel = useMedian ? 'mediana' : 'média ponderada'
+  const matchedSourceCount = comparables.filter((item) =>
+    sourceUrls.has(canonicalListingUrl(item.link))
+  ).length
+  const sampleWarnings = [
+    unitPrices.length < 3
+      ? 'Menos de três comparáveis utilizáveis: a amostra é insuficiente para uma referência consistente.'
+      : null,
+    sourceLinks === undefined
+      ? 'Os links dos comparáveis não foram cruzados com a pesquisa original.'
+      : null,
+    deduplicated.duplicatesRemoved > 0
+      ? `${deduplicated.duplicatesRemoved} anúncio(s) repetido(s) removido(s) pelo endereço da fonte.`
+      : null,
+    'Preços de anúncios são ofertas; não comprovam valores de transações concluídas.',
+    'Data de publicação e disponibilidade dos anúncios não verificadas.',
+    'Correspondência de link confirma presença na pesquisa, não a veracidade dos atributos extraídos.',
+  ].filter((warning): warning is string => warning != null)
+  const sampleQuality = {
+    status:
+      unitPrices.length < 3
+        ? ('insuficiente' as const)
+        : unitPrices.length < 6 || sourceLinks === undefined
+          ? ('limitada' as const)
+          : ('disponivel' as const),
+    receivedCount: rawComparables.length,
+    usedCount: unitPrices.length,
+    duplicatesRemoved: deduplicated.duplicatesRemoved,
+    excludedCount: deduplicated.unique.length - comparables.length,
+    matchedSourceCount,
+    sourceCheckPerformed: sourceLinks !== undefined,
+    observedValueRange:
+      unitPrices.length >= 3
+        ? {
+            min: Math.round(
+              Math.min(...unitPrices.map((item) => item.value)) *
+                evaluationArea +
+                furnitureValue
+            ),
+            max: Math.round(
+              Math.max(...unitPrices.map((item) => item.value)) *
+                evaluationArea +
+                furnitureValue
+            ),
+          }
+        : null,
+    warnings: sampleWarnings,
+  }
 
   const steps = [
     '1. Definição do objetivo: determinação do valor de mercado (NBR 14653-1).',
-    `2. Seleção de amostra: ${Math.max(comparables.length, aiResult.marketAnalysis.comparables.length)} elemento(s) comparável(is) de mercado.`,
+    `2. Seleção de amostra: ${unitPrices.length} elemento(s) válido(s) comparável(is) de mercado.`,
     useMedian
       ? isLand
         ? '3. Tratamento técnico: homogeneização dos comparáveis de terreno e agregação por mediana (reduz distorção por outliers na amostra).'
         : '3. Tratamento técnico: homogeneização dos comparáveis e agregação por mediana (imóvel de alto padrão — reduz distorção por outliers).'
       : '3. Tratamento técnico: aplicação de fatores de homogeneização aos atributos diferenciais (localização, área, conservação, padrão, idade, layout e mercado).',
     homogenizedAverage != null
-      ? `4. Valor unitário homogeneizado (${aggregateLabel}): ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
+      ? `4. Valor unitário homogeneizado (${aggregateLabel}): ${baseUnitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`
       : '4. Valor unitário estimado com base na amostra e atributos do imóvel avaliando.',
-    input.highEndFurnitureValue
-      ? `5. Acréscimo de móveis alto padrão: ${input.highEndFurnitureValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
+    furnitureValue
+      ? `5. Acréscimo de móveis alto padrão: ${furnitureValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
       : null,
-    `6. Valor final ${isLand ? 'do terreno' : 'do imóvel'}: ${calculatedValuePerSqm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${evaluationArea} m²${input.highEndFurnitureValue ? ' + móveis' : ''} = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+    `6. Valor final ${isLand ? 'do terreno' : 'do imóvel'}: ${baseUnitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² × ${evaluationArea} m²${furnitureValue ? ' + móveis' : ''} = ${calculatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
   ].filter((step): step is string => step != null)
 
   const limitations = [
     ...(aiNbr?.limitations ?? []),
+    ...sampleWarnings,
+    'Grau de fundamentação e precisão não aferidos: a quantidade de anúncios não certifica enquadramento na NBR 14653.',
+    'Preço pedido usado apenas para comparação comercial, sem impor piso ou teto ao valor estimado.',
+    floorApplicable
+      ? `Andar: ${input.floor === 0 ? 'térreo' : input.floor == null ? 'não informado' : input.floor + 'º'}; elevador até a unidade: ${input.elevatorAccess ?? 'desconhecido'}. Sem percentual automático por andar; dados ausentes geram fator neutro.`
+      : null,
+    unitPrices.length === 0
+      ? 'Nenhum comparável numérico válido: resultado exploratório baseado na referência retornada pela IA, sem validação amostral.'
+      : null,
+    'Produto dos fatores limitado entre 0,75 e 1,25 como proteção operacional; esse limite não comprova validade estatística.',
+
     neighborhoodFilter.rejectedCount > 0
       ? buildCrossNeighborhoodLimitation(
           input.address,
@@ -377,12 +396,15 @@ export function buildNbr14653Analysis(
 
   return {
     standard: NBR_14653_STANDARD,
+    sampleQuality,
+    aggregationMethod: aggregateByMedian ? 'mediana' : 'media-ponderada',
     purpose: aiNbr?.purpose ?? NBR_14653_PURPOSE,
     referenceDate: new Date().toISOString().slice(0, 10),
-    specificationGrade: grade.grade,
-    specificationGradeLabel: grade.label,
-    maxDeviationPercent: grade.maxDeviationPercent,
-    specificationDescription: grade.description,
+    specificationGrade: null,
+    specificationGradeLabel: 'Estimativa automatizada — grau não aferido',
+    maxDeviationPercent: null,
+    specificationDescription:
+      'Precisão depende da qualidade e dispersão dos dados; não há margem de erro garantida.',
     primaryMethod: {
       id: NBR_METHODS.comparativo_direto.id,
       name: NBR_METHODS.comparativo_direto.name,
@@ -393,32 +415,34 @@ export function buildNbr14653Analysis(
     complementaryMethods: aiNbr?.complementaryMethods ?? [],
     homogenizedComparables: comparables,
     calculationMemory: {
-      steps: aiNbr?.calculationMemory?.steps?.length
-        ? aiNbr.calculationMemory.steps
-        : steps,
+      steps,
       homogenizedAveragePriceSqm: homogenizedAverage,
-      adjustmentsApplied:
-        aiNbr?.calculationMemory?.adjustmentsApplied ??
-        comparables.flatMap((item) =>
-          item.factors.map(
-            (factor) =>
-              `${item.title}: ${factor.label} × ${factor.value.toFixed(3)} — ${factor.justification}`
-          )
-        ),
+      adjustmentsApplied: comparables.flatMap((item) =>
+        item.factors.map(
+          (factor) =>
+            `${item.title}: ${factor.label} × ${factor.value.toFixed(3)} — ${factor.justification}`
+        )
+      ),
       finalValue: calculatedValue,
       valuePerSqm: calculatedValuePerSqm,
     },
     limitations: [...new Set(limitations)],
-    disclaimer: aiNbr?.disclaimer ?? NBR_14653_DISCLAIMER,
+    disclaimer: NBR_14653_DISCLAIMER,
   }
 }
 
 export function applyNbr14653ToEvaluation(
   aiResult: EvaluationAIDraftResponse,
   input: EvaluationRequest,
-  marketResultsCount: number
+  marketResultsCount: number,
+  sourceLinks?: string[]
 ): EvaluationAIResponse {
-  const nbr14653 = buildNbr14653Analysis(aiResult, input, marketResultsCount)
+  const nbr14653 = buildNbr14653Analysis(
+    aiResult,
+    input,
+    marketResultsCount,
+    sourceLinks
+  )
 
   const { nbr14653: _draft, ...base } = aiResult
 

@@ -1,33 +1,33 @@
 import path from 'path'
-import { fileURLToPath } from 'url'
-import express from 'express'
 import cors from 'cors'
+import express from 'express'
 import helmet from 'helmet'
+import { fileURLToPath } from 'url'
 import { config } from './config.js'
 import { ensureFoxAiTables } from './db/ensure-fox-ai-tables.js'
-import authRoutes from './routes/auth.js'
-import adminRoutes from './routes/admin.js'
-import plansRoutes from './routes/plans.js'
-import evaluationRoutes from './routes/evaluation.js'
+import { webhookRateLimiter } from './middleware/rate-limit.js'
 import addressRoutes from './routes/address.js'
-import gamificationRoutes from './routes/gamification.js'
-import notificationRoutes from './routes/notifications.js'
-import paymentRoutes from './routes/payments.js'
-import leadsRoutes from './routes/leads.js'
-import crmRoutes from './routes/crm.js'
+import adminRoutes from './routes/admin.js'
+import authRoutes from './routes/auth.js'
 import blogRoutes from './routes/blog.js'
-import foxAiRoutes from './routes/fox-ai.js'
 import captureRadarRoutes from './routes/capture-radar.js'
+import crmRoutes from './routes/crm.js'
+import evaluationRoutes from './routes/evaluation.js'
+import foxAiRoutes from './routes/fox-ai.js'
+import gamificationRoutes from './routes/gamification.js'
+import leadsRoutes from './routes/leads.js'
+import notificationRoutes from './routes/notifications.js'
 import {
   efiChargesWebhookHandler,
   efiPixWebhookHandler,
 } from './routes/payment-webhook.js'
+import paymentRoutes from './routes/payments.js'
+import plansRoutes from './routes/plans.js'
 import {
   whatsappLeadsWebhookHandler,
   whatsappMetaWebhookHandler,
   whatsappVerifyHandler,
 } from './routes/whatsapp-webhook.js'
-import { webhookRateLimiter } from './middleware/rate-limit.js'
 
 const app = express()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -78,7 +78,10 @@ app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=()'
+  )
   next()
 })
 
@@ -149,6 +152,31 @@ app.use('/api/crm', crmRoutes)
 app.use('/api/blog', blogRoutes)
 app.use('/api/fox-ai', foxAiRoutes)
 app.use('/api/radar', captureRadarRoutes)
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ message: 'Endpoint não encontrado.' })
+})
+
+app.use(((error, _req, res, next) => {
+  if (res.headersSent) return next(error)
+  const status =
+    error?.type === 'entity.too.large'
+      ? 413
+      : error?.type === 'entity.parse.failed'
+        ? 400
+        : 500
+  if (status === 500) console.error('Erro não tratado na API:', error)
+  res
+    .status(status)
+    .json({
+      message:
+        status === 413
+          ? 'Os dados enviados excedem o limite permitido.'
+          : status === 400
+            ? 'O conteúdo enviado não é um JSON válido.'
+            : 'Não foi possível concluir a operação. Tente novamente.',
+    })
+}) as express.ErrorRequestHandler)
 
 if (config.isProduction) {
   const frontendDist = path.join(__dirname, '../../dist')

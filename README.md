@@ -4,7 +4,7 @@ Plataforma de avaliação de imóveis com IA para corretores. Inclui gestão de 
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org/) 20+
+- [Node.js](https://nodejs.org/) 24+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para PostgreSQL)
 
 ## Deploy na Railway
@@ -83,10 +83,9 @@ Obtenha as chaves em:
 
 Se aparecer `Bind for 0.0.0.0:5432 failed: port is already allocated`, você já tem outro PostgreSQL na máquina. Este projeto usa a porta **5433** no host para evitar conflito.
 
-Se a migration falhar com `password authentication failed for user "avalia"`, o banco errado estava sendo usado. Rode:
+Se a migration falhar com `password authentication failed for user "avalia"`, confira `DATABASE_URL` em `server/.env` e a porta 5433. Não remova os volumes para corrigir credenciais: isso apaga os dados. Após corrigir a configuração, rode:
 
 ```bash
-npm run docker:reset
 npm run setup
 npm run dev:apps
 ```
@@ -125,4 +124,15 @@ web/
 - **Frontend:** React, Vite, TanStack Router, Shadcn UI, Tailwind CSS
 - **Backend:** Express, PostgreSQL, JWT, bcrypt
 - **Banco:** PostgreSQL 16 (Docker)
-  "# webavalia"
+
+## Qualidade e metodologia
+
+Consulte a [revisão de qualidade e critérios de avaliação](docs/REVISAO-QUALIDADE-AVALIACOES.md) para entender o cálculo, o tratamento por andar e os limites da estimativa.
+
+```bash
+npm run build:prod
+npm run lint
+npm run format:check
+npm test
+npm test --prefix server
+```

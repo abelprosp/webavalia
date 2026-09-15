@@ -1,12 +1,15 @@
 import { useCallback, useRef, useState } from 'react'
 import { ImagePlus, X, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  ACCEPTED_TYPES,
+  MAX_PHOTOS,
+  MAX_SIZE_MB,
+  MAX_TOTAL_MB,
+  validatePhotoFiles,
+} from '@/lib/photo-validation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-
-const MAX_PHOTOS = 10
-const MAX_SIZE_MB = 5
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
 
 export type EvaluationPhoto = {
   id: string
@@ -35,16 +38,14 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
 
       const validPhotos: EvaluationPhoto[] = []
 
-      for (const file of incoming.slice(0, remaining)) {
-        if (!ACCEPTED_TYPES.includes(file.type)) {
-          toast.error(
-            `${file.name}: formato não suportado. Use JPG, PNG ou WebP.`
-          )
-          continue
+      for (const file of incoming) {
+        if (validPhotos.length >= remaining) {
+          toast.error(`Máximo de ${MAX_PHOTOS} fotos atingido.`)
+          break
         }
-
-        if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-          toast.error(`${file.name}: tamanho máximo de ${MAX_SIZE_MB}MB.`)
+        const error = validatePhotoFiles([...photos, ...validPhotos, { file }])
+        if (error) {
+          toast.error(`${file.name}: ${error}`)
           continue
         }
 
@@ -82,7 +83,13 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
         role='button'
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            inputRef.current?.click()
+          }
+        }}
+        aria-label='Adicionar fotos do imóvel'
         onDragOver={(e) => {
           e.preventDefault()
           setIsDragging(true)
@@ -90,7 +97,7 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors',
+          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           isDragging
             ? 'border-primary bg-primary/5'
             : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
@@ -104,7 +111,8 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
             Arraste fotos aqui ou clique para selecionar
           </p>
           <p className='mt-1 text-xs text-muted-foreground'>
-            JPG, PNG ou WebP · até {MAX_SIZE_MB}MB · máx. {MAX_PHOTOS} fotos
+            JPG, PNG ou WebP · até {MAX_SIZE_MB}MB · máx. {MAX_PHOTOS} fotos ·{' '}
+            {MAX_TOTAL_MB}MB no total
           </p>
         </div>
         <input
@@ -140,7 +148,8 @@ export function PhotoUpload({ photos, onChange }: PhotoUploadProps) {
                   type='button'
                   variant='destructive'
                   size='icon'
-                  className='absolute top-1.5 right-1.5 size-7 opacity-0 transition-opacity group-hover:opacity-100'
+                  aria-label={`Remover foto ${photo.file.name}`}
+                  className='absolute top-1.5 right-1.5 size-8'
                   onClick={(e) => {
                     e.stopPropagation()
                     removePhoto(photo.id)

@@ -69,9 +69,9 @@ export const evaluationFormSchema = z
     propertyType: z.string().min(1, 'Selecione o tipo de imóvel'),
     area: z.number().min(10, 'Área mínima de 10 m²'),
     lotArea: z.number().min(10, 'Metragem mínima de 10 m²').optional(),
-    bedrooms: z.number().min(0),
-    bathrooms: z.number().min(0),
-    parking: z.number().min(0),
+    bedrooms: z.number().int().min(0),
+    bathrooms: z.number().int().min(0),
+    parking: z.number().int().min(0),
     buildingAge: z.enum(buildingAgeValues, {
       message: 'Selecione a idade da construção',
     }),
@@ -88,9 +88,11 @@ export const evaluationFormSchema = z
       .number()
       .min(1, 'Informe o valor estimado dos móveis')
       .optional(),
-    askingPrice: z.number().optional(),
+    askingPrice: z.number().positive().optional(),
     notes: z.string().optional(),
     floor: z.number().int().min(0).max(200).optional(),
+    totalFloors: z.number().int().min(0).max(200).optional(),
+    elevatorAccess: z.enum(['sim', 'nao', 'desconhecido']).optional(),
     hasMezzanine: z.boolean().optional(),
     structureType: z.enum(['alvenaria', 'pre-moldado']).optional(),
   })
@@ -123,6 +125,25 @@ export const evaluationFormSchema = z
       })
     }
 
+    if (
+      data.floor != null &&
+      data.totalFloors != null &&
+      data.floor > data.totalFloors
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['totalFloors'],
+        message:
+          'O último andar do prédio não pode ser menor que o andar do imóvel.',
+      })
+    }
+    if (data.elevatorAccess === 'nao' && data.amenities.includes('elevador')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['elevatorAccess'],
+        message: 'Revise o elevador: ele também está marcado nos diferenciais.',
+      })
+    }
     const floorTypes = [
       'apartamento',
       'cobertura',
@@ -130,6 +151,9 @@ export const evaluationFormSchema = z
       'kitnet',
       'loft',
       'flat',
+      'comercial',
+      'consultorio',
+      'andar-corporativo',
     ]
     if (floorTypes.includes(data.propertyType) && data.floor == null) {
       ctx.addIssue({
@@ -311,13 +335,27 @@ export type NbrHomogenizedComparable = {
   weight: number
 }
 
+export type EvaluationSampleQuality = {
+  status: 'insuficiente' | 'limitada' | 'disponivel'
+  receivedCount: number
+  usedCount: number
+  duplicatesRemoved: number
+  excludedCount: number
+  matchedSourceCount: number
+  sourceCheckPerformed: boolean
+  observedValueRange: { min: number; max: number } | null
+  warnings: string[]
+}
+
 export type Nbr14653Analysis = {
+  sampleQuality?: EvaluationSampleQuality
+  aggregationMethod?: 'mediana' | 'media-ponderada'
   standard: string
   purpose: string
   referenceDate: string
-  specificationGrade: 'I' | 'II' | 'III'
+  specificationGrade: 'I' | 'II' | 'III' | null
   specificationGradeLabel: string
-  maxDeviationPercent: number
+  maxDeviationPercent: number | null
   specificationDescription: string
   primaryMethod: {
     id: string
@@ -388,6 +426,12 @@ export function normalizeEvaluationResult(
     valuePerSqm: result.valuePerSqm ?? 0,
     score: result.score ?? 0,
     scoreLabel: result.scoreLabel ?? '—',
+    finishScore: result.finishScore,
+    conservationScore: result.conservationScore,
+    locationScore: result.locationScore,
+    constructionScore: result.constructionScore,
+    appreciationScore: result.appreciationScore,
+    opportunityScore: result.opportunityScore,
     criteriaScores: result.criteriaScores ?? [],
     aiInsights: result.aiInsights ?? [],
     marketAnalysis: {

@@ -4,6 +4,7 @@ import type {
 } from '@/features/avaliacao/data/evaluation-engine'
 import { api } from './api'
 import type { GamificationPayload } from './gamification-api'
+import { validatePhotoFiles } from './photo-validation'
 
 type PhotoPayload = {
   mimeType: string
@@ -104,8 +105,11 @@ export async function analyzeProperty(
   values: EvaluationFormValues,
   photos: { file: File }[]
 ): Promise<AnalyzePropertyResponse> {
+  const photoError = validatePhotoFiles(photos)
+  if (photoError) throw new Error(photoError)
+
   const photoPayloads: PhotoPayload[] = await Promise.all(
-    photos.slice(0, 5).map(async (photo) => ({
+    photos.map(async (photo) => ({
       mimeType: photo.file.type,
       data: await fileToBase64(photo.file),
     }))

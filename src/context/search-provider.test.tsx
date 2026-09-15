@@ -137,12 +137,12 @@ describe('SearchProvider and CommandMenu', () => {
     }
 
     const screen = await renderWithSearchProvider()
-    const { getByPlaceholder, getByRole, queryByText } = screen
+    const { getByPlaceholder, getByRole, getByText } = screen
 
     await openCommandPalette(screen)
 
-    await expect.element(queryByText('Radar de captação')).not.toBeInTheDocument()
-    await expect.element(queryByText('Assistente IA')).not.toBeInTheDocument()
+    await expect.element(getByText('Radar de captação')).not.toBeInTheDocument()
+    await expect.element(getByText('Assistente IA')).not.toBeInTheDocument()
 
     await userEvent.click(getByRole('option', { name: /Pipeline \(CRM\)/i }))
 

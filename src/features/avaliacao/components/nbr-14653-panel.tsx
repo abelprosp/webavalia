@@ -11,21 +11,29 @@ type Nbr14653PanelProps = {
 }
 
 export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
+  function safeSourceUrl(link?: string) {
+    try {
+      const url = new URL(link ?? '')
+      return ['https:', 'http:'].includes(url.protocol) &&
+        !url.username &&
+        !url.password
+        ? url.href
+        : undefined
+    } catch {
+      return undefined
+    }
+  }
   return (
     <BentoCard
-      title='Metodologia ABNT NBR 14653'
+      title='Método e memória de cálculo'
       subtitle={`${nbr.standard} · Ref. ${new Date(nbr.referenceDate).toLocaleDateString('pt-BR')}`}
       className={className}
       showMenu
     >
       <div className='space-y-5 text-sm'>
         <div className='flex flex-wrap gap-2'>
-          <FluxBadge variant='lavender'>
-            {nbr.specificationGradeLabel}
-          </FluxBadge>
-          <FluxBadge variant='dark'>
-            ±{nbr.maxDeviationPercent}% tolerância
-          </FluxBadge>
+          <FluxBadge variant='lavender'>Estimativa automatizada</FluxBadge>
+          <FluxBadge variant='dark'>Precisão não aferida</FluxBadge>
         </div>
 
         <p className='text-xs leading-relaxed text-muted-foreground'>
@@ -73,6 +81,12 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
             <Calculator className='size-3.5' />
             Comparáveis homogeneizados
           </p>
+          {nbr.homogenizedComparables.length === 0 && (
+            <p className='rounded-xl bg-muted/40 p-4 text-muted-foreground'>
+              Não há comparáveis utilizáveis nesta avaliação. A referência
+              apresentada exige pesquisa adicional.
+            </p>
+          )}
           <div className='space-y-2'>
             {nbr.homogenizedComparables.map((item, index) => (
               <div
@@ -82,6 +96,22 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
                 <div className='flex flex-wrap items-start justify-between gap-2'>
                   <div className='min-w-0'>
                     <p className='leading-snug font-medium'>{item.title}</p>
+                    <p className='mt-1 text-xs text-muted-foreground'>
+                      Fonte: {item.source}
+                    </p>
+                    {safeSourceUrl(item.link) && (
+                      <a
+                        href={safeSourceUrl(item.link)}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='text-xs font-medium underline underline-offset-4'
+                      >
+                        Abrir anúncio
+                        <span className='sr-only'>
+                          : {item.title} (nova aba)
+                        </span>
+                      </a>
+                    )}
                     <p className='mt-1 text-base font-bold text-flux-dark'>
                       {item.declaredPrice}
                     </p>
@@ -92,7 +122,9 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
                     )}
                   </div>
                   <FluxBadge variant='lavender'>
-                    Peso {(item.weight * 100).toFixed(0)}%
+                    {nbr.aggregationMethod === 'mediana'
+                      ? 'Usado na mediana'
+                      : `Peso ${(item.weight * 100).toFixed(0)}%`}
                   </FluxBadge>
                 </div>
                 {item.homogenizedUnitPriceSqm != null && (
@@ -107,6 +139,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
                   <div className='mt-3 flex flex-wrap gap-1.5'>
                     {item.factors.map((factor) => (
                       <span
+                        title={factor.justification}
                         key={factor.id}
                         className='rounded-full bg-background px-2 py-0.5 text-[10px] text-muted-foreground'
                       >
@@ -114,6 +147,21 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
                       </span>
                     ))}
                   </div>
+                )}
+                {item.factors.length > 0 && (
+                  <details className='mt-3 text-xs'>
+                    <summary className='cursor-pointer font-medium'>
+                      Por que o preço foi ajustado?
+                    </summary>
+                    <ul className='mt-2 space-y-2 text-muted-foreground'>
+                      {item.factors.map((factor, factorIndex) => (
+                        <li key={`${factor.id}-${factorIndex}`}>
+                          <strong>{factor.label}:</strong>{' '}
+                          {factor.justification}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </div>
             ))}
@@ -132,7 +180,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
           <div className='mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-white/10 pt-4'>
             {nbr.calculationMemory.homogenizedAveragePriceSqm != null && (
               <div>
-                <p className='text-[10px] text-white/45'>Média unitária</p>
+                <p className='text-[10px] text-white/45'>Referência unitária</p>
                 <p className='text-sm font-semibold'>
                   {formatCurrency(
                     nbr.calculationMemory.homogenizedAveragePriceSqm
@@ -142,7 +190,7 @@ export function Nbr14653Panel({ nbr, className }: Nbr14653PanelProps) {
               </div>
             )}
             <div className='text-right'>
-              <p className='text-[10px] text-white/45'>Valor NBR 14653</p>
+              <p className='text-[10px] text-white/45'>Valor estimado</p>
               <p className='text-xl font-bold text-flux-lime'>
                 {formatCurrency(nbr.calculationMemory.finalValue)}
               </p>

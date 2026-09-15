@@ -3,17 +3,21 @@ import { cn } from '@/lib/utils'
 const STEPS = [
   { id: 1, label: 'Imóvel' },
   { id: 2, label: 'Detalhes' },
-  { id: 3, label: 'Fotos' },
+  { id: 3, label: 'Fotos e revisão' },
 ] as const
 
 type EvaluationWizardStepsProps = {
   currentStep: number
   className?: string
+  onStepChange?: (step: number) => void
+  disabled?: boolean
 }
 
 export function EvaluationWizardSteps({
   currentStep,
   className,
+  onStepChange,
+  disabled,
 }: EvaluationWizardStepsProps) {
   return (
     <nav aria-label='Passos da avaliação' className={cn('mb-6', className)}>
@@ -23,9 +27,13 @@ export function EvaluationWizardSteps({
           const isDone = currentStep > step.id
           return (
             <li key={step.id} className='flex flex-1 items-center gap-2'>
-              <div
+              <button
+                type='button'
+                disabled={disabled || !isDone || !onStepChange}
+                onClick={() => onStepChange?.(step.id)}
+                aria-label={`Voltar à etapa ${step.id}: ${step.label}`}
                 className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors',
+                  'flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary',
                   isActive && 'bg-flux-lime text-flux-dark',
                   isDone && 'bg-flux-lime/30 text-flux-dark',
                   !isActive && !isDone && 'bg-muted text-muted-foreground'
@@ -33,7 +41,7 @@ export function EvaluationWizardSteps({
                 aria-current={isActive ? 'step' : undefined}
               >
                 {step.id}
-              </div>
+              </button>
               <span
                 className={cn(
                   'text-xs font-medium sm:text-sm',
