@@ -197,4 +197,12 @@ app.listen(config.port, () => {
       ? `Avalia Imobe em produção na porta ${config.port}`
       : `API Avalia Imob rodando em http://localhost:${config.port}`
   )
+  // Fingerprint só — nunca loga a chave completa
+  const serperKey = config.serperApiKey
+  const serperFp = !serperKey
+    ? 'ausente'
+    : serperKey.length <= 8
+      ? '***'
+      : `${serperKey.slice(0, 4)}…${serperKey.slice(-4)} (len=${serperKey.length})`
+  console.log(`[serper] SERPER_API_KEY: ${serperFp}`)
 })

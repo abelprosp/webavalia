@@ -97,7 +97,7 @@ export const config = {
   corsOrigin: resolveCorsOrigin(),
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o',
-  serperApiKey: process.env.SERPER_API_KEY ?? '',
+  serperApiKey: (process.env.SERPER_API_KEY ?? '').trim(),
   nvidia: {
     apiKey: process.env.NVIDIA_API_KEY ?? '',
     baseUrl:

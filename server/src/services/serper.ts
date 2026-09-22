@@ -21,9 +21,45 @@ export type SerperSearchResponse = {
   organic: SerperResult[]
 }
 
+export class SerperCreditsError extends Error {
+  readonly code = 'SERPER_CREDITS_EXHAUSTED' as const
+
+  constructor(detail?: string) {
+    super(
+      detail ??
+        'Créditos da API Serper esgotados. Atualize SERPER_API_KEY no Railway (Variables) com uma chave com saldo e reinicie o deploy.'
+    )
+    this.name = 'SerperCreditsError'
+  }
+}
+
+/** Evita disparar dezenas de requests quando a conta já está sem crédito. */
+let creditsExhaustedUntil = 0
+
+function isCreditsExhaustedPayload(status: number, body: string) {
+  if (status !== 400 && status !== 402 && status !== 403) return false
+  const lower = body.toLowerCase()
+  return (
+    lower.includes('not enough credits') ||
+    lower.includes('insufficient credits') ||
+    lower.includes('out of credits')
+  )
+}
+
+export function getSerperKeyFingerprint() {
+  const key = config.serperApiKey
+  if (!key) return 'ausente'
+  if (key.length <= 8) return '***'
+  return `${key.slice(0, 4)}…${key.slice(-4)} (len=${key.length})`
+}
+
 export async function serperSearch(query: string, num = 8): Promise<SerperResult[]> {
   if (!config.serperApiKey) {
     return []
+  }
+
+  if (Date.now() < creditsExhaustedUntil) {
+    throw new SerperCreditsError()
   }
 
   const response = await fetch('https://google.serper.dev/search', {
@@ -42,6 +78,15 @@ export async function serperSearch(query: string, num = 8): Promise<SerperResult
 
   if (!response.ok) {
     const text = await response.text()
+    if (isCreditsExhaustedPayload(response.status, text)) {
+      creditsExhaustedUntil = Date.now() + 60_000
+      console.error(
+        `[serper] créditos esgotados — chave ${getSerperKeyFingerprint()}. Resposta: ${text}`
+      )
+      throw new SerperCreditsError(
+        `Créditos Serper esgotados (chave ${getSerperKeyFingerprint()}). Atualize SERPER_API_KEY no Railway e redeploy.`
+      )
+    }
     throw new Error(`Serper API error: ${response.status} ${text}`)
   }
 

@@ -8,6 +8,7 @@ import {
 } from '../middleware/rate-limit.js'
 import { MARKET_MAP_EVALUATION_DEFAULTS, MARKET_MAP_DEFAULT_AREA, isLandOnlyPropertyType } from '../constants/evaluation-defaults.js'
 import { runPropertyEvaluation } from '../services/evaluation-service.js'
+import { SerperCreditsError } from '../services/serper.js'
 import {
   composeMarketMapAddress,
   reverseGeocode,
@@ -331,6 +332,12 @@ router.post('/analyze', requireAuth, evaluationRateLimiter, async (req: AuthRequ
       await refundTrialEvaluation(userId)
     }
     console.error('Erro na avaliação:', error)
+    if (error instanceof SerperCreditsError) {
+      return res.status(503).json({
+        message: error.message,
+        code: error.code,
+      })
+    }
     const message =
       error instanceof Error ? error.message : 'Erro ao processar avaliação.'
     return res.status(500).json({ message })
