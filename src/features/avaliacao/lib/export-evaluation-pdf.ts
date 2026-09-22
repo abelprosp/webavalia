@@ -81,7 +81,12 @@ function drawPageChrome(doc: jsPDF) {
   doc.rect(0, 4, PAGE_WIDTH, 1.2, 'F')
 }
 
-function drawFooter(doc: jsPDF, page: number, total: number, dateLabel: string) {
+function drawFooter(
+  doc: jsPDF,
+  page: number,
+  total: number,
+  dateLabel: string
+) {
   doc.setDrawColor(...rgb(C.line))
   doc.setLineWidth(0.3)
   doc.line(MARGIN, FOOTER_Y - 4, PAGE_WIDTH - MARGIN, FOOTER_Y - 4)
@@ -296,9 +301,14 @@ function addScenarioCards(
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     doc.setTextColor(...rgb(C.ink))
-    doc.text(formatCurrency(scenario.value), PAGE_WIDTH - MARGIN - 4, ctx.y + 8, {
-      align: 'right',
-    })
+    doc.text(
+      formatCurrency(scenario.value),
+      PAGE_WIDTH - MARGIN - 4,
+      ctx.y + 8,
+      {
+        align: 'right',
+      }
+    )
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
@@ -320,10 +330,7 @@ function addScenarioCards(
   }
 }
 
-function addScoreBars(
-  ctx: PdfCtx,
-  scores: EvaluationResult['criteriaScores']
-) {
+function addScoreBars(ctx: PdfCtx, scores: EvaluationResult['criteriaScores']) {
   for (const criterion of scores) {
     ensureSpace(ctx, 10)
     const { doc } = ctx
@@ -341,7 +348,15 @@ function addScoreBars(
 
     if (pct > 0) {
       doc.setFillColor(...rgb(C.lavender))
-      doc.roundedRect(barX, ctx.y - 2.8, Math.max(2, barW * pct), 4, 1.2, 1.2, 'F')
+      doc.roundedRect(
+        barX,
+        ctx.y - 2.8,
+        Math.max(2, barW * pct),
+        4,
+        1.2,
+        1.2,
+        'F'
+      )
     }
 
     doc.setFont('helvetica', 'bold')
@@ -356,10 +371,7 @@ function addScoreBars(
   ctx.y += 2
 }
 
-async function addPhotos(
-  ctx: PdfCtx,
-  previews: string[]
-): Promise<void> {
+async function addPhotos(ctx: PdfCtx, previews: string[]): Promise<void> {
   if (previews.length === 0) return
 
   addSectionTitle(ctx, `Fotos do imóvel (${previews.length})`)
@@ -387,7 +399,15 @@ async function addPhotos(
       const format = dataUrl.includes('image/png') ? 'PNG' : 'JPEG'
 
       doc.setFillColor(...rgb(C.line))
-      doc.roundedRect(x - 0.6, ctx.y - 0.6, imageSize + 1.2, imageSize + 1.2, 1.5, 1.5, 'F')
+      doc.roundedRect(
+        x - 0.6,
+        ctx.y - 0.6,
+        imageSize + 1.2,
+        imageSize + 1.2,
+        1.5,
+        1.5,
+        'F'
+      )
       doc.addImage(dataUrl, format, x, ctx.y, imageSize, imageSize)
 
       col += 1
@@ -403,7 +423,11 @@ async function addPhotos(
   if (col > 0) ctx.y += imageSize + gap + 2
 }
 
-function drawCoverHeader(ctx: PdfCtx, property: EvaluationFormValues, dateLabel: string) {
+function drawCoverHeader(
+  ctx: PdfCtx,
+  property: EvaluationFormValues,
+  dateLabel: string
+) {
   const { doc } = ctx
   const headerH = 42
 
@@ -515,7 +539,9 @@ export async function exportEvaluationPdf({
             {
               label: 'Tipo',
               value: getPropertyTypeLabel(property.propertyType),
-              hint: landOnly ? `${property.area} m² terreno` : `${property.area} m²`,
+              hint: landOnly
+                ? `${property.area} m² terreno`
+                : `${property.area} m²`,
               accent: 'lavender' as const,
             },
           ]),
@@ -608,7 +634,9 @@ export async function exportEvaluationPdf({
     },
     {
       label: 'Condomínio',
-      value: getCondominiumLevelLabel(property.condominiumLevel ?? 'nao-aplica'),
+      value: getCondominiumLevelLabel(
+        property.condominiumLevel ?? 'nao-aplica'
+      ),
     },
     {
       label: 'Vista',
@@ -761,10 +789,14 @@ export async function exportEvaluationPdf({
       }
     }
 
-    addParagraph(ctx, 'Estimativa automatizada — grau e precisão não aferidos', {
-      bold: true,
-      fontSize: 9,
-    })
+    addParagraph(
+      ctx,
+      'Estimativa automatizada — grau e precisão não aferidos',
+      {
+        bold: true,
+        fontSize: 9,
+      }
+    )
     addParagraph(
       ctx,
       `Método principal: ${nbr.primaryMethod.name}. ${nbr.primaryMethod.justification}`
