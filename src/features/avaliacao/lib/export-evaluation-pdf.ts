@@ -24,7 +24,8 @@ const PAGE_WIDTH = 210
 const MARGIN = 16
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
 const FOOTER_Y = 285
-const CONTENT_BOTTOM = 278
+const CONTENT_BOTTOM = 276
+const PAGE_TOP = MARGIN + 12
 const LINE_HEIGHT = 5.2
 const BRAND = 'Avalia Imobe'
 
@@ -66,12 +67,16 @@ function getConservationLabel(value: string) {
   return conservationStates.find((s) => s.value === value)?.label ?? value
 }
 
-function ensureSpace(ctx: PdfCtx, needed: number) {
-  if (ctx.y + needed <= CONTENT_BOTTOM) return
+function newPage(ctx: PdfCtx) {
   ctx.doc.addPage()
   ctx.page += 1
   drawPageChrome(ctx.doc)
-  ctx.y = MARGIN + 10
+  ctx.y = PAGE_TOP
+}
+
+function ensureSpace(ctx: PdfCtx, needed: number) {
+  if (ctx.y + needed <= CONTENT_BOTTOM) return
+  newPage(ctx)
 }
 
 function drawPageChrome(doc: jsPDF) {
@@ -102,7 +107,7 @@ function drawFooter(
 }
 
 function addSectionTitle(ctx: PdfCtx, title: string) {
-  ensureSpace(ctx, 16)
+  ensureSpace(ctx, 18)
   const { doc } = ctx
 
   doc.setFillColor(...rgb(C.lime))
@@ -130,35 +135,51 @@ function addParagraph(
   const fontSize = options?.fontSize ?? 9.5
   const indent = options?.indent ?? 0
   const width = CONTENT_WIDTH - indent
+  const lineH = Math.max(LINE_HEIGHT, fontSize * 0.45)
 
   doc.setFont('helvetica', options?.bold ? 'bold' : 'normal')
   doc.setFontSize(fontSize)
   doc.setTextColor(...rgb(options?.color ?? C.body))
 
   const lines: string[] = doc.splitTextToSize(text, width)
-  const blockHeight = lines.length * LINE_HEIGHT
-  ensureSpace(ctx, blockHeight + 2)
 
-  doc.text(lines, MARGIN + indent, ctx.y)
-  ctx.y += blockHeight + 3
+  for (const line of lines) {
+    ensureSpace(ctx, lineH + 1)
+    doc.setFont('helvetica', options?.bold ? 'bold' : 'normal')
+    doc.setFontSize(fontSize)
+    doc.setTextColor(...rgb(options?.color ?? C.body))
+    doc.text(line, MARGIN + indent, ctx.y)
+    ctx.y += lineH
+  }
+
+  ctx.y += 3
 }
 
 function addBulletList(ctx: PdfCtx, items: string[]) {
   const { doc } = ctx
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9.5)
+  const fontSize = 9.5
+  const lineH = LINE_HEIGHT
 
   for (const item of items) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(fontSize)
     const lines: string[] = doc.splitTextToSize(item, CONTENT_WIDTH - 8)
-    const blockHeight = lines.length * LINE_HEIGHT
-    ensureSpace(ctx, blockHeight + 2)
+
+    ensureSpace(ctx, lineH + 2)
 
     doc.setFillColor(...rgb(C.lavender))
     doc.circle(MARGIN + 2.5, ctx.y - 1.2, 1.1, 'F')
 
-    doc.setTextColor(...rgb(C.body))
-    doc.text(lines, MARGIN + 7, ctx.y)
-    ctx.y += blockHeight + 2.5
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) ensureSpace(ctx, lineH + 1)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(fontSize)
+      doc.setTextColor(...rgb(C.body))
+      doc.text(lines[i], MARGIN + 7, ctx.y)
+      ctx.y += lineH
+    }
+
+    ctx.y += 2.5
   }
 
   ctx.y += 1
@@ -170,43 +191,36 @@ function addKeyValueGrid(
 ) {
   const colGap = 4
   const colWidth = (CONTENT_WIDTH - colGap) / 2
-  const rowH = 11
-  let col = 0
-  let rowY = ctx.y
+  const rowH = 12
+  const { doc } = ctx
 
-  for (const pair of pairs) {
-    if (col === 0) ensureSpace(ctx, rowH + 2)
+  for (let i = 0; i < pairs.length; i += 2) {
+    ensureSpace(ctx, rowH + 3)
+    const rowY = ctx.y
+    const rowPairs = pairs.slice(i, i + 2)
 
-    const x = MARGIN + col * (colWidth + colGap)
-    const { doc } = ctx
+    rowPairs.forEach((pair, col) => {
+      const x = MARGIN + col * (colWidth + colGap)
 
-    doc.setFillColor(...rgb(C.wash))
-    doc.roundedRect(x, rowY - 3.5, colWidth, rowH, 1.5, 1.5, 'F')
+      doc.setFillColor(...rgb(C.wash))
+      doc.roundedRect(x, rowY - 3.5, colWidth, rowH, 1.5, 1.5, 'F')
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.setTextColor(...rgb(C.muted))
-    doc.text(pair.label.toUpperCase(), x + 3, rowY)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(...rgb(C.muted))
+      doc.text(pair.label.toUpperCase(), x + 3, rowY)
 
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...rgb(C.ink))
-    const valueLines: string[] = doc.splitTextToSize(pair.value, colWidth - 6)
-    doc.text(valueLines[0] ?? '—', x + 3, rowY + 4.5)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...rgb(C.ink))
+      const valueLines: string[] = doc.splitTextToSize(pair.value, colWidth - 6)
+      doc.text(valueLines[0] ?? '—', x + 3, rowY + 4.8)
+    })
 
-    col += 1
-    if (col === 2) {
-      col = 0
-      rowY += rowH + 2.5
-      ctx.y = rowY
-    }
-  }
-
-  if (col === 1) {
     ctx.y = rowY + rowH + 2.5
-  } else {
-    ctx.y = rowY + 2
   }
+
+  ctx.y += 2
 }
 
 function addMetricCards(
@@ -219,10 +233,11 @@ function addMetricCards(
   }>
 ) {
   const gap = 3.5
-  const n = cards.length
+  const n = Math.max(cards.length, 1)
   const cardW = (CONTENT_WIDTH - gap * (n - 1)) / n
   const cardH = 28
   ensureSpace(ctx, cardH + 6)
+  const startY = ctx.y
 
   cards.forEach((card, i) => {
     const x = MARGIN + i * (cardW + gap)
@@ -237,7 +252,7 @@ function addMetricCards(
     } else {
       doc.setFillColor(...rgb(C.lime))
     }
-    doc.roundedRect(x, ctx.y, cardW, cardH, 2.5, 2.5, 'F')
+    doc.roundedRect(x, startY, cardW, cardH, 2.5, 2.5, 'F')
 
     const labelColor = isDark ? ([180, 185, 210] as const) : C.darkSoft
     const valueColor = isDark ? C.white : C.ink
@@ -246,24 +261,24 @@ function addMetricCards(
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...rgb(labelColor))
-    doc.text(card.label.toUpperCase(), x + 4, ctx.y + 7)
+    doc.text(card.label.toUpperCase(), x + 4, startY + 7)
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(card.value.length > 16 ? 11 : 13)
     doc.setTextColor(...rgb(valueColor))
     const valueLines: string[] = doc.splitTextToSize(card.value, cardW - 8)
-    doc.text(valueLines[0] ?? '', x + 4, ctx.y + 15)
+    doc.text(valueLines[0] ?? '', x + 4, startY + 15)
 
     if (card.hint) {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(7.5)
       doc.setTextColor(...rgb(hintColor))
       const hintLines: string[] = doc.splitTextToSize(card.hint, cardW - 8)
-      doc.text(hintLines[0] ?? '', x + 4, ctx.y + 22)
+      doc.text(hintLines[0] ?? '', x + 4, startY + 22)
     }
   })
 
-  ctx.y += cardH + 8
+  ctx.y = startY + cardH + 8
 }
 
 function addScenarioCards(
@@ -272,26 +287,28 @@ function addScenarioCards(
 ) {
   for (const scenario of scenarios) {
     const cardH = 22
-    ensureSpace(ctx, cardH + 4)
+    // Reserva espaço do card + ~2 linhas de descrição para não partir o bloco
+    ensureSpace(ctx, cardH + 16)
     const { doc } = ctx
+    const cardY = ctx.y
 
     doc.setFillColor(...rgb(C.wash))
     doc.setDrawColor(...rgb(C.cardBorder))
     doc.setLineWidth(0.3)
-    doc.roundedRect(MARGIN, ctx.y, CONTENT_WIDTH, cardH, 2, 2, 'FD')
+    doc.roundedRect(MARGIN, cardY, CONTENT_WIDTH, cardH, 2, 2, 'FD')
 
     doc.setFillColor(...rgb(C.dark))
-    doc.roundedRect(MARGIN, ctx.y, 2.5, cardH, 1, 1, 'F')
+    doc.roundedRect(MARGIN, cardY, 2.5, cardH, 1, 1, 'F')
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(10)
     doc.setTextColor(...rgb(C.ink))
-    doc.text(scenario.label, MARGIN + 7, ctx.y + 7)
+    doc.text(scenario.label, MARGIN + 7, cardY + 7)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...rgb(C.muted))
-    doc.text(scenario.timeframe, MARGIN + 7, ctx.y + 12.5)
+    doc.text(scenario.timeframe, MARGIN + 7, cardY + 12.5)
 
     const adjustmentLabel =
       scenario.adjustmentPercent === 0
@@ -304,7 +321,7 @@ function addScenarioCards(
     doc.text(
       formatCurrency(scenario.value),
       PAGE_WIDTH - MARGIN - 4,
-      ctx.y + 8,
+      cardY + 8,
       {
         align: 'right',
       }
@@ -316,11 +333,11 @@ function addScenarioCards(
     doc.text(
       `${formatCurrency(scenario.valuePerSqm)}/m² · ${adjustmentLabel}`,
       PAGE_WIDTH - MARGIN - 4,
-      ctx.y + 14,
+      cardY + 14,
       { align: 'right' }
     )
 
-    ctx.y += cardH + 3
+    ctx.y = cardY + cardH + 3
 
     addParagraph(ctx, scenario.description, {
       fontSize: 8.5,
@@ -331,26 +348,32 @@ function addScenarioCards(
 }
 
 function addScoreBars(ctx: PdfCtx, scores: EvaluationResult['criteriaScores']) {
+  const labelWidth = 48
   for (const criterion of scores) {
     ensureSpace(ctx, 10)
     const { doc } = ctx
-    const barX = MARGIN + 52
-    const barW = CONTENT_WIDTH - 52 - 18
+    const barX = MARGIN + labelWidth + 4
+    const barW = CONTENT_WIDTH - labelWidth - 22
     const pct = Math.max(0, Math.min(1, criterion.score / 5))
+    const rowY = ctx.y
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
     doc.setTextColor(...rgb(C.body))
-    doc.text(criterion.label, MARGIN, ctx.y)
+    const labelLines: string[] = doc.splitTextToSize(
+      criterion.label,
+      labelWidth
+    )
+    doc.text(labelLines[0] ?? '', MARGIN, rowY)
 
     doc.setFillColor(...rgb(C.line))
-    doc.roundedRect(barX, ctx.y - 2.8, barW, 4, 1.2, 1.2, 'F')
+    doc.roundedRect(barX, rowY - 2.8, barW, 4, 1.2, 1.2, 'F')
 
     if (pct > 0) {
       doc.setFillColor(...rgb(C.lavender))
       doc.roundedRect(
         barX,
-        ctx.y - 2.8,
+        rowY - 2.8,
         Math.max(2, barW * pct),
         4,
         1.2,
@@ -362,11 +385,11 @@ function addScoreBars(ctx: PdfCtx, scores: EvaluationResult['criteriaScores']) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...rgb(C.ink))
-    doc.text(`${criterion.score}/5`, PAGE_WIDTH - MARGIN, ctx.y, {
+    doc.text(`${criterion.score}/5`, PAGE_WIDTH - MARGIN, rowY, {
       align: 'right',
     })
 
-    ctx.y += 8
+    ctx.y = rowY + 8
   }
   ctx.y += 2
 }
@@ -380,6 +403,7 @@ async function addPhotos(ctx: PdfCtx, previews: string[]): Promise<void> {
   const cols = 3
   const imageSize = (CONTENT_WIDTH - gap * (cols - 1)) / cols
   let col = 0
+  let rowY = ctx.y
 
   for (let i = 0; i < Math.min(previews.length, 9); i++) {
     try {
@@ -392,7 +416,10 @@ async function addPhotos(ctx: PdfCtx, previews: string[]): Promise<void> {
         reader.readAsDataURL(blob)
       })
 
-      if (col === 0) ensureSpace(ctx, imageSize + 6)
+      if (col === 0) {
+        ensureSpace(ctx, imageSize + 6)
+        rowY = ctx.y
+      }
 
       const x = MARGIN + col * (imageSize + gap)
       const { doc } = ctx
@@ -401,26 +428,27 @@ async function addPhotos(ctx: PdfCtx, previews: string[]): Promise<void> {
       doc.setFillColor(...rgb(C.line))
       doc.roundedRect(
         x - 0.6,
-        ctx.y - 0.6,
+        rowY - 0.6,
         imageSize + 1.2,
         imageSize + 1.2,
         1.5,
         1.5,
         'F'
       )
-      doc.addImage(dataUrl, format, x, ctx.y, imageSize, imageSize)
+      doc.addImage(dataUrl, format, x, rowY, imageSize, imageSize)
 
       col += 1
       if (col === cols) {
         col = 0
-        ctx.y += imageSize + gap + 2
+        ctx.y = rowY + imageSize + gap + 2
+        rowY = ctx.y
       }
     } catch {
       // ignora foto que não puder ser carregada
     }
   }
 
-  if (col > 0) ctx.y += imageSize + gap + 2
+  if (col > 0) ctx.y = rowY + imageSize + gap + 2
 }
 
 function drawCoverHeader(
@@ -437,7 +465,6 @@ function drawCoverHeader(
   doc.setFillColor(...rgb(C.lime))
   doc.rect(0, headerH, PAGE_WIDTH, 2.5, 'F')
 
-  // accent blob
   doc.setFillColor(...rgb(C.lavender))
   doc.circle(PAGE_WIDTH - 18, 12, 18, 'F')
   doc.setFillColor(...rgb(C.lime))
@@ -483,7 +510,6 @@ export async function exportEvaluationPdf({
   const listingIntent = property.listingIntent ?? 'vender'
   const landOnly = isLandOnlyPropertyType(property.propertyType)
 
-  // —— Resultado principal ——
   addSectionTitle(ctx, 'Resultado da avaliação')
   addParagraph(ctx, `Objetivo: ${getListingIntentLabel(listingIntent)}`, {
     fontSize: 9,
@@ -568,7 +594,6 @@ export async function exportEvaluationPdf({
     )
   }
 
-  // —— Dados do imóvel ——
   addSectionTitle(ctx, 'Dados do imóvel')
   const propertyPairs: Array<{ label: string; value: string }> = [
     ...(property.cep ? [{ label: 'CEP', value: property.cep }] : []),
@@ -667,7 +692,6 @@ export async function exportEvaluationPdf({
     addParagraph(ctx, `Observações: ${property.notes}`, { fontSize: 9 })
   }
 
-  // —— Mercado ——
   addSectionTitle(ctx, 'Análise de mercado local')
   addParagraph(ctx, result.marketAnalysis.summary)
   if (result.marketAnalysis.priceRange) {
@@ -687,7 +711,6 @@ export async function exportEvaluationPdf({
     }
   }
 
-  // —— Plano diretor ——
   addSectionTitle(ctx, 'Plano Diretor e zoneamento')
   addParagraph(ctx, `Zoneamento: ${result.masterPlanAnalysis.zoning}`, {
     bold: true,
@@ -712,7 +735,6 @@ export async function exportEvaluationPdf({
   )
   addParagraph(ctx, result.masterPlanAnalysis.summary)
 
-  // —— Bairro ——
   if (result.neighborhoodAnalysis) {
     const n = result.neighborhoodAnalysis
     addSectionTitle(ctx, 'Pesquisa avançada do bairro')
@@ -742,7 +764,6 @@ export async function exportEvaluationPdf({
     addParagraph(ctx, n.summary)
   }
 
-  // —— Valorização ——
   if (result.marketAppreciationAnalysis) {
     const a = result.marketAppreciationAnalysis
     addSectionTitle(ctx, 'Valorização e tendência de mercado')
@@ -764,7 +785,6 @@ export async function exportEvaluationPdf({
     addParagraph(ctx, a.summary)
   }
 
-  // —— NBR ——
   if (result.nbr14653) {
     const nbr = result.nbr14653
     addSectionTitle(ctx, 'Metodologia ABNT NBR 14653')
@@ -829,11 +849,9 @@ export async function exportEvaluationPdf({
     addParagraph(ctx, nbr.disclaimer, { fontSize: 8.5, color: C.muted })
   }
 
-  // —— Score ——
   addSectionTitle(ctx, 'Pontuação por critério')
   addScoreBars(ctx, result.criteriaScores)
 
-  // —— Insights ——
   addSectionTitle(ctx, 'Insights da avaliação')
   addBulletList(ctx, result.aiInsights)
 
