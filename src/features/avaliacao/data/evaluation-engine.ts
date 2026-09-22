@@ -409,6 +409,7 @@ export type EvaluationResult = {
     neighborhoodResultsCount?: number
     floodResultsCount?: number
     appreciationResultsCount?: number
+    serperCreditsExhausted?: boolean
   }
 }
 

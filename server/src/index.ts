@@ -136,7 +136,21 @@ app.post(
 app.use(express.json({ limit: '8mb' }))
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' })
+  const key = config.serperApiKey
+  const serperFingerprint = !key
+    ? null
+    : key.length <= 8
+      ? '***'
+      : `${key.slice(0, 4)}…${key.slice(-4)}`
+
+  res.json({
+    status: 'ok',
+    serper: {
+      configured: Boolean(key),
+      fingerprint: serperFingerprint,
+      keyLength: key ? key.length : 0,
+    },
+  })
 })
 
 app.use('/api/auth', authRoutes)
