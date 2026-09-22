@@ -25,8 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { EvaluationResultPanel } from '@/features/avaliacao/components/evaluation-result'
 import { parseLeadEvaluation } from '../lib/lead-evaluation'
+import { LeadEvaluationPreview } from './lead-evaluation-preview'
 
 type UnlockLeadDialogProps = {
   lead: LeadItem | null
@@ -51,7 +51,7 @@ function UnlockCostSummary({
 }) {
   return (
     <>
-      <div className='flex items-center justify-between rounded-lg border p-3'>
+      <div className='flex flex-wrap items-center justify-between gap-2 text-sm'>
         <div className='flex items-center gap-2 text-sm'>
           <Coins className='size-4' />
           Custo: <strong>{cost} créditos</strong>
@@ -102,7 +102,7 @@ export function UnlockLeadDialog({
   const hasCredits = credits >= cost
 
   async function handleUnlock() {
-    if (!lead) return
+    if (!lead || loading || !hasCredits) return
 
     setLoading(true)
     try {
@@ -135,58 +135,63 @@ export function UnlockLeadDialog({
 
   if (parsedEvaluation) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className='flex max-h-[92vh] max-w-[min(96vw,72rem)] flex-col overflow-hidden p-0'>
-          <div className='shrink-0 border-b px-6 py-5'>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!loading) onOpenChange(value)
+        }}
+      >
+        <DialogContent
+          showCloseButton={!loading}
+          className='flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-none flex-col gap-0 overflow-hidden rounded-3xl p-0 sm:w-[calc(100%-3rem)] sm:max-w-3xl'
+        >
+          <div className='shrink-0 border-b px-4 py-4 pr-12 sm:px-6 sm:py-5'>
             <DialogHeader className='text-left'>
               <DialogTitle className='flex items-center gap-2'>
                 <Lock className='size-5' />
-                Desbloquear lead
+                Conheça o imóvel
               </DialogTitle>
               <DialogDescription>
-                Confira a avaliação completa antes de desbloquear. Contato e
-                endereço completo ficam disponíveis após o desbloqueio.
+                Explore a avaliação antes de decidir. Desbloqueie para acessar o
+                contato do proprietário.
               </DialogDescription>
             </DialogHeader>
-
-            <div className='mt-4 space-y-4'>
-              <LeadSummary lead={lead} />
-              <UnlockCostSummary
-                cost={cost}
-                credits={credits}
-                hasCredits={hasCredits}
-              />
-            </div>
           </div>
 
-          <div className='min-h-0 flex-1 overflow-y-auto px-6 py-5'>
-            <EvaluationResultPanel
+          <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/25 px-4 py-4 sm:px-6 sm:py-5'>
+            <LeadEvaluationPreview
               result={parsedEvaluation.result}
               property={parsedEvaluation.property}
-              previewMode
-              publicLocation={lead.location}
+              location={lead.location}
             />
           </div>
 
-          <DialogFooter className='shrink-0 border-t px-6 py-4 sm:justify-between'>
-            <Button
-              variant='outline'
-              disabled={loading}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              disabled={!hasCredits || loading}
-              onClick={() => void handleUnlock()}
-            >
-              {loading ? (
-                <Loader2 className='size-4 animate-spin' />
-              ) : (
-                <Phone className='size-4' />
-              )}
-              Desbloquear e ver contato
-            </Button>
+          <DialogFooter className='shrink-0 flex-col gap-3 border-t bg-background px-4 py-4 sm:flex-col sm:px-6'>
+            <UnlockCostSummary
+              cost={cost}
+              credits={credits}
+              hasCredits={hasCredits}
+            />
+            <div className='flex flex-col-reverse gap-2 sm:flex-row sm:justify-between'>
+              <Button
+                variant='outline'
+                disabled={loading}
+                onClick={() => onOpenChange(false)}
+              >
+                Voltar aos leads
+              </Button>
+              <Button
+                disabled={!hasCredits || loading}
+                onClick={() => void handleUnlock()}
+              >
+                {loading ? (
+                  <Loader2 className='size-4 animate-spin' />
+                ) : (
+                  <Phone className='size-4' />
+                )}
+                Desbloquear e ver contato
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

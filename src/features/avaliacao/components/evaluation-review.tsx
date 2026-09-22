@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   propertyTypes,
+  isLandOnlyPropertyType,
   getStandardLevelLabel,
   getFurnishingLabel,
 } from '../data/criteria'
@@ -26,6 +27,7 @@ export function EvaluationReview({
   onEdit,
 }: Props) {
   const values = useWatch({ control })
+  const isLandOnly = isLandOnlyPropertyType(values.propertyType ?? '')
   return (
     <aside
       aria-label='Resumo da avaliação'
@@ -73,17 +75,28 @@ export function EvaluationReview({
           ['Padrão', getStandardLevelLabel(values.standardLevel ?? 'padrao')],
           ['Mobília', getFurnishingLabel(values.furnishing ?? 'sem')],
           ['Fotos', `${photoCount} de 5 · opcionais`],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className='flex flex-wrap justify-between gap-x-4 gap-y-1 border-b pb-2 last:border-0'
-          >
-            <dt className='text-muted-foreground'>{label}</dt>
-            <dd className='max-w-full font-medium break-words sm:max-w-[65%] sm:text-right'>
-              {value}
-            </dd>
-          </div>
-        ))}
+        ]
+          .filter(
+            ([label]) =>
+              !isLandOnly ||
+              ![
+                'Andar',
+                'Elevador até a unidade',
+                'Padrão',
+                'Mobília',
+              ].includes(label)
+          )
+          .map(([label, value]) => (
+            <div
+              key={label}
+              className='flex flex-wrap justify-between gap-x-4 gap-y-1 border-b pb-2 last:border-0'
+            >
+              <dt className='text-muted-foreground'>{label}</dt>
+              <dd className='max-w-full font-medium break-words sm:max-w-[65%] sm:text-right'>
+                {value}
+              </dd>
+            </div>
+          ))}
       </dl>
       <div className='mt-4 flex flex-wrap gap-2'>
         {currentStep > 1 && (
